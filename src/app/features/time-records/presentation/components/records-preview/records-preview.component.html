@@ -96,7 +96,6 @@
                     class="field-input disabled:bg-slate-100 disabled:text-slate-400"
                     [disabled]="!item.record.cliente || loadingDemandByIndex[item.index]"
                     [ngModel]="item.record.solicitud"
-                    (focus)="ensureSolicitudes(item.index, item.record)"
                     (ngModelChange)="onSolicitudChange(item.index, item.record, $event)">
                     <option value="">{{ loadingDemandByIndex[item.index] ? 'Cargando...' : 'Seleccione' }}</option>
                     @for (solicitud of getSolicitudes(item.index); track solicitud) {

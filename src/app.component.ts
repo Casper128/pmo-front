@@ -95,7 +95,6 @@ import { AuthService } from './app/core/auth/auth.service';
             </div>
             <nav class="space-y-1">
               <a class="flex items-center rounded-xl bg-blue-50 px-3 py-2.5 text-sm font-black text-blue-700">Importar múltiples</a>
-              <span class="flex items-center rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500">Reportes</span>
             </nav>
           </aside>
 
