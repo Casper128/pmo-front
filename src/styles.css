@@ -1,3 +1,42 @@
-/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
 
-@import 'tailwindcss';
+@layer components {
+  .field-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .field-label {
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1rem;
+  }
+
+  .field-input {
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.75rem;
+    color: #1e293b;
+    font-family: inherit;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    padding: 0.625rem 0.75rem;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .field-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px #dbeafe;
+    outline: none;
+  }
+
+  select.field-input {
+    cursor: pointer;
+  }
+
+  textarea.field-input {
+    resize: vertical;
+  }
+}

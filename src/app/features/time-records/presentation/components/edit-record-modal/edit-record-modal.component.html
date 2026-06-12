@@ -1,0 +1,184 @@
+@if (visible && draft) {
+  <!-- Backdrop -->
+  <div
+    class="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto p-3 sm:py-6"
+    (click)="cancel.emit()">
+    <div
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden"
+      (click)="$event.stopPropagation()">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
+        <div>
+          <h3 class="text-base font-black text-blue-900">Editar registro</h3>
+          <p class="text-xs text-slate-500">Ajusta solo lo necesario antes de enviar.</p>
+        </div>
+        <button
+          (click)="cancel.emit()"
+          class="grid size-9 place-items-center rounded-full text-xl leading-none text-slate-400 transition hover:bg-white hover:text-slate-700">×</button>
+      </div>
+
+      <div class="max-h-[72vh] space-y-4 overflow-y-auto px-5 py-5">
+
+        <!-- Proyecto -->
+        <section class="rounded-xl border border-slate-200 p-4">
+          <p class="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-blue-600">Campos principales</p>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <!-- <div class="field-wrap">
+              <label class="field-label">Cliente</label>
+              <select class="field-input" [(ngModel)]="draft.cliente"
+                (ngModelChange)="onClienteChange($event)">
+                <option value="">· - Seleccione -·</option>
+                @for (c of clientes; track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Gestión Demanda</label>
+              <select class="field-input" [(ngModel)]="draft.solicitud">
+                <option value="">· - Seleccione -·</option>
+                @for (s of solicitudes; track s) { <option [value]="s">{{ s }}</option> }
+              </select>
+            </div> -->
+            <div class="field-wrap">
+              <label class="field-label">Funcional</label>
+              <input class="field-input" type="text" [(ngModel)]="draft.funcional" placeholder="ej. Angelica Rocio Erazo" />
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Proyecto</label>
+              <select class="field-input" [(ngModel)]="draft.proyecto"
+                (ngModelChange)="onProyectoChange($event)">
+                <option value="">· - Seleccione -·</option>
+                @for (p of proyectos; track p) { <option [value]="p">{{ p }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Fecha</label>
+              <input class="field-input" type="date" [(ngModel)]="draft.fecha" (ngModelChange)="onFechaChange()" />
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Hora inicio</label>
+              <input class="field-input" type="time" [(ngModel)]="draft.horaIni" (ngModelChange)="calcHoras()" />
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Hora fin</label>
+              <input class="field-input" type="time" [(ngModel)]="draft.horaFin" (ngModelChange)="calcHoras()" />
+            </div>
+          </div>
+
+          <div class="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div class="field-wrap">
+              <label class="field-label">Descripción</label>
+              <textarea class="field-input min-h-[70px] resize-y" [(ngModel)]="draft.desc"></textarea>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Observación</label>
+              <textarea class="field-input min-h-[70px] resize-y" [(ngModel)]="draft.observacion"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- Actividad -->
+        <details class="rounded-xl border border-slate-200 p-4">
+          <summary class="cursor-pointer text-[11px] font-extrabold uppercase tracking-widest text-blue-600">Campos avanzados</summary>
+          <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div class="field-wrap">
+              <label class="field-label">RICEF</label>
+              <input class="field-input" type="text" [(ngModel)]="draft.ricef" placeholder="Ej: 4692" />
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Tipo actividad</label>
+              <select class="field-input" [(ngModel)]="draft.tipoActividad">
+                @for (t of tiposActividad; track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Causa</label>
+              <select class="field-input" [(ngModel)]="draft.causa">
+                @for (c of causas; track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Complejidad</label>
+              <select class="field-input" [(ngModel)]="draft.complejidad">
+                @for (c of complejidades; track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Impacto</label>
+              <select class="field-input" [(ngModel)]="draft.impacto">
+                @for (i of impactos; track i) { <option [value]="i">{{ i }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Equipo</label>
+              <select class="field-input" [(ngModel)]="draft.equipo">
+                @for (e of equipos; track e) { <option [value]="e">{{ e }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Modo actuación</label>
+              <select class="field-input" [(ngModel)]="draft.modoActuacion">
+                @for (m of modos; track m) { <option [value]="m">{{ m }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Lenguaje</label>
+              <select class="field-input" [(ngModel)]="draft.lenguaje">
+                @for (l of lenguajes; track l) { <option [value]="l">{{ l }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Tipo hora</label>
+              <select class="field-input" [(ngModel)]="draft.tipoHora">
+                @for (t of tiposHora; track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Prefijo</label>
+              <select class="field-input" [(ngModel)]="draft.prefijo">
+                @for (p of prefijos; track p) { <option [value]="p">{{ p }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">RICEF object</label>
+              <select class="field-input" [(ngModel)]="draft.objetoRicef">
+                <option value="">· - Seleccione -·</option>
+                @for (o of objetosRicef; track o) { <option [value]="o">{{ o }}</option> }
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Unity</label>
+              <input class="field-input" type="text" [(ngModel)]="draft.unity" />
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Fecha estimada pruebas</label>
+              <input class="field-input" type="date" [(ngModel)]="draft.fechaEstimada" />
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Fecha real pruebas</label>
+              <input class="field-input" type="date" [(ngModel)]="draft.fechaReal" />
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Categoría</label>
+              <select class="field-input" [(ngModel)]="draft.categoria">
+                @for (c of categorias; track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+            </div>
+          </div>
+        </details>
+
+      </div>
+
+      <!-- Footer actions -->
+      <div class="flex gap-3 border-t border-slate-200 bg-white px-5 py-4">
+        <button
+          class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md hover:from-blue-700 hover:to-blue-600 transition-all"
+          (click)="onSave()">Guardar cambios</button>
+        <button
+          class="flex-1 py-2.5 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"
+          (click)="cancel.emit()">Cancelar</button>
+      </div>
+
+    </div>
+  </div>
+}
