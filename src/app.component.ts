@@ -18,7 +18,7 @@ import { AuthService } from './app/core/auth/auth.service';
                 <div class="flex items-center gap-3">
                   <div class="grid size-12 place-items-center rounded-2xl bg-white text-blue-700 font-black">PM</div>
                   <div>
-                    <p class="font-black">PMO OSPI</p>
+                    <p class="font-black">PMO</p>
                     <p class="text-xs text-blue-100">Registro de tiempos</p>
                   </div>
                 </div>
@@ -50,7 +50,7 @@ import { AuthService } from './app/core/auth/auth.service';
                   <div class="grid size-12 place-items-center rounded-2xl bg-blue-600 text-white font-black shadow-lg shadow-blue-600/20">PM</div>
                   <div>
                     <h1 class="text-xl font-black text-blue-950">REGISTRO DE TIEMPOS</h1>
-                    <p class="text-xs font-semibold text-slate-500">APLICATIVO PMO OSPI</p>
+                    <p class="text-xs font-semibold text-slate-500">APLICATIVO PMO</p>
                   </div>
                 </div>
 
@@ -89,7 +89,7 @@ import { AuthService } from './app/core/auth/auth.service';
             <div class="mb-6 flex items-center gap-3 px-2">
               <div class="grid size-11 place-items-center rounded-2xl bg-blue-600 text-white font-black shadow-lg shadow-blue-600/20">PM</div>
               <div>
-                <p class="font-black text-blue-950">PMO OSPI</p>
+                <p class="font-black text-blue-950">PMO</p>
                 <p class="text-xs text-slate-500">Tiempos consultores</p>
               </div>
             </div>
