@@ -40,6 +40,10 @@ export class RecordsPreviewComponent {
     return this.domain.getMissingFields(record);
   }
 
+  getErrors(record: TimeRecord): string[] {
+    return [...this.domain.getMissingFields(record), ...this.domain.getInvalidFields(record)];
+  }
+
   getSolicitudes(index: number): string[] {
     return this.solicitudesByIndex[index] ?? this.defaultSolicitudes;
   }

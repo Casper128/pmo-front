@@ -9,6 +9,9 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class TimeRecordDomainService {
+  private readonly minYear = 2000;
+  private readonly maxYear = 2100;
+  private readonly maxHoursPerRecord = 16;
 
   /**
    * Parsea texto en formato:
@@ -26,7 +29,8 @@ export class TimeRecordDomainService {
       const fechaMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       if (fechaMatch) {
         const [, d, m, y] = fechaMatch;
-        fechaActual = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const candidate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        fechaActual = this.isValidDateValue(candidate) ? candidate : null;
         continue;
       }
 
@@ -39,6 +43,9 @@ export class TimeRecordDomainService {
 
       let [, ih, im, iampm, fh, fm, fampm, resto] = horaMatch;
       let ihN = parseInt(ih), fhN = parseInt(fh);
+      const imN = parseInt(im), fmN = parseInt(fm);
+
+      if (ihN < 1 || ihN > 12 || fhN < 1 || fhN > 12 || imN > 59 || fmN > 59) continue;
 
       if (iampm.toUpperCase() === 'PM' && ihN !== 12) ihN += 12;
       if (iampm.toUpperCase() === 'AM' && ihN === 12) ihN = 0;
@@ -47,11 +54,14 @@ export class TimeRecordDomainService {
 
       const horaIni = `${String(ihN).padStart(2, '0')}:${im}`;
       const horaFin = `${String(fhN).padStart(2, '0')}:${fm}`;
-      const mins = (fhN * 60 + parseInt(fm)) - (ihN * 60 + parseInt(im));
+      if (!this.isValidTimeValue(horaIni) || !this.isValidTimeValue(horaFin)) continue;
+
+      const mins = (fhN * 60 + fmN) - (ihN * 60 + imN);
+      if (mins <= 0 || mins > this.maxHoursPerRecord * 60) continue;
       const horas = mins > 0 ? (mins / 60).toFixed(1) : '0';
       const campos = resto.split('|').map(campo => campo.trim());
       const desc = campos[0] || '';
-      const funcional = campos[1] || '';
+      const funcional = campos[1] || 'N/A';
 
       registros.push({
         ...TIME_RECORD_DEFAULTS,
@@ -66,6 +76,60 @@ export class TimeRecordDomainService {
     }
 
     return registros;
+  }
+
+  validateImportText(texto: string): string[] {
+    const lineas = texto.replace(/;/g, '\n').trim().split('\n').filter(l => l.trim());
+    const errors: string[] = [];
+    let fechaActual = '';
+
+    lineas.forEach((linea, index) => {
+      const lineNumber = index + 1;
+      const trimmed = linea.trim();
+      const fechaMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
+      if (fechaMatch) {
+        const [, d, m, y] = fechaMatch;
+        const candidate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        if (!this.isValidDateValue(candidate)) {
+          errors.push(`Linea ${lineNumber}: fecha invalida`);
+          fechaActual = '';
+          return;
+        }
+        fechaActual = candidate;
+        return;
+      }
+
+      if (!fechaActual) {
+        errors.push(`Linea ${lineNumber}: agrega una fecha valida antes del registro`);
+        return;
+      }
+
+      const horaMatch = trimmed.match(
+        /^(\d{1,2}):(\d{2})(AM|PM)-(\d{1,2}):(\d{2})(AM|PM)(?:\s*\|\s*|\s+)(.+)$/i
+      );
+      if (!horaMatch) {
+        errors.push(`Linea ${lineNumber}: usa formato 7:30AM-9:00AM descripcion`);
+        return;
+      }
+
+      const [, ih, im, iampm, fh, fm, fampm, resto] = horaMatch;
+      const normalized = this.normalizeMeridianRange(ih, im, iampm, fh, fm, fampm);
+      if (!normalized) {
+        errors.push(`Linea ${lineNumber}: hora invalida`);
+        return;
+      }
+
+      const horas = this.calcHoras(normalized.horaIni, normalized.horaFin);
+      if (!horas || Number(horas) <= 0) {
+        errors.push(`Linea ${lineNumber}: la duracion debe ser mayor a 0`);
+      }
+      if (!resto.trim()) {
+        errors.push(`Linea ${lineNumber}: agrega descripcion`);
+      }
+    });
+
+    return errors;
   }
 
   groupByDate(records: TimeRecord[]): DayGroup[] {
@@ -100,21 +164,72 @@ export class TimeRecordDomainService {
       .map(({ label }) => label);
   }
 
+  getInvalidFields(record: TimeRecord): string[] {
+    const invalid: string[] = [];
+
+    if (record.fecha && !this.isValidDateValue(record.fecha)) invalid.push('Fecha invalida');
+    if (record.fechaEstimada && !this.isValidDateValue(record.fechaEstimada)) {
+      invalid.push('Fecha estimada invalida');
+    }
+    if (record.fechaReal && !this.isValidDateValue(record.fechaReal)) {
+      invalid.push('Fecha real invalida');
+    }
+    if (record.horaIni && !this.isValidTimeValue(record.horaIni)) invalid.push('Hora inicio invalida');
+    if (record.horaFin && !this.isValidTimeValue(record.horaFin)) invalid.push('Hora fin invalida');
+
+    if (
+      this.isValidTimeValue(record.horaIni) &&
+      this.isValidTimeValue(record.horaFin)
+    ) {
+      const minutes = this.diffMinutes(record.horaIni, record.horaFin);
+      if (minutes <= 0) invalid.push('Hora fin debe ser mayor a hora inicio');
+      if (minutes > this.maxHoursPerRecord * 60) {
+        invalid.push(`Duracion maxima ${this.maxHoursPerRecord}h`);
+      }
+    }
+
+    const hours = Number(record.horas);
+    if (!Number.isFinite(hours) || hours <= 0) invalid.push('Horas debe ser mayor a 0');
+
+    return invalid;
+  }
+
   calcHoras(horaIni: string, horaFin: string): string {
-    if (!horaIni || !horaFin) return '';
-    const [ih, im] = horaIni.split(':').map(Number);
-    const [fh, fm] = horaFin.split(':').map(Number);
-    const mins = (fh * 60 + fm) - (ih * 60 + im);
-    return mins > 0 ? (mins / 60).toFixed(1) : '';
+    if (!this.isValidTimeValue(horaIni) || !this.isValidTimeValue(horaFin)) return '';
+    const mins = this.diffMinutes(horaIni, horaFin);
+    return mins > 0 && mins <= this.maxHoursPerRecord * 60 ? (mins / 60).toFixed(1) : '';
   }
 
   normalizeDateValue(value: string): string {
     if (!value || value === '0000-00-00') return '';
     const normalized = value.split('T')[0];
-    return normalized === '0000-00-00' ? '' : normalized;
+    return this.isValidDateValue(normalized) ? normalized : '';
+  }
+
+  isValidDateValue(value: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return false;
+    const [year, month, day] = value.split('-').map(Number);
+    if (year < this.minYear || year > this.maxYear) return false;
+    const date = new Date(year, month - 1, day);
+    return (
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+    );
+  }
+
+  isValidTimeValue(value: string): boolean {
+    if (!/^\d{2}:\d{2}$/.test(value || '')) return false;
+    const [hours, minutes] = value.split(':').map(Number);
+    return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
   }
 
   buildApiBody(reg: TimeRecord): object {
+    const invalid = this.getInvalidFields(reg);
+    if (invalid.length) {
+      throw new Error(`Registro invalido: ${invalid.join(', ')}`);
+    }
+
     const [y, mo, d] = reg.fecha.split('-');
     const [ih, im] = reg.horaIni.split(':');
     const [fh, fm] = reg.horaFin.split(':');
@@ -149,6 +264,36 @@ export class TimeRecordDomainService {
       tiempoRealHoras: reg.horas,
       fechaEstimadaPruebas: this.normalizeDateValue(reg.fechaEstimada) || null,
       fechaEstimadaRealPruebas: this.normalizeDateValue(reg.fechaReal) || null,
+    };
+  }
+
+  private diffMinutes(horaIni: string, horaFin: string): number {
+    const [ih, im] = horaIni.split(':').map(Number);
+    const [fh, fm] = horaFin.split(':').map(Number);
+    return (fh * 60 + fm) - (ih * 60 + im);
+  }
+
+  private normalizeMeridianRange(
+    ih: string,
+    im: string,
+    iampm: string,
+    fh: string,
+    fm: string,
+    fampm: string
+  ): { horaIni: string; horaFin: string } | null {
+    let ihN = parseInt(ih), fhN = parseInt(fh);
+    const imN = parseInt(im), fmN = parseInt(fm);
+
+    if (ihN < 1 || ihN > 12 || fhN < 1 || fhN > 12 || imN > 59 || fmN > 59) return null;
+
+    if (iampm.toUpperCase() === 'PM' && ihN !== 12) ihN += 12;
+    if (iampm.toUpperCase() === 'AM' && ihN === 12) ihN = 0;
+    if (fampm.toUpperCase() === 'PM' && fhN !== 12) fhN += 12;
+    if (fampm.toUpperCase() === 'AM' && fhN === 12) fhN = 0;
+
+    return {
+      horaIni: `${String(ihN).padStart(2, '0')}:${im}`,
+      horaFin: `${String(fhN).padStart(2, '0')}:${fm}`,
     };
   }
 }

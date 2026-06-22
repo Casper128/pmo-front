@@ -53,17 +53,23 @@
             </div>
             <div class="field-wrap">
               <label class="field-label">Fecha</label>
-              <input class="field-input" type="date" [(ngModel)]="draft.fecha" (ngModelChange)="onFechaChange()" />
+              <input class="field-input" type="date" min="2000-01-01" max="2100-12-31" [(ngModel)]="draft.fecha" (ngModelChange)="onFechaChange()" />
             </div>
             <div class="field-wrap">
               <label class="field-label">Hora inicio</label>
-              <input class="field-input" type="time" [(ngModel)]="draft.horaIni" (ngModelChange)="calcHoras()" />
+              <input class="field-input" type="time" step="60" [(ngModel)]="draft.horaIni" (ngModelChange)="calcHoras()" />
             </div>
             <div class="field-wrap">
               <label class="field-label">Hora fin</label>
-              <input class="field-input" type="time" [(ngModel)]="draft.horaFin" (ngModelChange)="calcHoras()" />
+              <input class="field-input" type="time" step="60" [(ngModel)]="draft.horaFin" (ngModelChange)="calcHoras()" />
             </div>
           </div>
+
+          @if (validationErrors.length > 0) {
+            <div class="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+              Revisa: {{ validationErrors.join(', ') }}
+            </div>
+          }
 
           <div class="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
             <div class="field-wrap">
@@ -152,11 +158,11 @@
             </div>
             <div class="field-wrap">
               <label class="field-label">Fecha estimada pruebas</label>
-              <input class="field-input" type="date" [(ngModel)]="draft.fechaEstimada" />
+              <input class="field-input" type="date" min="2000-01-01" max="2100-12-31" [(ngModel)]="draft.fechaEstimada" (ngModelChange)="onTestDateChange()" />
             </div>
             <div class="field-wrap">
               <label class="field-label">Fecha real pruebas</label>
-              <input class="field-input" type="date" [(ngModel)]="draft.fechaReal" />
+              <input class="field-input" type="date" min="2000-01-01" max="2100-12-31" [(ngModel)]="draft.fechaReal" (ngModelChange)="onTestDateChange()" />
             </div>
             <div class="field-wrap">
               <label class="field-label">Categoría</label>
@@ -172,7 +178,8 @@
       <!-- Footer actions -->
       <div class="flex gap-3 border-t border-slate-200 bg-white px-5 py-4">
         <button
-          class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md hover:from-blue-700 hover:to-blue-600 transition-all"
+          class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md hover:from-blue-700 hover:to-blue-600 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+          [disabled]="validationErrors.length > 0"
           (click)="onSave()">Guardar cambios</button>
         <button
           class="flex-1 py-2.5 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"

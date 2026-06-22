@@ -52,7 +52,7 @@
 
         <div class="divide-y divide-slate-100">
           @for (item of group.records; track item.index) {
-            @let missing = getMissing(item.record);
+            @let missing = getErrors(item.record);
             <article
               class="space-y-3 p-4"
               [class.bg-red-50]="missing.length > 0"
@@ -106,7 +106,7 @@
               </div>
 
               @if (missing.length > 0) {
-                <p class="rounded-lg bg-red-100 px-3 py-2 text-xs font-bold text-red-700">Incompleto: {{ missing.join(', ') }}</p>
+                <p class="rounded-lg bg-red-100 px-3 py-2 text-xs font-bold text-red-700">Revisar: {{ missing.join(', ') }}</p>
               }
             </article>
           }
@@ -161,7 +161,7 @@
 
           <!-- Record rows -->
           @for (item of group.records; track item.index) {
-            @let missing = getMissing(item.record);
+            @let missing = getErrors(item.record);
             <tr
               class="border-b border-slate-100 transition-colors"
               [class.bg-red-50]="missing.length > 0"
@@ -200,7 +200,7 @@
               <td class="px-4 py-3 max-w-[280px]">
                 <p class="truncate text-slate-700 text-xs" [title]="item.record.desc">{{ item.record.desc }}</p>
                 @if (missing.length > 0) {
-                  <p class="text-[11px] text-red-700 font-bold mt-1">⚠ Incompleto: {{ missing.join(', ') }}</p>
+                  <p class="text-[11px] text-red-700 font-bold mt-1">Revisar: {{ missing.join(', ') }}</p>
                 }
               </td>
               <td class="sticky right-0 bg-inherit px-4 py-3 text-center whitespace-nowrap shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]">

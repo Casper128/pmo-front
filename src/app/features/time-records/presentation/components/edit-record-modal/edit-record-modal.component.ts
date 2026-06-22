@@ -30,6 +30,7 @@ export class EditRecordModalComponent implements OnChanges {
 
   draft: TimeRecord | null = null;
   horasReal = '';
+  validationErrors: string[] = [];
 
   clientes: string[] = [];
   proyectos: string[] = [];
@@ -40,6 +41,7 @@ export class EditRecordModalComponent implements OnChanges {
       this.draft = { ...this.record };
       this.fillTestDatesFromRecordDate();
       this.horasReal = this.domain.calcHoras(this.draft.horaIni, this.draft.horaFin);
+      this.refreshValidation();
     }
     if (changes['visible'] && this.visible) {
       this.loadClientes();
@@ -86,21 +88,39 @@ export class EditRecordModalComponent implements OnChanges {
     if (this.draft) {
       this.horasReal = this.domain.calcHoras(this.draft.horaIni, this.draft.horaFin);
       this.draft.horas = this.horasReal || '0';
+      this.refreshValidation();
     }
   }
 
   onFechaChange() {
     this.fillTestDatesFromRecordDate();
+    this.refreshValidation();
+  }
+
+  onTestDateChange() {
+    this.refreshValidation();
   }
 
   onSave() {
-    if (this.draft) this.save.emit({ ...this.draft });
+    this.refreshValidation();
+    if (this.draft && this.validationErrors.length === 0) this.save.emit({ ...this.draft });
   }
 
   private fillTestDatesFromRecordDate() {
     if (!this.draft?.fecha) return;
     if (!this.draft.fechaEstimada) this.draft.fechaEstimada = this.draft.fecha;
     if (!this.draft.fechaReal) this.draft.fechaReal = this.draft.fecha;
+  }
+
+  private refreshValidation() {
+    if (!this.draft) {
+      this.validationErrors = [];
+      return;
+    }
+    this.validationErrors = [
+      ...this.domain.getMissingFields(this.draft),
+      ...this.domain.getInvalidFields(this.draft),
+    ];
   }
 
   // ── Select options ──────────────────────────────────────────────
