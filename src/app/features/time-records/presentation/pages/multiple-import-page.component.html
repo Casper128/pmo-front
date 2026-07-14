@@ -85,8 +85,112 @@
           <app-import-text-input (process)="onProcess($event)" />
         </aside>
 
+        <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">Logs semana vigente</p>
+              <h2 class="mt-1 text-base font-black text-slate-900">Registros enviados por este usuario</h2>
+              <p class="mt-1 text-xs font-bold text-slate-500">
+                {{ weeklySendLogs().length }} eventos guardados · {{ weeklyErrorLogs().length }} con error
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                type="button"
+                [disabled]="weeklySendLogs().length === 0"
+                (click)="copyWeeklySendLog()">
+                Copiar
+              </button>
+              <button
+                class="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                type="button"
+                [disabled]="weeklySendLogs().length === 0"
+                (click)="clearWeeklySendLog()">
+                Limpiar
+              </button>
+            </div>
+          </div>
+
+          @if (weeklySendLogs().length > 0) {
+            <div class="max-h-48 overflow-auto rounded-xl border border-slate-100">
+              @for (log of weeklySendLogs().slice().reverse(); track log.createdAt + log.index) {
+                <div class="grid gap-1 border-b border-slate-100 px-3 py-2 text-xs last:border-b-0 sm:grid-cols-[5rem_1fr_8rem]">
+                  <span class="font-black" [class.text-emerald-700]="log.ok" [class.text-red-700]="!log.ok">{{ log.ok ? 'OK' : 'ERROR' }}</span>
+                  <div>
+                    <p class="font-black text-slate-900">{{ log.identificador }}</p>
+                    @if (log.errorMessage) {
+                      <p class="mt-1 font-semibold text-red-700">{{ log.errorMessage }}</p>
+                    }
+                  </div>
+                  <span class="font-semibold text-slate-400">{{ log.createdAt | date:'dd/MM HH:mm' }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs font-bold text-slate-400">
+              Aun no hay envios registrados esta semana.
+            </div>
+          }
+        </section>
+
         <main class="min-w-0">
           @if (showPreview()) {
+            @if (sending()) {
+              <section class="mb-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div class="flex items-center gap-3">
+                    <span class="grid size-10 place-items-center rounded-full bg-blue-600">
+                      <span class="size-5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                    </span>
+                    <div>
+                      <p class="text-sm font-black text-blue-950">Enviando reportes...</p>
+                      <p class="text-xs font-bold text-blue-700">{{ sendProcessed() }} de {{ sendTotal() }} procesados</p>
+                    </div>
+                  </div>
+                  @if (latestSentId()) {
+                    <div class="rounded-xl border border-blue-200 bg-white px-3 py-2">
+                      <p class="text-[11px] font-black uppercase tracking-widest text-blue-500">Ultimo ID recibido</p>
+                      <p class="mt-1 text-sm font-black text-slate-900">{{ latestSentId() }}</p>
+                    </div>
+                  }
+                </div>
+                <div class="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                  <div class="h-full rounded-full bg-blue-600 transition-all" [style.width.%]="sendProgressPercent()"></div>
+                </div>
+              </section>
+            }
+
+            @if (sendLogs().length > 0) {
+              <section class="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">Log temporal</p>
+                    <h3 class="text-sm font-black text-slate-900">IDs de registros reportados</h3>
+                  </div>
+                  <button
+                    class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50"
+                    type="button"
+                    (click)="copySendLog()">
+                    Copiar log
+                  </button>
+                </div>
+                <div class="max-h-44 overflow-auto rounded-xl border border-slate-100">
+                  @for (log of sendLogs(); track log.index) {
+                    <div class="grid gap-1 border-b border-slate-100 px-3 py-2 text-xs last:border-b-0 sm:grid-cols-[4rem_1fr]">
+                      <span class="font-black" [class.text-emerald-700]="log.ok" [class.text-red-700]="!log.ok">{{ log.ok ? 'OK' : 'ERROR' }}</span>
+                      <div>
+                        <p class="font-black text-slate-900">{{ log.identificador }}</p>
+                        @if (log.errorMessage) {
+                          <p class="mt-1 font-semibold text-red-700">{{ log.errorMessage }}</p>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
+
             <app-records-preview
               [groups]="groups()"
               [totalGeneral]="totalGeneral()"
@@ -99,6 +203,35 @@
               (sendAll)="onSendAll()"
               (cancelImport)="onCancelImport()" />
           } @else {
+            @if (sendLogs().length > 0) {
+              <section class="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">Log temporal</p>
+                    <h3 class="text-sm font-black text-slate-900">IDs de registros reportados</h3>
+                  </div>
+                  <button
+                    class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50"
+                    type="button"
+                    (click)="copySendLog()">
+                    Copiar log
+                  </button>
+                </div>
+                <div class="max-h-44 overflow-auto rounded-xl border border-slate-100">
+                  @for (log of sendLogs(); track log.index) {
+                    <div class="grid gap-1 border-b border-slate-100 px-3 py-2 text-xs last:border-b-0 sm:grid-cols-[4rem_1fr]">
+                      <span class="font-black" [class.text-emerald-700]="log.ok" [class.text-red-700]="!log.ok">{{ log.ok ? 'OK' : 'ERROR' }}</span>
+                      <div>
+                        <p class="font-black text-slate-900">{{ log.identificador }}</p>
+                        @if (log.errorMessage) {
+                          <p class="mt-1 font-semibold text-red-700">{{ log.errorMessage }}</p>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
             <section class="grid min-h-[28rem] place-items-center rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
               <div class="max-w-sm">
                 <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">Vista previa</p>
@@ -297,6 +430,7 @@
                   <th class="px-4 py-3">Actividad</th>
                   <th class="px-4 py-3">Tecnologia</th>
                   <th class="px-4 py-3 text-right">Horas</th>
+                  <th class="px-4 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 bg-white">
@@ -317,10 +451,19 @@
                       <p class="mt-2 text-xs font-bold text-slate-400">{{ report.modulo || 'Sin modulo' }}</p>
                     </td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-base font-black text-emerald-700">{{ formatHours(reportHours(report)) }}</td>
+                    <td class="whitespace-nowrap px-4 py-3 text-right">
+                      <button
+                        class="rounded-xl border border-blue-200 px-3 py-2 text-xs font-black text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                        type="button"
+                        [disabled]="managementEditSaving()"
+                        (click)="openManagementEdit(report)">
+                        Editar
+                      </button>
+                    </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td class="px-4 py-10 text-center text-sm font-bold text-slate-500" colspan="6">No hay reportes para mostrar.</td>
+                    <td class="px-4 py-10 text-center text-sm font-bold text-slate-500" colspan="7">No hay reportes para mostrar.</td>
                   </tr>
                 }
               </tbody>
@@ -328,6 +471,92 @@
           </div>
         </div>
       </section>
+    }
+
+    @if (managementEditVisible()) {
+      @if (managementEditDraft(); as draft) {
+        <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-3 sm:py-8" (click)="closeManagementEdit()">
+          <div class="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl" (click)="$event.stopPropagation()">
+            <div class="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
+              <div>
+                <h3 class="text-base font-black text-blue-950">Editar reporte</h3>
+                <p class="mt-1 text-xs font-bold text-slate-500">{{ draft.identificador }}</p>
+              </div>
+              <button
+                class="grid size-9 place-items-center rounded-full text-xl leading-none text-slate-400 transition hover:bg-white hover:text-slate-700"
+                type="button"
+                [disabled]="managementEditSaving()"
+                (click)="closeManagementEdit()">x</button>
+            </div>
+
+            <div class="grid gap-4 px-5 py-5 md:grid-cols-2">
+              <label class="field-wrap">
+                <span class="field-label">Fecha</span>
+                <input class="field-input" type="date" min="2000-01-01" max="2100-12-31" [(ngModel)]="draft.fecha" (ngModelChange)="onManagementEditChange()" />
+              </label>
+              <label class="field-wrap">
+                <span class="field-label">Tipo hora</span>
+                <select class="field-input" [(ngModel)]="draft.tipoHora" (ngModelChange)="onManagementEditChange()">
+                  <option value="Laboral">Laboral</option>
+                  <option value="Fabrica">Fabrica</option>
+                </select>
+              </label>
+              <label class="field-wrap">
+                <span class="field-label">Hora inicio</span>
+                <input class="field-input" type="time" step="60" [(ngModel)]="draft.horaIni" (ngModelChange)="onManagementEditTimeChange()" />
+              </label>
+              <label class="field-wrap">
+                <span class="field-label">Hora fin</span>
+                <input class="field-input" type="time" step="60" [(ngModel)]="draft.horaFin" (ngModelChange)="onManagementEditTimeChange()" />
+              </label>
+              <label class="field-wrap">
+                <span class="field-label">Horas reales</span>
+                <input class="field-input" type="number" min="0" step="0.5" [(ngModel)]="draft.horas" (ngModelChange)="onManagementEditChange()" />
+              </label>
+              <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p class="text-xs font-black uppercase tracking-widest text-slate-400">Total laboral del dia</p>
+                <p class="mt-1 text-2xl font-black text-slate-900">{{ formatHours(managementDailyLaborHoursWithDraft()) }}h</p>
+              </div>
+              <label class="field-wrap">
+                <span class="field-label">Fecha estimada pruebas</span>
+                <input class="field-input" type="date" min="2000-01-01" max="2100-12-31" [(ngModel)]="draft.fechaEstimada" (ngModelChange)="onManagementEditChange()" />
+              </label>
+              <label class="field-wrap">
+                <span class="field-label">Fecha real pruebas</span>
+                <input class="field-input" type="date" min="2000-01-01" max="2100-12-31" [(ngModel)]="draft.fechaReal" (ngModelChange)="onManagementEditChange()" />
+              </label>
+            </div>
+
+            @if (managementEditErrors().length) {
+              <div class="mx-5 mb-5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+                Revisa: {{ managementEditErrors().join(', ') }}
+              </div>
+            }
+
+            <div class="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row">
+              <button
+                class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                type="button"
+                [disabled]="managementEditSaving() || managementEditErrors().length > 0"
+                (click)="saveManagementEdit()">
+                @if (managementEditSaving()) {
+                  <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                  Guardando...
+                } @else {
+                  Guardar cambios
+                }
+              </button>
+              <button
+                class="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+                type="button"
+                [disabled]="managementEditSaving()"
+                (click)="closeManagementEdit()">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     }
 
   </div>

@@ -63,6 +63,21 @@ export interface HorasAlert {
   label: string;
 }
 
+export interface DailyHoursLimitViolation {
+  fecha: string;
+  totalHoras: number;
+  limiteHoras: number;
+  tipoHora: string;
+}
+
+export interface RecordHoursLimitViolation {
+  index: number;
+  fecha: string;
+  horas: number;
+  limiteHoras: number;
+  tipoHora: string;
+}
+
 export const REQUIRED_FIELDS: { key: keyof TimeRecord; label: string }[] = [
   { key: 'fecha', label: 'Fecha' },
   { key: 'horaIni', label: 'Hora inicio' },

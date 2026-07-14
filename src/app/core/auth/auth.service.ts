@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, map, of, tap } from 'rxjs';
+import { Observable, catchError, map, of, switchMap, tap, throwError } from 'rxjs';
 
 const BASE = 'https://wwz8sswbkh.execute-api.us-west-2.amazonaws.com/dev';
 
@@ -52,7 +52,7 @@ export class AuthService {
     return this.http
       .post<any>(`${BASE}/cuentas/authenticate`, { email, password })
       .pipe(
-        map(response => {
+        switchMap(response => {
           const token = response?.token || response?.jwtToken || response?.key || response?.accessToken;
           if (!token) {
             throw new Error(response?.mensaje || response?.message || 'Credenciales incorrectas');
@@ -60,9 +60,10 @@ export class AuthService {
           this.setTokens(token, response?.refreshToken);
           const user = this.mapUser(response?.usuario || response?.user || response, email);
           this.setUser(user);
-          return user;
-        }),
-        tap(user => this.loadUser(user.email).subscribe())
+          return this.loadUser(user.email).pipe(
+            catchError(() => of(user))
+          );
+        })
       );
   }
 
@@ -78,13 +79,36 @@ export class AuthService {
   }
 
   refreshSession(): Observable<string | null> {
+    if (!this.token || !this.refreshToken) {
+      return throwError(() => new Error('No hay sesion para renovar'));
+    }
+
     return this.http
-      .post<any>(`${BASE}/cuentas/validarSesion`, {
-        refreshToken: this.refreshToken,
-        jwtToken: this.token,
-      })
+      .post<any>(
+        `${BASE}/cuentas/validarSesion`,
+        {
+          refreshToken: this.refreshToken,
+          jwtToken: this.token,
+        },
+        {
+          headers: {
+            accept: '*/*',
+            'accept-language': 'es',
+            Authorization: `Bearer ${this.token}`,
+          },
+        }
+      )
       .pipe(
-        map(response => response?.key || response?.token || this.token),
+        map(response => {
+          const token = response?.key || response?.token || response?.jwtToken || response?.accessToken;
+          if (response?.status && response.status !== 200) {
+            throw new Error(response?.mensajee || response?.mensaje || response?.message || 'Sesion invalida');
+          }
+          if (!token) {
+            throw new Error(response?.mensajee || response?.mensaje || response?.message || 'Sesion invalida');
+          }
+          return token as string;
+        }),
         tap(token => {
           if (token) this.setTokens(token, this.refreshToken ?? undefined);
         })
@@ -94,18 +118,34 @@ export class AuthService {
   restoreSession(): Observable<AuthUser | null> {
     if (!this.token) return of(null);
     const fallbackEmail = this.user()?.email || 'Usuario PMO';
-    return this.loadUser(fallbackEmail).pipe(
-      catchError(() => {
-        if (this.refreshToken) {
-          return this.refreshSession().pipe(
-            map(() => this.user()),
-            catchError(() => {
+    const loadCurrentUser = () => this.loadUser(fallbackEmail);
+
+    if (!this.refreshToken) {
+      return loadCurrentUser().pipe(
+        catchError(error => {
+          if (this.isSessionExpiredError(error)) this.clearTokens();
+          return of(this.user());
+        })
+      );
+    }
+
+    return this.refreshSession().pipe(
+      switchMap(() => loadCurrentUser()),
+      catchError(error => {
+        if (this.isSessionExpiredError(error)) {
+          this.clearTokens();
+          return of(null);
+        }
+
+        return loadCurrentUser().pipe(
+          catchError(loadError => {
+            if (this.isSessionExpiredError(loadError)) {
               this.clearTokens();
               return of(null);
-            })
-          );
-        }
-        return of(this.user());
+            }
+            return of(this.user());
+          })
+        );
       })
     );
   }
@@ -133,6 +173,21 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     return !!this._token();
+  }
+
+  isSessionExpiredError(error: any): boolean {
+    const status = Number(error?.status || error?.error?.status || 0);
+    if (status === 401 || status === 403) return true;
+
+    const message = String(error?.error?.mensajee || error?.error?.mensaje || error?.error?.message || error?.message || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    return message.includes('sesion invalida') ||
+      message.includes('session invalid') ||
+      message.includes('jwt expired') ||
+      message.includes('token expired');
   }
 
   private mapUser(response: any, fallbackEmail: string): AuthUser {

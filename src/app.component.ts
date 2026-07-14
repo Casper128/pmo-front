@@ -9,7 +9,14 @@ import { AuthService } from './app/core/auth/auth.service';
   imports: [FormsModule, RouterOutlet],
   template: `
     <main class="min-h-screen bg-[#f4f7fb] text-slate-900">
-      @if (!auth.isLoggedIn()) {
+      @if (restoringSession()) {
+        <section class="grid min-h-screen place-items-center px-4">
+          <div class="rounded-2xl border border-slate-200 bg-white px-6 py-5 text-center shadow-xl">
+            <span class="mx-auto block size-7 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"></span>
+            <p class="mt-3 text-sm font-black text-blue-950">Validando sesion...</p>
+          </div>
+        </section>
+      } @else if (!auth.isLoggedIn()) {
         <section class="grid min-h-screen place-items-center px-4 py-8">
           <div class="grid w-full max-w-5xl overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-2xl lg:grid-cols-[1.05fr_0.95fr]">
             <div class="relative hidden min-h-[560px] overflow-hidden bg-blue-950 p-8 text-white lg:block">
@@ -79,6 +86,9 @@ import { AuthService } from './app/core/auth/auth.service';
                   @if (loggingIn()) { <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span> }
                   Ingresar
                 </button>
+                <button class="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400" type="button" [disabled]="loggingIn()" (click)="fillAuditLogin()">
+                  Usar auditoria
+                </button>
               </div>
             </form>
           </div>
@@ -123,15 +133,27 @@ import { AuthService } from './app/core/auth/auth.service';
   `,
 })
 export class AppComponent implements OnDestroy {
+  private readonly auditEmail = 'auditoria.sap@netwconsulting.com';
+  private readonly auditPassword = 'Auditoriaa2023*+';
   auth = inject(AuthService);
   email = '';
   password = '';
   loggingIn = signal(false);
   loginError = signal('');
+  restoringSession = signal(true);
   private refreshId: number | null = null;
 
   constructor() {
-    this.scheduleRefresh();
+    this.auth.restoreSession().subscribe({
+      next: user => {
+        this.restoringSession.set(false);
+        if (user) this.scheduleRefresh();
+      },
+      error: () => {
+        this.restoringSession.set(false);
+        this.auth.clearTokens();
+      },
+    });
   }
 
   login() {
@@ -141,6 +163,7 @@ export class AppComponent implements OnDestroy {
       return;
     }
     this.loggingIn.set(true);
+    this.clearRefreshInterval();
     this.auth.login(this.email.trim(), this.password).subscribe({
       next: user => {
         this.auth.setUser(user);
@@ -154,10 +177,14 @@ export class AppComponent implements OnDestroy {
     });
   }
 
+  fillAuditLogin() {
+    this.email = this.auditEmail;
+    this.password = this.auditPassword;
+  }
+
   logout() {
     this.auth.clearTokens();
-    if (this.refreshId) window.clearInterval(this.refreshId);
-    this.refreshId = null;
+    this.clearRefreshInterval();
   }
 
   initials(): string {
@@ -172,13 +199,22 @@ export class AppComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.refreshId) window.clearInterval(this.refreshId);
+    this.clearRefreshInterval();
   }
 
   private scheduleRefresh() {
     if (!this.auth.isAuthenticated() || this.refreshId) return;
     this.refreshId = window.setInterval(() => {
-      this.auth.refreshSession().subscribe({ error: () => undefined });
+      this.auth.refreshSession().subscribe({
+        error: error => {
+          if (this.auth.isSessionExpiredError(error)) this.logout();
+        },
+      });
     }, 4 * 60 * 1000);
+  }
+
+  private clearRefreshInterval() {
+    if (this.refreshId) window.clearInterval(this.refreshId);
+    this.refreshId = null;
   }
 }

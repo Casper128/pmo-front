@@ -2,7 +2,9 @@ import { Injectable } from '@angular/core';
 import {
   TimeRecord,
   DayGroup,
+  DailyHoursLimitViolation,
   HorasAlert,
+  RecordHoursLimitViolation,
   REQUIRED_FIELDS,
   TIME_RECORD_DEFAULTS,
 } from '../models/time-record.model';
@@ -12,6 +14,7 @@ export class TimeRecordDomainService {
   private readonly minYear = 2000;
   private readonly maxYear = 2100;
   private readonly maxHoursPerRecord = 16;
+  private readonly maxDailyLaborHours = 10;
 
   /**
    * Parsea texto en formato:
@@ -194,6 +197,49 @@ export class TimeRecordDomainService {
     return invalid;
   }
 
+  getLaborRecordsHoursExceeded(records: TimeRecord[]): RecordHoursLimitViolation[] {
+    return records
+      .map((record, index) => ({ record, index }))
+      .filter(({ record }) => this.isLaborHour(record.tipoHora))
+      .map(({ record, index }) => ({
+        index,
+        fecha: record.fecha,
+        horas: Number(record.horas || 0),
+        limiteHoras: this.maxDailyLaborHours,
+        tipoHora: 'Laboral',
+      }))
+      .filter(item => Number.isFinite(item.horas) && item.horas > item.limiteHoras);
+  }
+
+  getDailyLaborHoursExceeded(records: TimeRecord[]): DailyHoursLimitViolation[] {
+    const totals = new Map<string, number>();
+
+    records
+      .filter(record => this.isLaborHour(record.tipoHora))
+      .forEach(record => {
+        const hours = Number(record.horas);
+        if (!Number.isFinite(hours)) return;
+        totals.set(record.fecha, (totals.get(record.fecha) || 0) + hours);
+      });
+
+    return Array.from(totals.entries())
+      .filter(([, totalHoras]) => totalHoras > this.maxDailyLaborHours)
+      .map(([fecha, totalHoras]) => ({
+        fecha,
+        totalHoras,
+        limiteHoras: this.maxDailyLaborHours,
+        tipoHora: 'Laboral',
+      }));
+  }
+
+  getMaxDailyLaborHours(): number {
+    return this.maxDailyLaborHours;
+  }
+
+  isLaborHour(tipoHora: string): boolean {
+    return this.normalizeText(tipoHora) === 'laboral';
+  }
+
   calcHoras(horaIni: string, horaFin: string): string {
     if (!this.isValidTimeValue(horaIni) || !this.isValidTimeValue(horaFin)) return '';
     const mins = this.diffMinutes(horaIni, horaFin);
@@ -295,5 +341,13 @@ export class TimeRecordDomainService {
       horaIni: `${String(ihN).padStart(2, '0')}:${im}`,
       horaFin: `${String(fhN).padStart(2, '0')}:${fm}`,
     };
+  }
+
+  private normalizeText(value: string): string {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
   }
 }
