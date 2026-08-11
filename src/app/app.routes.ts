@@ -8,6 +8,13 @@ export const routes: Routes = [
         m => m.MultipleImportPageComponent
       ),
   },
+  {
+    path: 'registros/estadisticas',
+    loadComponent: () =>
+      import('./features/time-records/presentation/pages/consultant-statistics-page.component').then(
+        m => m.ConsultantStatisticsPageComponent
+      ),
+  },
   // Redirige raíz a la página de importación (ajusta según tu app)
   { path: '', redirectTo: 'registros/importar', pathMatch: 'full' },
 ];

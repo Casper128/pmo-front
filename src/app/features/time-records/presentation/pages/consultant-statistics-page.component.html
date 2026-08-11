@@ -1,0 +1,133 @@
+<div class="min-h-screen bg-slate-50 p-4 sm:p-6">
+  <div class="mx-auto max-w-7xl space-y-5">
+    <header class="overflow-hidden rounded-2xl bg-gradient-to-br from-blue-950 via-blue-900 to-blue-700 p-6 text-white shadow-xl shadow-blue-950/10">
+      <div class="flex flex-wrap items-start justify-between gap-5">
+        <div>
+          <p class="text-[11px] font-black uppercase tracking-[0.22em] text-blue-200">Analítica personal</p>
+          <h1 class="mt-2 text-2xl font-black sm:text-3xl">Estadísticas del consultor</h1>
+          <p class="mt-2 max-w-2xl text-sm text-blue-100">Consulta tu dedicación por periodo, cliente, módulo y tipo de actividad.</p>
+        </div>
+        <button class="rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-black transition hover:bg-white/20 disabled:opacity-60" type="button" [disabled]="loading()" (click)="loadRecords()">
+          {{ loading() ? 'Actualizando...' : 'Actualizar datos' }}
+        </button>
+      </div>
+    </header>
+
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div><p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Filtros</p><h2 class="mt-1 text-lg font-black text-slate-900">Periodo y segmentación</h2></div>
+        <div class="flex flex-wrap gap-2">
+          <button class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50" type="button" (click)="setPeriod(7)">7 días</button>
+          <button class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50" type="button" (click)="setPeriod(30)">30 días</button>
+          <button class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50" type="button" (click)="setCurrentMonth()">Mes</button>
+        </div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <label class="field-wrap"><span class="field-label">Desde</span><input class="field-input" type="date" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)" /></label>
+        <label class="field-wrap"><span class="field-label">Hasta</span><input class="field-input" type="date" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)" /></label>
+        <label class="field-wrap"><span class="field-label">Cliente</span><select class="field-input" [ngModel]="client()" (ngModelChange)="client.set($event)"><option value="">Todos</option>@for (item of clients(); track item) { <option [value]="item">{{ item }}</option> }</select></label>
+        <label class="field-wrap"><span class="field-label">Módulo</span><select class="field-input" [ngModel]="module()" (ngModelChange)="module.set($event)"><option value="">Todos</option>@for (item of modules(); track item) { <option [value]="item">{{ item }}</option> }</select></label>
+        <label class="field-wrap"><span class="field-label">Actividad</span><select class="field-input" [ngModel]="activity()" (ngModelChange)="activity.set($event)"><option value="">Todas</option>@for (item of activities(); track item) { <option [value]="item">{{ item }}</option> }</select></label>
+      </div>
+      <div class="mt-4 flex items-center justify-between gap-3">
+        @if (dateError()) { <p class="text-sm font-bold text-red-600">{{ dateError() }}</p> } @else { <p class="text-xs font-bold text-slate-400">{{ filteredRecords().length }} de {{ ownRecords().length }} registros del endpoint están incluidos en este periodo.</p> }
+        <button class="text-xs font-black text-blue-700 hover:text-blue-900" type="button" (click)="clearFilters()">Restablecer filtros</button>
+      </div>
+    </section>
+
+    @if (loading() && !loaded()) {
+      <section class="grid min-h-80 place-items-center rounded-2xl border border-slate-200 bg-white"><div class="text-center"><span class="mx-auto block size-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"></span><p class="mt-3 text-sm font-bold text-slate-500">Consultando registros...</p></div></section>
+    } @else if (error()) {
+      <section class="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-bold text-red-700">{{ error() }}</section>
+    } @else {
+      <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <article class="rounded-2xl border border-blue-100 bg-blue-50 p-5"><p class="text-xs font-black uppercase tracking-widest text-blue-500">Horas totales</p><p class="mt-2 text-3xl font-black text-blue-950">{{ formatHours(totalHours()) }} h</p><p class="mt-1 text-xs font-bold text-blue-600">En el periodo filtrado</p></article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-black uppercase tracking-widest text-slate-400">Registros</p><p class="mt-2 text-3xl font-black text-slate-900">{{ filteredRecords().length }}</p><p class="mt-1 text-xs font-bold text-slate-400">Actividades reportadas</p></article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-black uppercase tracking-widest text-slate-400">Clientes</p><p class="mt-2 text-3xl font-black text-slate-900">{{ uniqueClients() }}</p><p class="mt-1 text-xs font-bold text-slate-400">Clientes atendidos</p></article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-black uppercase tracking-widest text-slate-400">Promedio diario</p><p class="mt-2 text-3xl font-black text-emerald-700">{{ formatHours(averageDailyHours()) }} h</p><p class="mt-1 text-xs font-bold text-slate-400">Sobre {{ activeDays() }} días activos</p></article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-black uppercase tracking-widest text-slate-400">Horas laborales</p><p class="mt-2 text-3xl font-black text-violet-700">{{ laborPercentage() }}%</p><p class="mt-1 text-xs font-bold text-slate-400">Del total reportado</p></article>
+      </section>
+
+      <section class="overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-violet-50 shadow-sm">
+        <div class="border-b border-blue-100 px-5 py-4">
+          <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Resumen ejecutivo</p>
+          <h2 class="mt-1 text-lg font-black text-slate-900">Lectura para {{ client() || 'todos los clientes' }}</h2>
+          <p class="mt-1 text-sm text-slate-500">Calculado directamente desde los registros del reporte de tiempos del periodo seleccionado.</p>
+        </div>
+        <div class="grid sm:grid-cols-2 xl:grid-cols-4">
+          <div class="border-b border-blue-100 p-5 sm:border-r xl:border-b-0"><p class="text-xs font-bold text-slate-500">Módulo con mayor dedicación</p><p class="mt-2 truncate text-lg font-black text-blue-950">{{ mainModule() }}</p></div>
+          <div class="border-b border-blue-100 p-5 xl:border-b-0 xl:border-r"><p class="text-xs font-bold text-slate-500">Actividad principal</p><p class="mt-2 truncate text-lg font-black text-violet-800">{{ mainActivity() }}</p></div>
+          <div class="border-b border-blue-100 p-5 sm:border-r sm:border-b-0"><p class="text-xs font-bold text-slate-500">Tecnología más utilizada</p><p class="mt-2 truncate text-lg font-black text-emerald-800">{{ mainTechnology() }}</p></div>
+          <div class="p-5"><p class="text-xs font-bold text-slate-500">Cobertura del servicio</p><p class="mt-2 text-lg font-black text-slate-900">{{ moduleCount() }} módulos · {{ technologyCount() }} tecnologías</p></div>
+        </div>
+      </section>
+
+      <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-black uppercase tracking-widest text-slate-400">Solicitudes atendidas</p><p class="mt-2 text-2xl font-black text-blue-800">{{ requestCount() }}</p><p class="mt-1 text-xs font-bold text-slate-400">Gestiones únicas del reporte</p></article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-black uppercase tracking-widest text-slate-400">Tecnologías</p><p class="mt-2 text-2xl font-black text-emerald-700">{{ technologyCount() }}</p><p class="mt-1 text-xs font-bold text-slate-400">Tecnologías utilizadas</p></article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-black uppercase tracking-widest text-slate-400">Horas no laborales</p><p class="mt-2 text-2xl font-black text-amber-700">{{ formatHours(nonLaborHours()) }} h</p><p class="mt-1 text-xs font-bold text-slate-400">Esfuerzo fuera de hora laboral</p></article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-black uppercase tracking-widest text-slate-400">Promedio por registro</p><p class="mt-2 text-2xl font-black text-violet-700">{{ formatHours(averageRecordHours()) }} h</p><p class="mt-1 text-xs font-bold text-slate-400">Duración media de una actividad</p></article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-3">
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Composición</p><h2 class="mt-1 text-lg font-black text-slate-900">Inversión por módulo</h2><p class="mt-1 text-sm text-slate-500">Participación de cada frente en las horas totales.</p>
+          @if (moduleBreakdown().length) { <div class="mt-4"><app-statistics-chart type="doughnut" [data]="moduleBreakdown()" ariaLabel="Distribución de horas por módulo" /></div> } @else { <div class="grid h-72 place-items-center text-sm font-bold text-slate-400">Sin información por módulo.</div> }
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-violet-600">Tipo de trabajo</p><h2 class="mt-1 text-lg font-black text-slate-900">Actividades realizadas</h2><p class="mt-1 text-sm text-slate-500">Balance entre desarrollo, soporte y demás actividades.</p>
+          @if (activityBreakdown().length) { <div class="mt-4"><app-statistics-chart type="pie" [data]="activityBreakdown()" ariaLabel="Distribución de horas por tipo de actividad" /></div> } @else { <div class="grid h-72 place-items-center text-sm font-bold text-slate-400">Sin información por actividad.</div> }
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-emerald-600">Prioridades</p><h2 class="mt-1 text-lg font-black text-slate-900">Gestiones con más esfuerzo</h2><p class="mt-1 text-sm text-slate-500">Solicitudes que concentraron la dedicación del periodo.</p>
+          @if (managementBreakdown().length) { <div class="mt-4"><app-statistics-chart type="bar" [horizontal]="true" [data]="managementBreakdown()" ariaLabel="Horas invertidas por gestión" /></div> } @else { <div class="grid h-72 place-items-center text-sm font-bold text-slate-400">Sin información por gestión.</div> }
+        </article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-3">
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-amber-600">Jornada</p><h2 class="mt-1 text-lg font-black text-slate-900">Tipo de hora</h2><p class="mt-1 text-sm text-slate-500">Comparación entre dedicación laboral y otros tipos de hora.</p>
+          @if (hourTypeBreakdown().length) { <div class="mt-4"><app-statistics-chart type="doughnut" [data]="hourTypeBreakdown()" ariaLabel="Distribución por tipo de hora" /></div> } @else { <div class="grid h-72 place-items-center text-sm font-bold text-slate-400">Sin tipos de hora.</div> }
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-cyan-600">Plataforma</p><h2 class="mt-1 text-lg font-black text-slate-900">Horas por tecnología</h2><p class="mt-1 text-sm text-slate-500">Tecnologías que demandaron mayor dedicación.</p>
+          @if (technologyBreakdown().length) { <div class="mt-4"><app-statistics-chart type="bar" [horizontal]="true" [data]="technologyBreakdown()" ariaLabel="Horas por tecnología" /></div> } @else { <div class="grid h-72 place-items-center text-sm font-bold text-slate-400">Sin tecnologías.</div> }
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-rose-600">Clasificación</p><h2 class="mt-1 text-lg font-black text-slate-900">Categorías del servicio</h2><p class="mt-1 text-sm text-slate-500">Distribución del esfuerzo según la categoría reportada.</p>
+          @if (categoryBreakdown().length) { <div class="mt-4"><app-statistics-chart type="pie" [data]="categoryBreakdown()" ariaLabel="Distribución por categoría" /></div> } @else { <div class="grid h-72 place-items-center text-sm font-bold text-slate-400">Sin categorías.</div> }
+        </article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-2">
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-orange-600">Origen del trabajo</p><h2 class="mt-1 text-lg font-black text-slate-900">Horas por causa</h2><p class="mt-1 text-sm text-slate-500">Motivos que originaron las actividades reportadas.</p>
+          @if (causeBreakdown().length) { <div class="mt-4"><app-statistics-chart type="bar" [horizontal]="true" [data]="causeBreakdown()" ariaLabel="Horas por causa de actividad" /></div> } @else { <div class="grid h-72 place-items-center text-sm font-bold text-slate-400">Sin causas registradas.</div> }
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-red-600">Foco de atención</p><h2 class="mt-1 text-lg font-black text-slate-900">Actividades con mayor esfuerzo</h2><p class="mt-1 text-sm text-slate-500">Los registros individuales que más horas consumieron.</p>
+          <div class="mt-4 space-y-3">@for (record of highestEffortRecords(); track record.identificador || $index) { <div class="grid grid-cols-[1fr_auto] gap-4 rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="min-w-0"><p class="truncate text-sm font-black text-slate-800">{{ record.descripcionActividad || record.observacion || managementName(record) }}</p><p class="mt-1 truncate text-xs font-bold text-slate-400">{{ clientName(record) }} · {{ moduleName(record) }} · {{ formatRecordDate(record) }}</p></div><span class="self-center whitespace-nowrap text-base font-black text-red-700">{{ formatHours(hours(record)) }} h</span></div> } @empty { <p class="py-12 text-center text-sm font-bold text-slate-400">Sin actividades para analizar.</p> }</div>
+        </article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Tendencia</p><h2 class="mt-1 text-lg font-black text-slate-900">Horas por día</h2><p class="mt-1 text-sm text-slate-500">Últimos 31 días con actividad dentro del filtro.</p>
+          @if (dailyTrend().length) { <div class="mt-5"><app-statistics-chart type="line" [data]="dailyTrend()" ariaLabel="Evolución diaria de horas reportadas" /></div> } @else { <div class="grid h-72 place-items-center text-sm font-bold text-slate-400">No hay datos para graficar.</div> }
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-emerald-600">Distribución</p><h2 class="mt-1 text-lg font-black text-slate-900">Horas por cliente</h2>
+          <div class="mt-5 space-y-4">@for (item of clientBreakdown(); track item.label) { <div><div class="mb-1.5 flex justify-between gap-3 text-sm"><span class="truncate font-black text-slate-700">{{ item.label }}</span><span class="shrink-0 font-black text-slate-900">{{ formatHours(item.hours) }} h</span></div><div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-emerald-500" [style.width.%]="item.percentage"></div></div><p class="mt-1 text-[11px] font-bold text-slate-400">{{ item.count }} registros</p></div> } @empty { <p class="py-12 text-center text-sm font-bold text-slate-400">Sin información por cliente.</p> }</div>
+        </article>
+      </section>
+
+      <section class="grid gap-4 lg:grid-cols-[22rem_1fr]">
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-[11px] font-black uppercase tracking-widest text-violet-600">Especialidad</p><h2 class="mt-1 text-lg font-black text-slate-900">Horas por módulo</h2><div class="mt-5 space-y-3">@for (item of moduleBreakdown(); track item.label) { <div class="rounded-xl bg-slate-50 p-3"><div class="flex items-center justify-between gap-3"><span class="truncate text-sm font-black text-slate-700">{{ item.label }}</span><span class="shrink-0 text-sm font-black text-violet-700">{{ formatHours(item.hours) }} h</span></div><p class="mt-1 text-xs font-bold text-slate-400">{{ item.count }} actividades</p></div> } @empty { <p class="py-10 text-center text-sm font-bold text-slate-400">Sin módulos.</p> }</div></article>
+        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div class="grid gap-3 border-b border-slate-100 p-5 sm:grid-cols-[1fr_18rem]"><div><p class="text-[11px] font-black uppercase tracking-widest text-slate-400">Detalle</p><h2 class="mt-1 text-lg font-black text-slate-900">Registros del periodo</h2></div><label class="field-wrap"><span class="field-label">Buscar registro</span><input class="field-input" type="search" [ngModel]="search()" (ngModelChange)="search.set($event)" placeholder="Cliente, gestión, tecnología..." /></label></div>
+          <div class="max-h-[30rem] overflow-auto"><table class="min-w-full text-left text-sm"><thead class="sticky top-0 bg-slate-50 text-xs font-black uppercase tracking-wider text-slate-500"><tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Cliente / gestión</th><th class="px-4 py-3">Actividad reportada</th><th class="px-4 py-3">Módulo / tecnología</th><th class="px-4 py-3">Clasificación</th><th class="px-4 py-3 text-right">Horas</th></tr></thead><tbody class="divide-y divide-slate-100">@for (record of filteredRecords(); track record.identificador || $index) { <tr class="align-top hover:bg-slate-50"><td class="whitespace-nowrap px-4 py-3 font-bold text-slate-600">{{ formatRecordDate(record) }}</td><td class="min-w-56 px-4 py-3"><p class="font-black text-slate-800">{{ clientName(record) }}</p><p class="mt-1 text-xs font-bold text-slate-400">{{ managementName(record) }}</p></td><td class="min-w-72 px-4 py-3"><p class="text-slate-700">{{ record.descripcionActividad || record.observacion || 'Sin descripción' }}</p><p class="mt-1 text-xs font-bold text-blue-600">{{ record.tipoActividad || 'Sin actividad' }}</p></td><td class="whitespace-nowrap px-4 py-3"><span class="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-black text-violet-700">{{ moduleName(record) }}</span><p class="mt-2 text-xs font-bold text-slate-400">{{ record.tecnologia || 'Sin tecnología' }}</p></td><td class="whitespace-nowrap px-4 py-3"><p class="font-bold text-slate-600">{{ record.categoria || 'Sin categoría' }}</p><p class="mt-1 text-xs font-bold text-amber-600">{{ record.tipoHora || 'Sin tipo de hora' }}</p></td><td class="px-4 py-3 text-right font-black text-emerald-700">{{ formatHours(hours(record)) }}</td></tr> } @empty { <tr><td class="px-4 py-12 text-center font-bold text-slate-400" colspan="6">No hay registros que coincidan con los filtros.</td></tr> }</tbody></table></div>
+        </article>
+      </section>
+    }
+  </div>
+</div>

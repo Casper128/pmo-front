@@ -850,6 +850,7 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   private loadWeeklySendLogs() {
+    this.purgeOldWeeklySendLogs();
     try {
       const logs = JSON.parse(localStorage.getItem(this.weeklySendLogKey()) || '[]');
       this.weeklySendLogs.set(Array.isArray(logs) ? logs : []);
@@ -861,6 +862,13 @@ export class MultipleImportPageComponent implements OnInit {
   private weeklySendLogKey(): string {
     const user = this.normalizeText(this.auth.user()?.email || this.auth.user()?.id || 'usuario');
     return `pmo_send_logs_${user}_${this.currentWeekRange().start}`;
+  }
+
+  private purgeOldWeeklySendLogs() {
+    const currentWeekStart = this.currentWeekRange().start;
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('pmo_send_logs_') && !key.endsWith(`_${currentWeekStart}`))
+      .forEach(key => localStorage.removeItem(key));
   }
 
   private currentWeekRange(): { start: string; end: string } {

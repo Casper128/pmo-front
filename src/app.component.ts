@@ -1,12 +1,12 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './app/core/auth/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [FormsModule, RouterOutlet],
+  imports: [FormsModule, RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <main class="min-h-screen bg-[#f4f7fb] text-slate-900">
       @if (restoringSession()) {
@@ -104,7 +104,8 @@ import { AuthService } from './app/core/auth/auth.service';
               </div>
             </div>
             <nav class="space-y-1">
-              <a class="flex items-center rounded-xl bg-blue-50 px-3 py-2.5 text-sm font-black text-blue-700">Importar múltiples</a>
+              <a class="flex items-center rounded-xl px-3 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50" routerLink="/registros/importar" routerLinkActive="bg-blue-50 !text-blue-700">Importar y reportes</a>
+              <a class="mt-1 flex items-center rounded-xl px-3 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50" routerLink="/registros/estadisticas" routerLinkActive="bg-blue-50 !text-blue-700">Estadísticas</a>
             </nav>
           </aside>
 
@@ -112,8 +113,8 @@ import { AuthService } from './app/core/auth/auth.service';
             <nav class="sticky top-0 z-20 flex min-h-16 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur">
               <div class="flex-1">
                 <div>
-                  <p class="text-sm font-black text-blue-950">REGISTRO DE TIEMPOS</p>
-                  <p class="text-xs text-slate-500">Importación múltiple de actividades PMO</p>
+                  <p class="text-sm font-black text-blue-950">GESTIÓN DE TIEMPOS</p>
+                  <p class="text-xs text-slate-500">Operación y análisis para consultores</p>
                 </div>
               </div>
               <div class="flex items-center gap-3">

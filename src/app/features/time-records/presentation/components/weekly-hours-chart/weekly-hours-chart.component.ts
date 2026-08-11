@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild } from '@angular/core';
-import { BarController, BarElement, CategoryScale, Chart, ChartConfiguration, LinearScale, Tooltip } from 'chart.js';
+import { BarController, BarElement, CategoryScale, Chart, ChartConfiguration, LinearScale, Plugin, Tooltip } from 'chart.js';
 
 interface DailyHours {
   shortLabel: string;
@@ -15,7 +15,7 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip);
   standalone: true,
   template: `
     <div class="h-72 w-full">
-      <canvas #chartCanvas aria-label="Horas reportadas por dia de la semana" role="img"></canvas>
+      <canvas #chartCanvas aria-label="Horas reportadas por día de la semana" role="img"></canvas>
     </div>
   `,
 })
@@ -37,6 +37,10 @@ export class WeeklyHoursChartComponent implements AfterViewInit, OnChanges, OnDe
     this.chart?.destroy();
   }
 
+  formatHours(value: number): string {
+    return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(value);
+  }
+
   private renderChart(): void {
     if (!this.chartCanvas) return;
 
@@ -44,6 +48,24 @@ export class WeeklyHoursChartComponent implements AfterViewInit, OnChanges, OnDe
     const hours = this.data.map(day => day.hours);
     const fullLabels = this.data.map(day => day.label);
     const counts = this.data.map(day => day.count);
+    const valueLabels: Plugin<'bar'> = {
+      id: 'visible-hour-labels',
+      afterDatasetsDraw: chart => {
+        if (this.data.length > 14) return;
+        const context = chart.ctx;
+        context.save();
+        context.fillStyle = '#1e3a8a';
+        context.font = '700 11px sans-serif';
+        context.textAlign = 'center';
+        chart.getDatasetMeta(0).data.forEach((element, index) => {
+          const value = hours[index];
+          if (!value) return;
+          const reports = counts[index] === 1 ? '1 reg.' : `${counts[index]} reg.`;
+          context.fillText(`${this.formatHours(value)} h · ${reports}`, element.x, element.y - 7);
+        });
+        context.restore();
+      },
+    };
 
     const config: ChartConfiguration<'bar'> = {
       type: 'bar',
@@ -64,6 +86,7 @@ export class WeeklyHoursChartComponent implements AfterViewInit, OnChanges, OnDe
         responsive: true,
         maintainAspectRatio: false,
         animation: { duration: 250 },
+        layout: { padding: { top: 20 } },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -93,6 +116,7 @@ export class WeeklyHoursChartComponent implements AfterViewInit, OnChanges, OnDe
           },
         },
       },
+      plugins: [valueLabels],
     };
 
     if (this.chart) {
