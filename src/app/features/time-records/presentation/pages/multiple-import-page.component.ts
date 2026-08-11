@@ -2,7 +2,6 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { map, switchMap } from 'rxjs';
 import { TimeRecord, DayGroup } from '../../domain/models/time-record.model';
 import { TimeRecordDomainService } from '../../domain/services/time-record-domain.service';
 import { SendAllRecordsUseCase, SendRecordLog } from '../../application/use-cases/send-all-records.use-case';
@@ -102,8 +101,6 @@ export class MultipleImportPageComponent implements OnInit {
   private options = inject(LoadSelectOptionsUseCase);
   private http = inject(HttpClient);
   private auth = inject(AuthService);
-  private readonly auditEmail = 'auditoria.sap@netwconsulting.com';
-  private readonly auditPassword = 'Auditoriaa2023*+';
 
   currentView = signal<'import' | 'download' | 'management'>('import');
   records = signal<TimeRecord[]>([]);
@@ -577,16 +574,11 @@ export class MultipleImportPageComponent implements OnInit {
     if (!draft || this.managementEditErrors().length) return;
 
     this.managementEditSaving.set(true);
-    this.loginAudit()
-      .pipe(
-        switchMap(token =>
-          this.http.put<any>(
-            `${BASE}/tiemposConsultores/tiempo/edit/${encodeURIComponent(draft.identificador)}`,
-            this.buildManagementEditBody(draft),
-            { headers: { Authorization: `Bearer ${token}` } }
-          )
-        )
-      )
+    this.http.put<any>(
+      `${BASE}/tiemposConsultores/tiempo/edit/${encodeURIComponent(draft.identificador)}`,
+      this.buildManagementEditBody(draft),
+      { headers: { Authorization: `Bearer ${this.auth.token}` } }
+    )
       .subscribe({
         next: () => {
           this.managementEditSaving.set(false);
@@ -983,21 +975,6 @@ export class MultipleImportPageComponent implements OnInit {
     }
 
     this.managementEditErrors.set(errors);
-  }
-
-  private loginAudit() {
-    return this.http
-      .post<any>(`${BASE}/cuentas/authenticate`, {
-        email: this.auditEmail,
-        password: this.auditPassword,
-      })
-      .pipe(
-        map(response => {
-          const token = response?.token || response?.jwtToken || response?.key || response?.accessToken;
-          if (!token) throw new Error(response?.mensaje || response?.message || 'No se pudo autenticar auditoria');
-          return token as string;
-        })
-      );
   }
 
   private buildManagementEditBody(draft: ManagementEditDraft): object {

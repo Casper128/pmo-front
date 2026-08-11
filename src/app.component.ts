@@ -86,26 +86,59 @@ import { AuthService } from './app/core/auth/auth.service';
                   @if (loggingIn()) { <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span> }
                   Ingresar
                 </button>
-                <button class="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400" type="button" [disabled]="loggingIn()" (click)="fillAuditLogin()">
-                  Usar auditoria
-                </button>
               </div>
             </form>
           </div>
         </section>
       } @else {
         <div class="flex min-h-screen">
-          <aside class="hidden w-72 shrink-0 border-r border-slate-200 bg-white p-4 lg:block">
-            <div class="mb-6 flex items-center gap-3 px-2">
-              <div class="grid size-11 place-items-center rounded-2xl bg-blue-600 text-white font-black shadow-lg shadow-blue-600/20">PM</div>
-              <div>
-                <p class="font-black text-blue-950">PMO</p>
-                <p class="text-xs text-slate-500">Tiempos consultores</p>
+          <aside
+            class="hidden shrink-0 overflow-hidden border-r border-slate-200 bg-white p-3 transition-[width] duration-200 lg:flex lg:flex-col"
+            [class.w-72]="sidebarExpanded()"
+            [class.w-20]="!sidebarExpanded()">
+            <div
+              class="mb-6 flex items-center gap-2"
+              [class.justify-between]="sidebarExpanded()"
+              [class.flex-col]="!sidebarExpanded()">
+              <div class="flex min-w-0 items-center gap-3">
+                <div class="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white font-black shadow-lg shadow-blue-600/20">PM</div>
+                @if (sidebarExpanded()) {
+                  <div class="min-w-0">
+                    <p class="font-black text-blue-950">PMO</p>
+                    <p class="truncate text-xs text-slate-500">Tiempos consultores</p>
+                  </div>
+                }
               </div>
+              <button
+                class="grid size-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                type="button"
+                [attr.aria-label]="sidebarExpanded() ? 'Cerrar menú lateral' : 'Abrir menú lateral'"
+                [title]="sidebarExpanded() ? 'Cerrar menú' : 'Abrir menú'"
+                (click)="sidebarExpanded.update(value => !value)">
+                <svg class="size-4 transition-transform" [class.rotate-180]="sidebarExpanded()" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
             </div>
             <nav class="space-y-1">
-              <a class="flex items-center rounded-xl px-3 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50" routerLink="/registros/importar" routerLinkActive="bg-blue-50 !text-blue-700">Importar y reportes</a>
-              <a class="mt-1 flex items-center rounded-xl px-3 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50" routerLink="/registros/estadisticas" routerLinkActive="bg-blue-50 !text-blue-700">Estadísticas</a>
+              <a
+                class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+                [class.justify-center]="!sidebarExpanded()"
+                routerLink="/registros/importar"
+                routerLinkActive="bg-blue-50 !text-blue-700"
+                title="Importar y reportes">
+                <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" /></svg>
+                @if (sidebarExpanded()) { <span class="whitespace-nowrap">Importar y reportes</span> }
+              </a>
+              <a
+                class="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+                [class.justify-center]="!sidebarExpanded()"
+                routerLink="/registros/estadisticas"
+                routerLinkActive="bg-blue-50 !text-blue-700"
+                title="Estadísticas">
+                <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19V9m6 10V5m6 14v-7m4 7H2" /></svg>
+                @if (sidebarExpanded()) { <span class="whitespace-nowrap">Estadísticas</span> }
+              </a>
             </nav>
           </aside>
 
@@ -134,14 +167,13 @@ import { AuthService } from './app/core/auth/auth.service';
   `,
 })
 export class AppComponent implements OnDestroy {
-  private readonly auditEmail = 'auditoria.sap@netwconsulting.com';
-  private readonly auditPassword = 'Auditoriaa2023*+';
   auth = inject(AuthService);
   email = '';
   password = '';
   loggingIn = signal(false);
   loginError = signal('');
   restoringSession = signal(true);
+  sidebarExpanded = signal(false);
   private refreshId: number | null = null;
 
   constructor() {
@@ -176,11 +208,6 @@ export class AppComponent implements OnDestroy {
         this.loginError.set(err?.message || 'No se pudo iniciar sesión');
       },
     });
-  }
-
-  fillAuditLogin() {
-    this.email = this.auditEmail;
-    this.password = this.auditPassword;
   }
 
   logout() {

@@ -13,8 +13,9 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip);
 @Component({
   selector: 'app-weekly-hours-chart',
   standalone: true,
+  styles: [`:host { display: block; min-width: 0; max-width: 100%; }`],
   template: `
-    <div class="h-72 w-full">
+    <div class="h-64 w-full min-w-0 sm:h-72 lg:h-80">
       <canvas #chartCanvas aria-label="Horas reportadas por día de la semana" role="img"></canvas>
     </div>
   `,
@@ -53,15 +54,21 @@ export class WeeklyHoursChartComponent implements AfterViewInit, OnChanges, OnDe
       afterDatasetsDraw: chart => {
         if (this.data.length > 14) return;
         const context = chart.ctx;
+        const compact = chart.width < 560;
         context.save();
         context.fillStyle = '#1e3a8a';
-        context.font = '700 11px sans-serif';
+        context.font = `700 ${compact ? 9 : 11}px sans-serif`;
         context.textAlign = 'center';
         chart.getDatasetMeta(0).data.forEach((element, index) => {
           const value = hours[index];
           if (!value) return;
           const reports = counts[index] === 1 ? '1 reg.' : `${counts[index]} reg.`;
-          context.fillText(`${this.formatHours(value)} h · ${reports}`, element.x, element.y - 7);
+          if (compact) {
+            context.fillText(`${this.formatHours(value)} h`, element.x, element.y - 14);
+            context.fillText(reports, element.x, element.y - 3);
+          } else {
+            context.fillText(`${this.formatHours(value)} h · ${reports}`, element.x, element.y - 7);
+          }
         });
         context.restore();
       },
@@ -85,8 +92,9 @@ export class WeeklyHoursChartComponent implements AfterViewInit, OnChanges, OnDe
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        devicePixelRatio: 2,
         animation: { duration: 250 },
-        layout: { padding: { top: 20 } },
+        layout: { padding: { top: 30, right: 4, left: 2 } },
         plugins: {
           legend: { display: false },
           tooltip: {
