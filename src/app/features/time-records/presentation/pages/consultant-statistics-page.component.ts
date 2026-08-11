@@ -52,6 +52,7 @@ interface BreakdownItem {
   hours: number;
   count: number;
   percentage: number;
+  share: number;
 }
 
 @Component({
@@ -122,6 +123,9 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   clientBreakdown = computed(() => this.breakdownBy(record => this.clientName(record)));
   moduleBreakdown = computed(() => this.breakdownBy(record => this.moduleName(record)));
   activityBreakdown = computed(() => this.breakdownBy(record => record.tipoActividad || 'Sin actividad'));
+  activityTable = computed(() => this.breakdownBy(record => record.tipoActividad || 'Sin actividad', 12));
+  functionalBreakdown = computed(() => this.breakdownBy(record => record.funcional || 'Sin funcional'));
+  functionalTable = computed(() => this.breakdownBy(record => record.funcional || 'Sin funcional', 12));
   managementBreakdown = computed(() => this.breakdownBy(record => this.managementName(record)));
   hourTypeBreakdown = computed(() => this.breakdownBy(record => record.tipoHora || 'Sin tipo de hora'));
   technologyBreakdown = computed(() => this.breakdownBy(record => record.tecnologia || 'Sin tecnología'));
@@ -265,7 +269,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     return date ? this.formatDate(date, true) : 'Sin fecha';
   }
 
-  private breakdownBy(getLabel: (record: ConsultantRecord) => string): BreakdownItem[] {
+  private breakdownBy(getLabel: (record: ConsultantRecord) => string, limit = 6): BreakdownItem[] {
     const groups = new Map<string, { hours: number; count: number }>();
     this.filteredRecords().forEach(record => {
       const label = getLabel(record);
@@ -273,9 +277,15 @@ export class ConsultantStatisticsPageComponent implements OnInit {
       groups.set(label, { hours: current.hours + this.hours(record), count: current.count + 1 });
     });
     const maximum = Math.max(...[...groups.values()].map(item => item.hours), 0);
+    const total = [...groups.values()].reduce((sum, item) => sum + item.hours, 0);
     return [...groups.entries()]
-      .map(([label, value]) => ({ ...value, label, percentage: maximum ? (value.hours / maximum) * 100 : 0 }))
-      .sort((a, b) => b.hours - a.hours).slice(0, 6);
+      .map(([label, value]) => ({
+        ...value,
+        label,
+        percentage: maximum ? (value.hours / maximum) * 100 : 0,
+        share: total ? (value.hours / total) * 100 : 0,
+      }))
+      .sort((a, b) => b.hours - a.hours).slice(0, limit);
   }
 
   private extractRows(response: any): ConsultantRecord[] {

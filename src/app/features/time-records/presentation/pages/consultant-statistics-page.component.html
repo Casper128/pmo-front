@@ -110,6 +110,28 @@
         </article>
       </section>
 
+      <section class="grid gap-4 xl:grid-cols-2">
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Distribución operativa</p><h2 class="mt-1 text-lg font-black text-slate-900">Horas por tipo de actividad</h2><p class="mt-1 text-sm text-slate-500">Comparación directa del esfuerzo dedicado a cada actividad.</p>
+          @if (activityBreakdown().length) { <div class="mt-4"><app-statistics-chart type="bar" [horizontal]="true" [data]="activityBreakdown()" ariaLabel="Horas por tipo de actividad" /></div> } @else { <div class="grid h-72 place-items-center text-sm font-bold text-slate-400">Sin actividades para analizar.</div> }
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-emerald-600">Responsabilidad</p><h2 class="mt-1 text-lg font-black text-slate-900">Horas por funcional</h2><p class="mt-1 text-sm text-slate-500">Distribución de la dedicación según el funcional registrado.</p>
+          @if (functionalBreakdown().length) { <div class="mt-4"><app-statistics-chart type="bar" [horizontal]="true" [data]="functionalBreakdown()" ariaLabel="Horas reportadas por funcional" /></div> } @else { <div class="grid h-72 place-items-center text-sm font-bold text-slate-400">Sin funcionales para analizar.</div> }
+        </article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-2">
+        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div class="border-b border-slate-100 p-5"><p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Detalle por actividad</p><h2 class="mt-1 text-lg font-black text-slate-900">Resumen de tipos de actividad</h2></div>
+          <div class="max-h-96 overflow-auto"><table class="min-w-full text-left text-sm"><thead class="sticky top-0 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500"><tr><th class="px-4 py-3">Actividad</th><th class="px-4 py-3 text-right">Horas</th><th class="px-4 py-3 text-right">Registros</th><th class="px-4 py-3 text-right">Participación</th><th class="px-4 py-3 text-right">Promedio</th></tr></thead><tbody class="divide-y divide-slate-100">@for (item of activityTable(); track item.label) { <tr class="hover:bg-slate-50"><td class="min-w-48 px-4 py-3 font-black text-slate-700">{{ item.label }}</td><td class="px-4 py-3 text-right font-black text-blue-700">{{ formatHours(item.hours) }} h</td><td class="px-4 py-3 text-right font-bold text-slate-600">{{ item.count }}</td><td class="px-4 py-3 text-right font-bold text-violet-700">{{ formatHours(item.share) }}%</td><td class="px-4 py-3 text-right font-bold text-emerald-700">{{ formatHours(item.hours / item.count) }} h</td></tr> } @empty { <tr><td class="px-4 py-10 text-center font-bold text-slate-400" colspan="5">Sin información por actividad.</td></tr> }</tbody></table></div>
+        </article>
+        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div class="border-b border-slate-100 p-5"><p class="text-[11px] font-black uppercase tracking-widest text-emerald-600">Detalle por funcional</p><h2 class="mt-1 text-lg font-black text-slate-900">Resumen de funcionales</h2></div>
+          <div class="max-h-96 overflow-auto"><table class="min-w-full text-left text-sm"><thead class="sticky top-0 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500"><tr><th class="px-4 py-3">Funcional</th><th class="px-4 py-3 text-right">Horas</th><th class="px-4 py-3 text-right">Registros</th><th class="px-4 py-3 text-right">Participación</th><th class="px-4 py-3 text-right">Promedio</th></tr></thead><tbody class="divide-y divide-slate-100">@for (item of functionalTable(); track item.label) { <tr class="hover:bg-slate-50"><td class="min-w-48 px-4 py-3 font-black text-slate-700">{{ item.label }}</td><td class="px-4 py-3 text-right font-black text-emerald-700">{{ formatHours(item.hours) }} h</td><td class="px-4 py-3 text-right font-bold text-slate-600">{{ item.count }}</td><td class="px-4 py-3 text-right font-bold text-violet-700">{{ formatHours(item.share) }}%</td><td class="px-4 py-3 text-right font-bold text-blue-700">{{ formatHours(item.hours / item.count) }} h</td></tr> } @empty { <tr><td class="px-4 py-10 text-center font-bold text-slate-400" colspan="5">Sin información por funcional.</td></tr> }</tbody></table></div>
+        </article>
+      </section>
+
       <section class="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Tendencia</p><h2 class="mt-1 text-lg font-black text-slate-900">Horas por día</h2><p class="mt-1 text-sm text-slate-500">Últimos 31 días con actividad dentro del filtro.</p>
