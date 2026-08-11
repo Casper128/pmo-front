@@ -92,7 +92,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   ownRecords = computed(() => this.records().filter(record => this.isCurrentUserRecord(record)));
   clients = computed(() => this.unique(this.ownRecords().map(record => this.clientName(record))));
   modules = computed(() => this.unique(this.ownRecords().map(record => this.moduleName(record))));
-  activities = computed(() => this.unique(this.ownRecords().map(record => record.tipoActividad || 'Sin actividad')));
+  activities = computed(() => this.unique(this.ownRecords().map(record => this.activityName(record))));
 
   filteredRecords = computed(() => {
     if (this.dateError()) return [];
@@ -104,7 +104,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
         if (this.dateTo() && date > this.dateTo()) return false;
         if (this.client() && this.clientName(record) !== this.client()) return false;
         if (this.module() && this.moduleName(record) !== this.module()) return false;
-        if (this.activity() && (record.tipoActividad || 'Sin actividad') !== this.activity()) return false;
+        if (this.activity() && this.activityName(record) !== this.activity()) return false;
         if (this.prefix() && this.prefixCode(record) !== this.prefix()) return false;
         if (!term) return true;
         return [record.identificador, record.prefijo, this.prefixLabel(record), record.descripcionActividad, record.observacion, record.solicitud,
@@ -130,8 +130,8 @@ export class ConsultantStatisticsPageComponent implements OnInit {
 
   clientBreakdown = computed(() => this.breakdownBy(record => this.clientName(record)));
   moduleBreakdown = computed(() => this.breakdownBy(record => this.moduleName(record)));
-  activityBreakdown = computed(() => this.breakdownBy(record => this.cleanDimension(record.tipoActividad, 'Sin actividad')));
-  activityTable = computed(() => this.breakdownBy(record => this.cleanDimension(record.tipoActividad, 'Sin actividad'), 12));
+  activityBreakdown = computed(() => this.breakdownBy(record => this.activityName(record)));
+  activityTable = computed(() => this.breakdownBy(record => this.activityName(record), 12));
   functionalBreakdown = computed(() => this.breakdownBy(record => this.cleanDimension(record.funcional, 'Sin funcional')));
   functionalTable = computed(() => this.breakdownBy(record => this.cleanDimension(record.funcional, 'Sin funcional'), 12));
   prefixBreakdown = computed(() => this.breakdownBy(record => this.prefixLabel(record), 8));
@@ -311,14 +311,19 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     return this.cleanDimension(record.solicitud_tiemposConsultores?.nombreGestion || record.gestionDemanda || record.solicitud, 'Sin gestión');
   }
 
+  activityName(record: ConsultantRecord): string {
+    return this.cleanDimension(record.tipoActividad, 'Sin actividad');
+  }
+
   downloadBreakdownTablePng(title: string, firstHeader: string, rows: BreakdownItem[]): void {
     const scale = 3;
-    const width = 1600;
-    const rowHeight = 72;
-    const headerHeight = 178;
-    const footerHeight = 56;
+    const width = 1800;
+    const rowHeight = 92;
+    const headerHeight = 210;
+    const footerHeight = 70;
     const visibleRows = rows.slice(0, 20);
-    const height = headerHeight + 54 + visibleRows.length * rowHeight + footerHeight;
+    const tableHeaderHeight = 68;
+    const height = headerHeight + tableHeaderHeight + visibleRows.length * rowHeight + footerHeight;
     const canvas = document.createElement('canvas');
     canvas.width = width * scale;
     canvas.height = height * scale;
@@ -328,49 +333,49 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, width, height);
     context.fillStyle = '#0f172a';
-    context.font = '700 34px sans-serif';
-    context.fillText(title, 48, 58);
+    context.font = '700 44px sans-serif';
+    context.fillText(title, 56, 66);
     context.fillStyle = '#475569';
-    context.font = '500 18px sans-serif';
-    context.fillText(`Periodo: ${this.dateFrom() || 'inicio'} a ${this.dateTo() || 'fin'} · Cliente: ${this.client() || 'Todos'} · Módulo: ${this.module() || 'Todos'} · Prefijo: ${this.prefix() || 'Todos'}`, 48, 98, width - 96);
+    context.font = '600 24px sans-serif';
+    context.fillText(`Periodo: ${this.dateFrom() || 'inicio'} a ${this.dateTo() || 'fin'} · Cliente: ${this.client() || 'Todos'} · Módulo: ${this.module() || 'Todos'} · Prefijo: ${this.prefix() || 'Todos'}`, 56, 112, width - 112);
     context.fillStyle = '#64748b';
-    context.font = '500 16px sans-serif';
-    context.fillText(`${this.filteredRecords().length} registros · ${this.formatHours(this.totalHours())} horas incluidas`, 48, 132);
+    context.font = '600 22px sans-serif';
+    context.fillText(`${this.filteredRecords().length} registros · ${this.formatHours(this.totalHours())} horas incluidas`, 56, 158);
 
-    const columns = [48, 748, 960, 1162, 1390];
+    const columns = [56, 1000, 1240, 1470, 1660];
     const headers = [firstHeader, 'Horas', 'Registros', 'Participación', 'Promedio'];
     context.fillStyle = '#eff6ff';
-    context.fillRect(32, headerHeight, width - 64, 54);
+    context.fillRect(36, headerHeight, width - 72, tableHeaderHeight);
     context.fillStyle = '#1e3a8a';
-    context.font = '700 17px sans-serif';
-    headers.forEach((header, index) => context.fillText(header, columns[index], headerHeight + 34));
+    context.font = '700 23px sans-serif';
+    headers.forEach((header, index) => context.fillText(header, columns[index], headerHeight + 43));
 
     visibleRows.forEach((item, index) => {
-      const y = headerHeight + 54 + index * rowHeight;
+      const y = headerHeight + tableHeaderHeight + index * rowHeight;
       context.fillStyle = index % 2 ? '#f8fafc' : '#ffffff';
-      context.fillRect(32, y, width - 64, rowHeight);
+      context.fillRect(36, y, width - 72, rowHeight);
       context.strokeStyle = '#e2e8f0';
       context.beginPath();
-      context.moveTo(32, y + rowHeight);
-      context.lineTo(width - 32, y + rowHeight);
+      context.moveTo(36, y + rowHeight);
+      context.lineTo(width - 36, y + rowHeight);
       context.stroke();
       context.fillStyle = '#1e293b';
-      context.font = '700 17px sans-serif';
-      this.drawWrappedText(context, item.label, columns[0], y + 24, 620, 22, 2);
-      context.font = '700 17px sans-serif';
+      context.font = '700 25px sans-serif';
+      this.drawWrappedText(context, item.label, columns[0], y + 31, 870, 29, 2);
+      context.font = '700 24px sans-serif';
       context.fillStyle = '#1d4ed8';
-      context.fillText(`${this.formatHours(item.hours)} h`, columns[1], y + 40);
+      context.fillText(`${this.formatHours(item.hours)} h`, columns[1], y + 54);
       context.fillStyle = '#475569';
-      context.fillText(String(item.count), columns[2], y + 40);
+      context.fillText(String(item.count), columns[2], y + 54);
       context.fillStyle = '#7c3aed';
-      context.fillText(`${this.formatHours(item.share)}%`, columns[3], y + 40);
+      context.fillText(`${this.formatHours(item.share)}%`, columns[3], y + 54);
       context.fillStyle = '#047857';
-      context.fillText(`${this.formatHours(item.hours / item.count)} h`, columns[4], y + 40);
+      context.fillText(`${this.formatHours(item.hours / item.count)} h`, columns[4], y + 54);
     });
 
     context.fillStyle = '#64748b';
-    context.font = '500 14px sans-serif';
-    context.fillText('Fuente: Reportes de tiempos PMO · Imagen generada en alta resolución', 48, height - 22);
+    context.font = '600 19px sans-serif';
+    context.fillText('Fuente: Reportes de tiempos PMO · Imagen generada en alta resolución', 56, height - 28);
     const link = document.createElement('a');
     link.download = `${title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/gi, '_').toLowerCase()}.png`;
     link.href = canvas.toDataURL('image/png');
@@ -411,18 +416,18 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   }
 
   private breakdownBy(getLabel: (record: ConsultantRecord) => string, limit = 6): BreakdownItem[] {
-    const groups = new Map<string, { hours: number; count: number }>();
+    const groups = new Map<string, { label: string; hours: number; count: number }>();
     this.filteredRecords().forEach(record => {
       const label = getLabel(record);
-      const current = groups.get(label) || { hours: 0, count: 0 };
-      groups.set(label, { hours: current.hours + this.hours(record), count: current.count + 1 });
+      const key = this.dimensionKey(label);
+      const current = groups.get(key) || { label, hours: 0, count: 0 };
+      groups.set(key, { ...current, hours: current.hours + this.hours(record), count: current.count + 1 });
     });
     const maximum = Math.max(...[...groups.values()].map(item => item.hours), 0);
     const total = [...groups.values()].reduce((sum, item) => sum + item.hours, 0);
-    return [...groups.entries()]
-      .map(([label, value]) => ({
+    return [...groups.values()]
+      .map(value => ({
         ...value,
-        label,
         percentage: maximum ? (value.hours / maximum) * 100 : 0,
         share: total ? (value.hours / total) * 100 : 0,
       }))
@@ -529,11 +534,40 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   private cleanDimension(value: unknown, fallback: string): string {
     const text = String(value || '')
       .replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g, '$1 $2')
-      .replace(/[_-]+/g, ' ')
+      .replace(/[_.\-/]+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
     if (!text || ['n/a', 'na', 'null', 'undefined', 'sin dato'].includes(this.normalize(text))) return fallback;
-    return text.toLocaleLowerCase('es-CO').replace(/(^|\s)\p{L}/gu, letter => letter.toLocaleUpperCase('es-CO'));
+    const key = this.dimensionKey(text);
+    const aliases: Record<string, string> = {
+      'actividad desarrollo': 'Actividad desarrollo',
+      'actividad de desarrollo': 'Actividad desarrollo',
+      'analisis funcional': 'Análisis funcional',
+      'reunion': 'Reunión',
+      'reuniones': 'Reunión',
+      'analisis': 'Análisis',
+      'documentacion': 'Documentación',
+      'capacitacion': 'Capacitación',
+      'gestion': 'Gestión',
+      'test': 'Pruebas',
+      'testing': 'Pruebas',
+    };
+    if (aliases[key]) return aliases[key];
+    const acronyms = new Set(['abap', 'sap', 'sd', 'mm', 'lo', 'fi', 'co', 'wm', 'pp', 'qm', 'bw', 'bi', 'fiori', 'ui5', 'api']);
+    const connectors = new Set(['a', 'de', 'del', 'el', 'en', 'la', 'las', 'los', 'para', 'por', 'y']);
+    return text.toLocaleLowerCase('es-CO').split(' ').map((word, index) => {
+      const wordKey = this.dimensionKey(word);
+      if (acronyms.has(wordKey)) return word.toLocaleUpperCase('es-CO');
+      if (index > 0 && connectors.has(wordKey)) return word;
+      return word.charAt(0).toLocaleUpperCase('es-CO') + word.slice(1);
+    }).join(' ');
+  }
+
+  private dimensionKey(value: unknown): string {
+    return this.normalize(value)
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private drawWrappedText(

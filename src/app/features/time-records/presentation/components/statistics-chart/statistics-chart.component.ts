@@ -104,20 +104,107 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
   downloadPng(): void {
     const source = this.canvas?.nativeElement;
     if (!source) return;
-    const headerHeight = Math.round(64 * (window.devicePixelRatio || 1));
+    const pixelRatio = Math.max(2, window.devicePixelRatio || 1);
+    const isLine = this.type === 'line';
+    const exportItems = isLine ? [] : this.data.slice(0, 12);
+    const width = Math.max(source.width, Math.round(1200 * pixelRatio));
+    const chartHeight = Math.round(source.height * (width / source.width));
+    const headerHeight = Math.round(126 * pixelRatio);
+    const legendRowHeight = Math.round(76 * pixelRatio);
+    const detailsHeight = isLine
+      ? Math.round(190 * pixelRatio)
+      : Math.round((exportItems.length * 76 + 70) * pixelRatio);
+    const footerHeight = Math.round(52 * pixelRatio);
     const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = source.width;
-    exportCanvas.height = source.height + headerHeight;
+    exportCanvas.width = width;
+    exportCanvas.height = headerHeight + chartHeight + detailsHeight + footerHeight;
     const context = exportCanvas.getContext('2d');
     if (!context) return;
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    context.strokeStyle = '#cbd5e1';
+    context.lineWidth = Math.max(2, Math.round(pixelRatio));
+    context.strokeRect(context.lineWidth / 2, context.lineWidth / 2, exportCanvas.width - context.lineWidth, exportCanvas.height - context.lineWidth);
+
     context.fillStyle = '#0f172a';
-    context.font = `700 ${Math.round(18 * (window.devicePixelRatio || 1))}px sans-serif`;
+    context.font = `700 ${Math.round(30 * pixelRatio)}px sans-serif`;
     context.textAlign = 'left';
     context.textBaseline = 'middle';
-    context.fillText(this.ariaLabel, Math.round(18 * (window.devicePixelRatio || 1)), headerHeight / 2, exportCanvas.width - 36);
-    context.drawImage(source, 0, headerHeight);
+    context.fillText(this.ariaLabel, Math.round(32 * pixelRatio), Math.round(48 * pixelRatio), exportCanvas.width - Math.round(64 * pixelRatio));
+    context.fillStyle = '#64748b';
+    context.font = `600 ${Math.round(18 * pixelRatio)}px sans-serif`;
+    const totalRecords = this.data.reduce((sum, item) => sum + (item.count || 0), 0);
+    context.fillText(
+      `${this.format(this.totalValue())} horas · ${totalRecords ? `${totalRecords} registros` : `${this.data.length} puntos analizados`}`,
+      Math.round(32 * pixelRatio),
+      Math.round(91 * pixelRatio)
+    );
+    context.strokeStyle = '#e2e8f0';
+    context.beginPath();
+    context.moveTo(Math.round(32 * pixelRatio), headerHeight - Math.round(10 * pixelRatio));
+    context.lineTo(exportCanvas.width - Math.round(32 * pixelRatio), headerHeight - Math.round(10 * pixelRatio));
+    context.stroke();
+    context.drawImage(source, 0, headerHeight, width, chartHeight);
+
+    const detailsTop = headerHeight + chartHeight;
+    context.fillStyle = '#f8fafc';
+    context.fillRect(0, detailsTop, width, detailsHeight);
+    context.textBaseline = 'middle';
+    context.fillStyle = '#334155';
+    context.font = `700 ${Math.round(20 * pixelRatio)}px sans-serif`;
+    context.fillText(isLine ? 'Resumen del periodo' : 'Leyenda y detalle de categorías', Math.round(32 * pixelRatio), detailsTop + Math.round(35 * pixelRatio));
+
+    if (isLine) {
+      const cards = [
+        { label: 'TOTAL', value: `${this.format(this.totalValue())} h`, color: '#1d4ed8', background: '#eff6ff' },
+        { label: 'PROMEDIO', value: `${this.format(this.averageValue())} h`, color: '#047857', background: '#ecfdf5' },
+        { label: 'PICO', value: this.peakText(), color: '#6d28d9', background: '#f5f3ff' },
+      ];
+      const gap = Math.round(18 * pixelRatio);
+      const margin = Math.round(32 * pixelRatio);
+      const cardWidth = (width - margin * 2 - gap * 2) / 3;
+      cards.forEach((card, index) => {
+        const x = margin + index * (cardWidth + gap);
+        const y = detailsTop + Math.round(65 * pixelRatio);
+        context.fillStyle = card.background;
+        context.fillRect(x, y, cardWidth, Math.round(92 * pixelRatio));
+        context.fillStyle = card.color;
+        context.font = `700 ${Math.round(14 * pixelRatio)}px sans-serif`;
+        context.fillText(card.label, x + Math.round(18 * pixelRatio), y + Math.round(27 * pixelRatio));
+        context.font = `700 ${Math.round(21 * pixelRatio)}px sans-serif`;
+        context.fillText(card.value, x + Math.round(18 * pixelRatio), y + Math.round(62 * pixelRatio), cardWidth - Math.round(36 * pixelRatio));
+      });
+    } else {
+      exportItems.forEach((item, index) => {
+        const rowTop = detailsTop + Math.round(62 * pixelRatio) + index * legendRowHeight;
+        const centerY = rowTop + Math.round(27 * pixelRatio);
+        context.fillStyle = index % 2 ? '#ffffff' : '#f8fafc';
+        context.fillRect(Math.round(22 * pixelRatio), rowTop, width - Math.round(44 * pixelRatio), legendRowHeight);
+        context.fillStyle = this.colorAt(index);
+        context.beginPath();
+        context.arc(Math.round(44 * pixelRatio), centerY, Math.round(9 * pixelRatio), 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#1e293b';
+        context.font = `700 ${Math.round(20 * pixelRatio)}px sans-serif`;
+        context.fillText(item.label, Math.round(66 * pixelRatio), centerY, width - Math.round(98 * pixelRatio));
+        context.fillStyle = '#475569';
+        context.font = `600 ${Math.round(16 * pixelRatio)}px sans-serif`;
+        const count = item.count ? ` · ${item.count} registros` : '';
+        context.fillText(
+          `${this.format(item.hours)} horas · ${this.percentage(item.hours)}% del total${count}`,
+          Math.round(66 * pixelRatio),
+          centerY + Math.round(28 * pixelRatio),
+          width - Math.round(98 * pixelRatio)
+        );
+      });
+    }
+
+    const footerTop = exportCanvas.height - footerHeight;
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, footerTop, width, footerHeight);
+    context.fillStyle = '#64748b';
+    context.font = `600 ${Math.round(14 * pixelRatio)}px sans-serif`;
+    context.fillText('Fuente: reportes de tiempos PMO · Imagen generada en alta resolución', Math.round(32 * pixelRatio), footerTop + footerHeight / 2);
     const link = document.createElement('a');
     link.download = `${this.ariaLabel.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/gi, '_').toLowerCase()}.png`;
     link.href = exportCanvas.toDataURL('image/png');
@@ -138,14 +225,14 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
             autoSkip: false,
             maxRotation: 0,
             minRotation: 0,
-            font: { size: 10, weight: 'bold' },
+            font: { size: 12, weight: 'bold' },
             callback: (value: unknown) => this.wrapLabel(String(this.data[Number(value)]?.label || ''), 14),
           }
         : { color: '#64748b', maxRotation: 0, minRotation: 0 };
     const yTicks = this.horizontal
       ? {
           color: '#475569',
-          font: { weight: 'bold' },
+          font: { size: 12, weight: 'bold' },
           callback: (value: unknown) => {
             const label = String(this.data[Number(value)]?.label || '');
             return this.wrapLabel(label, 18);
@@ -159,7 +246,7 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
         const meta = chart.getDatasetMeta(0);
         const compact = chart.width < 520;
         context.save();
-        context.font = `700 ${compact ? 9 : 10}px sans-serif`;
+        context.font = `700 ${compact ? 11 : 12}px sans-serif`;
         meta.data.forEach((element, index) => {
           const item = this.data[index];
           if (!item || !item.hours) return;
@@ -220,7 +307,7 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
           legend: {
             display: isCircular,
             position: 'bottom',
-            labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, padding: 14, color: '#475569', font: { size: 11, weight: 'bold' } },
+            labels: { boxWidth: 11, boxHeight: 11, usePointStyle: true, padding: 16, color: '#475569', font: { size: 13, weight: 'bold' } },
           },
           tooltip: {
             callbacks: {
