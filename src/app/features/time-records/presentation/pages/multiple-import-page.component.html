@@ -255,9 +255,9 @@
           <div>
             <p class="text-[11px] font-black uppercase tracking-widest text-emerald-600">Reporte de tiempos</p>
             <h2 class="mt-1 text-xl font-black text-slate-900">Consultar reporte consolidado</h2>
-            <p class="mt-1 text-sm text-slate-500">La respuesta Excel del endpoint se procesa en memoria y se presenta como un reporte filtrable, sin descargar archivos.</p>
+            <p class="mt-1 text-sm text-slate-500">La respuesta Excel del endpoint se procesa en memoria, unifica los nombres de consultores y utiliza únicamente horas laborales.</p>
           </div>
-          <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">Excel → tabla</span>
+          <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">Solo horas laborales</span>
         </div>
 
         <div class="grid gap-4 md:grid-cols-3">
@@ -390,8 +390,8 @@
 
             <section class="overflow-hidden rounded-2xl border border-slate-200">
               <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                <h3 class="font-black text-slate-900">Total de horas por día y cliente</h3>
-                <p class="mt-1 text-xs text-slate-500">Cada fila consolida los registros del consultor para un cliente durante el día.</p>
+                <h3 class="font-black text-slate-900">Total de horas por día y consultor</h3>
+                <p class="mt-1 text-xs text-slate-500">Cada consultor aparece una sola vez por día; los clientes atendidos se muestran juntos en la misma fila.</p>
               </div>
               <div class="max-h-[28rem] overflow-auto">
                 <table class="min-w-[880px] w-full text-left text-sm">
@@ -399,7 +399,7 @@
                     <tr>
                       <th class="px-4 py-3">Fecha</th>
                       <th class="px-4 py-3">Consultor</th>
-                      <th class="px-4 py-3">Cliente</th>
+                      <th class="px-4 py-3">Clientes atendidos</th>
                       <th class="px-4 py-3 text-right">Horas</th>
                       <th class="px-4 py-3 text-right">Registros</th>
                       <th class="px-4 py-3 text-right">Solicitudes</th>
@@ -464,6 +464,7 @@
                         <td class="px-4 py-3">
                           <p class="break-words font-semibold text-slate-700">{{ row.tipoActividad || row.categoria || 'Sin tipo' }}</p>
                           <p class="mt-1 break-words text-xs text-slate-500">{{ row.modulo || 'Sin módulo' }} · {{ row.tecnologia || 'Sin tecnología' }}</p>
+                          <p class="mt-1 text-xs font-black text-emerald-700">{{ row.tipoHora || 'Laboral' }}</p>
                         </td>
                         <td class="whitespace-nowrap px-4 py-3 text-right text-base font-black text-blue-700">{{ formatHours(row.horas) }} h</td>
                       </tr>

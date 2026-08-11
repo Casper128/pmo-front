@@ -286,8 +286,16 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
         labels: this.data.map(item => item.label),
         datasets: [{
           data: this.data.map(item => item.hours),
-          backgroundColor: isCircular ? this.data.map((_, index) => this.colors[index % this.colors.length]) : isLine ? '#2563eb22' : '#2563eb',
-          borderColor: isCircular ? '#ffffff' : '#2563eb',
+          backgroundColor: isCircular
+            ? this.data.map((_, index) => this.colorAt(index))
+            : isLine
+              ? '#2563eb22'
+              : this.data.map((_, index) => this.colorAt(index)),
+          borderColor: isCircular
+            ? '#ffffff'
+            : isLine
+              ? '#2563eb'
+              : this.data.map((_, index) => this.colorAt(index)),
           borderWidth: isCircular ? 3 : 2,
           borderRadius: this.type === 'bar' ? 7 : 0,
           fill: isLine,

@@ -195,16 +195,24 @@ export class MultipleImportPageComponent implements OnInit {
     }).sort((a, b) => `${b.fecha} ${b.horaInicio}`.localeCompare(`${a.fecha} ${a.horaInicio}`));
   });
   excelDailySummary = computed<ExcelDailySummary[]>(() => {
-    const groups = new Map<string, { fecha: string; consultor: string; cliente: string; horas: number; registros: number; solicitudes: Set<string> }>();
+    const groups = new Map<string, { fecha: string; consultor: string; clientes: Set<string>; horas: number; registros: number; solicitudes: Set<string> }>();
     this.filteredExcelReports().forEach(row => {
-      const key = `${row.fecha}|${row.consultor}|${row.cliente}`;
-      const current = groups.get(key) || { fecha: row.fecha, consultor: row.consultor, cliente: row.cliente, horas: 0, registros: 0, solicitudes: new Set<string>() };
+      const key = `${row.fecha}|${this.personNameKey(row.consultor)}`;
+      const current = groups.get(key) || { fecha: row.fecha, consultor: row.consultor, clientes: new Set<string>(), horas: 0, registros: 0, solicitudes: new Set<string>() };
       current.horas += row.horas;
       current.registros += 1;
+      current.clientes.add(row.cliente);
       if (row.solicitud || row.gestion) current.solicitudes.add(row.solicitud || row.gestion);
       groups.set(key, current);
     });
-    return [...groups.values()].map(group => ({ ...group, solicitudes: group.solicitudes.size }))
+    return [...groups.values()].map(group => ({
+      fecha: group.fecha,
+      consultor: group.consultor,
+      cliente: [...group.clientes].sort((a, b) => a.localeCompare(b, 'es')).join(' · '),
+      horas: group.horas,
+      registros: group.registros,
+      solicitudes: group.solicitudes.size,
+    }))
       .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.horas - a.horas);
   });
   excelTotalHours = computed(() => this.filteredExcelReports().reduce((sum, row) => sum + row.horas, 0));
@@ -704,7 +712,7 @@ export class MultipleImportPageComponent implements OnInit {
               this.reportResult.set({
                 type: 'success',
                 title: 'Reporte generado',
-                detail: `${this.excelReports().length} registros procesados directamente en pantalla.`,
+                detail: `${this.excelReports().length} registros laborales procesados directamente en pantalla.`,
               });
               this.showAlert('Reporte generado correctamente', 'success');
             } catch (error) {
@@ -1069,10 +1077,20 @@ export class MultipleImportPageComponent implements OnInit {
       proyecto: this.excelText(valueAt(row, columns.proyecto)),
       horaInicio: this.excelTime(valueAt(row, columns.horaInicio)),
       horaFin: this.excelTime(valueAt(row, columns.horaFin)),
-    })).filter(row => row.fecha && Number.isFinite(row.horas));
+    })).filter(row => row.fecha && Number.isFinite(row.horas) && this.isLaborHour(row.tipoHora));
 
-    if (!reports.length) throw new Error('no se encontraron registros válidos');
-    this.excelReports.set(reports);
+    if (!reports.length) throw new Error('no se encontraron registros con tipo de hora Laboral');
+    const preferredNames = new Map<string, { label: string; score: number }>();
+    reports.forEach(report => {
+      const key = this.personNameKey(report.consultor);
+      const candidate = { label: this.formatPersonName(report.consultor), score: this.personNameScore(report.consultor) };
+      const current = preferredNames.get(key);
+      if (!current || candidate.score > current.score) preferredNames.set(key, candidate);
+    });
+    this.excelReports.set(reports.map(report => ({
+      ...report,
+      consultor: preferredNames.get(this.personNameKey(report.consultor))?.label || this.formatPersonName(report.consultor),
+    })));
     const consultants = this.excelConsultants();
     this.reportTableConsultant.set(consultants.length === 1 ? consultants[0] : '');
     this.reportTableClient.set('');
@@ -1090,6 +1108,30 @@ export class MultipleImportPageComponent implements OnInit {
 
   private uniqueText(values: string[]): string[] {
     return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  private isLaborHour(value: unknown): boolean {
+    const key = this.normalizeHeader(value);
+    return key === 'laboral' || key === 'hora laboral' || key === 'horas laborales';
+  }
+
+  private personNameKey(value: unknown): string {
+    return this.normalizeText(value).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  private formatPersonName(value: unknown): string {
+    const connectors = new Set(['de', 'del', 'la', 'las', 'los', 'y']);
+    return this.excelText(value).toLocaleLowerCase('es-CO').split(/\s+/).filter(Boolean).map((word, index) => {
+      if (index > 0 && connectors.has(this.normalizeText(word))) return word;
+      return word.charAt(0).toLocaleUpperCase('es-CO') + word.slice(1);
+    }).join(' ');
+  }
+
+  private personNameScore(value: unknown): number {
+    const text = this.excelText(value);
+    const accents = (text.match(/[áéíóúñÁÉÍÓÚÑ]/g) || []).length;
+    const mixedCase = text !== text.toLocaleUpperCase('es-CO') && text !== text.toLocaleLowerCase('es-CO');
+    return accents * 10 + (mixedCase ? 2 : 0);
   }
 
   private normalizeHeader(value: unknown): string {
