@@ -89,6 +89,7 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
   chartHeight(): number {
     if (this.horizontal) return Math.min(580, Math.max(300, this.data.length * 66 + 90));
     if (this.type === 'doughnut' || this.type === 'pie') return 320;
+    if (this.type === 'bar') return 380;
     return 300;
   }
   peakText(): string {
@@ -131,7 +132,16 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
     const isLine = this.type === 'line';
     const xTicks = this.horizontal
       ? { color: '#64748b', callback: (value: unknown) => `${value} h` }
-      : { color: '#64748b', maxRotation: 45, minRotation: 0 };
+      : this.type === 'bar'
+        ? {
+            color: '#475569',
+            autoSkip: false,
+            maxRotation: 0,
+            minRotation: 0,
+            font: { size: 10, weight: 'bold' },
+            callback: (value: unknown) => this.wrapLabel(String(this.data[Number(value)]?.label || ''), 14),
+          }
+        : { color: '#64748b', maxRotation: 0, minRotation: 0 };
     const yTicks = this.horizontal
       ? {
           color: '#475569',

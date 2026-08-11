@@ -527,7 +527,11 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   }
 
   private cleanDimension(value: unknown, fallback: string): string {
-    const text = String(value || '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const text = String(value || '')
+      .replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (!text || ['n/a', 'na', 'null', 'undefined', 'sin dato'].includes(this.normalize(text))) return fallback;
     return text.toLocaleLowerCase('es-CO').replace(/(^|\s)\p{L}/gu, letter => letter.toLocaleUpperCase('es-CO'));
   }

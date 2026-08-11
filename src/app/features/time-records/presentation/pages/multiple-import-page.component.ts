@@ -11,6 +11,7 @@ import { RecordsPreviewComponent } from '../components/records-preview/records-p
 import { EditRecordModalComponent } from '../components/edit-record-modal/edit-record-modal.component';
 import { WeeklyHoursChartComponent } from '../components/weekly-hours-chart/weekly-hours-chart.component';
 import { AuthService } from '../../../../core/auth/auth.service';
+import readXlsxFile from 'read-excel-file/browser';
 
 const BASE = 'https://wwz8sswbkh.execute-api.us-west-2.amazonaws.com/dev';
 
@@ -82,6 +83,35 @@ interface StoredSendLog extends SendRecordLog {
   weekEnd: string;
 }
 
+interface ExcelTimeReport {
+  identificador: string;
+  solicitud: string;
+  categoria: string;
+  cliente: string;
+  consultor: string;
+  descripcion: string;
+  horas: number;
+  tipoHora: string;
+  fecha: string;
+  funcional: string;
+  gestion: string;
+  modulo: string;
+  tecnologia: string;
+  tipoActividad: string;
+  proyecto: string;
+  horaInicio: string;
+  horaFin: string;
+}
+
+interface ExcelDailySummary {
+  fecha: string;
+  consultor: string;
+  cliente: string;
+  horas: number;
+  registros: number;
+  solicitudes: number;
+}
+
 @Component({
   selector: 'app-multiple-import-page',
   standalone: true,
@@ -144,6 +174,42 @@ export class MultipleImportPageComponent implements OnInit {
   reportFechaFin = '';
   downloadingReport = signal(false);
   reportResult = signal<{ type: 'success' | 'empty'; title: string; detail: string } | null>(null);
+  excelReports = signal<ExcelTimeReport[]>([]);
+  reportTableConsultant = signal('');
+  reportTableClient = signal('');
+  reportTableDate = signal('');
+  reportTableSearch = signal('');
+
+  excelConsultants = computed(() => this.uniqueText(this.excelReports().map(row => row.consultor)));
+  excelClients = computed(() => this.uniqueText(this.excelReports().map(row => row.cliente)));
+  excelDates = computed(() => this.uniqueText(this.excelReports().map(row => row.fecha)).sort().reverse());
+  filteredExcelReports = computed(() => {
+    const search = this.normalizeText(this.reportTableSearch());
+    return this.excelReports().filter(row => {
+      if (this.reportTableConsultant() && row.consultor !== this.reportTableConsultant()) return false;
+      if (this.reportTableClient() && row.cliente !== this.reportTableClient()) return false;
+      if (this.reportTableDate() && row.fecha !== this.reportTableDate()) return false;
+      if (!search) return true;
+      return [row.identificador, row.solicitud, row.gestion, row.descripcion, row.funcional, row.modulo, row.tecnologia]
+        .some(value => this.normalizeText(value).includes(search));
+    }).sort((a, b) => `${b.fecha} ${b.horaInicio}`.localeCompare(`${a.fecha} ${a.horaInicio}`));
+  });
+  excelDailySummary = computed<ExcelDailySummary[]>(() => {
+    const groups = new Map<string, { fecha: string; consultor: string; cliente: string; horas: number; registros: number; solicitudes: Set<string> }>();
+    this.filteredExcelReports().forEach(row => {
+      const key = `${row.fecha}|${row.consultor}|${row.cliente}`;
+      const current = groups.get(key) || { fecha: row.fecha, consultor: row.consultor, cliente: row.cliente, horas: 0, registros: 0, solicitudes: new Set<string>() };
+      current.horas += row.horas;
+      current.registros += 1;
+      if (row.solicitud || row.gestion) current.solicitudes.add(row.solicitud || row.gestion);
+      groups.set(key, current);
+    });
+    return [...groups.values()].map(group => ({ ...group, solicitudes: group.solicitudes.size }))
+      .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.horas - a.horas);
+  });
+  excelTotalHours = computed(() => this.filteredExcelReports().reduce((sum, row) => sum + row.horas, 0));
+  excelActiveDays = computed(() => new Set(this.filteredExcelReports().map(row => row.fecha)).size);
+  excelClientCount = computed(() => new Set(this.filteredExcelReports().map(row => row.cliente)).size);
 
   managementReports = signal<ManagementReport[]>([]);
   managementLoading = signal(false);
@@ -631,18 +697,26 @@ export class MultipleImportPageComponent implements OnInit {
         headers: { Authorization: `Bearer ${this.auth.token}` },
       })
       .subscribe({
-        next: data => {
-          this.downloadingReport.set(false);
+        next: async data => {
           if (data?.excel) {
-            this.saveExcel(data.excel, `reporte_tiempos_${this.reportFechaIni}_${this.reportFechaFin}.xlsx`);
-            this.reportResult.set({
-              type: 'success',
-              title: 'Reporte descargado',
-              detail: `reporte_tiempos_${this.reportFechaIni}_${this.reportFechaFin}.xlsx`,
-            });
-            this.showAlert('✓ Reporte descargado correctamente', 'success');
+            try {
+              await this.loadExcelReport(data.excel);
+              this.reportResult.set({
+                type: 'success',
+                title: 'Reporte generado',
+                detail: `${this.excelReports().length} registros procesados directamente en pantalla.`,
+              });
+              this.showAlert('Reporte generado correctamente', 'success');
+            } catch (error) {
+              this.excelReports.set([]);
+              this.showAlert(`No se pudo leer el reporte recibido: ${error instanceof Error ? error.message : 'formato no válido'}`, 'error');
+            } finally {
+              this.downloadingReport.set(false);
+            }
             return;
           }
+          this.downloadingReport.set(false);
+          this.excelReports.set([]);
           this.reportResult.set({
             type: 'empty',
             title: 'Sin datos',
@@ -655,7 +729,7 @@ export class MultipleImportPageComponent implements OnInit {
             this.auth.clearTokens();
             return;
           }
-          this.showAlert(`Error al descargar el reporte: ${error?.message || 'intenta nuevamente'}`, 'error');
+          this.showAlert(`Error al generar el reporte: ${error?.message || 'intenta nuevamente'}`, 'error');
         },
       });
   }
@@ -665,6 +739,11 @@ export class MultipleImportPageComponent implements OnInit {
     this.reportFechaIni = '';
     this.reportFechaFin = '';
     this.reportResult.set(null);
+    this.excelReports.set([]);
+    this.reportTableConsultant.set('');
+    this.reportTableClient.set('');
+    this.reportTableDate.set('');
+    this.reportTableSearch.set('');
     this.alert.set(null);
   }
 
@@ -930,21 +1009,120 @@ export class MultipleImportPageComponent implements OnInit {
     this.managementFechaFin.set(this.toDateInputValue(sunday));
   }
 
-  private saveExcel(base64: string, filename: string) {
-    const byteChars = atob(base64);
-    const byteNums = new Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
-    const blob = new Blob([new Uint8Array(byteNums)], {
+  private async loadExcelReport(base64: string): Promise<void> {
+    const bytes = this.base64ToBytes(base64);
+    const workbook = await readXlsxFile(new Blob([bytes], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    }));
+    const sheet = workbook.find(item => this.normalizeText(item.sheet).includes('tiempo consultores')) || workbook[0];
+    if (!sheet?.data?.length) throw new Error('el archivo no contiene datos');
+
+    const [headerRow, ...rows] = sheet.data as unknown[][];
+    const indexes = new Map<string, number>();
+    headerRow.forEach((value, index) => indexes.set(this.normalizeHeader(value), index));
+    const column = (...aliases: string[]): number => {
+      for (const alias of aliases) {
+        const index = indexes.get(this.normalizeHeader(alias));
+        if (index !== undefined) return index;
+      }
+      return -1;
+    };
+    const valueAt = (row: unknown[], index: number): unknown => index >= 0 ? row[index] : '';
+    const columns = {
+      identificador: column('Identificador'),
+      solicitud: column('Solicitud'),
+      categoria: column('Categoria'),
+      cliente: column('Cliente'),
+      consultor: column('Consultor'),
+      descripcion: column('Descripcion actividad'),
+      horas: column('Tiempo Real en Horas'),
+      tipoHora: column('Tipo de Hora'),
+      fecha: column('fecha inicio'),
+      funcional: column('Funcional'),
+      gestion: column('Gestion de demanda'),
+      modulo: column('Modulo'),
+      tecnologia: column('Tecnologia'),
+      tipoActividad: column('Tipo de actividad'),
+      proyecto: column('Proyecto'),
+      horaInicio: column('Hora de Inicio'),
+      horaFin: column('Hora de Fin'),
+    };
+    if (columns.fecha < 0 || columns.horas < 0) {
+      throw new Error('faltan las columnas Fecha inicio o Tiempo Real en Horas');
+    }
+
+    const reports = rows.map(row => ({
+      identificador: this.excelText(valueAt(row, columns.identificador)),
+      solicitud: this.excelText(valueAt(row, columns.solicitud)),
+      categoria: this.excelText(valueAt(row, columns.categoria)),
+      cliente: this.excelText(valueAt(row, columns.cliente)) || 'Sin cliente',
+      consultor: this.excelText(valueAt(row, columns.consultor)) || 'Sin consultor',
+      descripcion: this.excelText(valueAt(row, columns.descripcion)),
+      horas: this.excelNumber(valueAt(row, columns.horas)),
+      tipoHora: this.excelText(valueAt(row, columns.tipoHora)),
+      fecha: this.excelDate(valueAt(row, columns.fecha)),
+      funcional: this.excelText(valueAt(row, columns.funcional)),
+      gestion: this.excelText(valueAt(row, columns.gestion)),
+      modulo: this.excelText(valueAt(row, columns.modulo)),
+      tecnologia: this.excelText(valueAt(row, columns.tecnologia)),
+      tipoActividad: this.excelText(valueAt(row, columns.tipoActividad)),
+      proyecto: this.excelText(valueAt(row, columns.proyecto)),
+      horaInicio: this.excelTime(valueAt(row, columns.horaInicio)),
+      horaFin: this.excelTime(valueAt(row, columns.horaFin)),
+    })).filter(row => row.fecha && Number.isFinite(row.horas));
+
+    if (!reports.length) throw new Error('no se encontraron registros válidos');
+    this.excelReports.set(reports);
+    const consultants = this.excelConsultants();
+    this.reportTableConsultant.set(consultants.length === 1 ? consultants[0] : '');
+    this.reportTableClient.set('');
+    this.reportTableDate.set('');
+    this.reportTableSearch.set('');
+  }
+
+  private base64ToBytes(base64: string): ArrayBuffer {
+    const content = base64.includes(',') ? base64.slice(base64.indexOf(',') + 1) : base64;
+    const decoded = atob(content.replace(/\s/g, ''));
+    const bytes = new Uint8Array(decoded.length);
+    for (let index = 0; index < decoded.length; index++) bytes[index] = decoded.charCodeAt(index);
+    return bytes.buffer;
+  }
+
+  private uniqueText(values: string[]): string[] {
+    return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  private normalizeHeader(value: unknown): string {
+    return this.normalizeText(value).replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  private excelText(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    return String(value).replace(/\s+/g, ' ').trim();
+  }
+
+  private excelNumber(value: unknown): number {
+    if (typeof value === 'number') return value;
+    const parsed = Number(this.excelText(value).replace(',', '.'));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private excelDate(value: unknown): string {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return this.toDateInputValue(value);
+    const text = this.excelText(value);
+    const iso = text.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const local = text.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if (!local) return '';
+    return `${local[3]}-${local[2].padStart(2, '0')}-${local[1].padStart(2, '0')}`;
+  }
+
+  private excelTime(value: unknown): string {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
+    }
+    const match = this.excelText(value).match(/(\d{1,2}):(\d{2})/);
+    return match ? `${match[1].padStart(2, '0')}:${match[2]}` : '';
   }
 
   private refreshManagementEditValidation() {

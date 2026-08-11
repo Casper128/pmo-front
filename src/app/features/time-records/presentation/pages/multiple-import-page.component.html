@@ -48,7 +48,7 @@
           [class.hover:bg-slate-100]="currentView() !== 'download'"
           type="button"
           (click)="setView('download')">
-          Descargar reporte
+          Reporte consolidado
         </button>
         <button
           class="rounded-xl px-4 py-2 text-sm font-black transition"
@@ -254,10 +254,10 @@
         <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p class="text-[11px] font-black uppercase tracking-widest text-emerald-600">Reporte de tiempos</p>
-            <h2 class="mt-1 text-xl font-black text-slate-900">Descargar Excel</h2>
-            <p class="mt-1 text-sm text-slate-500">Filtra por cliente y rango de fechas usando el endpoint original.</p>
+            <h2 class="mt-1 text-xl font-black text-slate-900">Consultar reporte consolidado</h2>
+            <p class="mt-1 text-sm text-slate-500">La respuesta Excel del endpoint se procesa en memoria y se presenta como un reporte filtrable, sin descargar archivos.</p>
           </div>
-          <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">.xlsx</span>
+          <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">Excel → tabla</span>
         </div>
 
         <div class="grid gap-4 md:grid-cols-3">
@@ -288,9 +288,9 @@
             (click)="downloadReport()">
             @if (downloadingReport()) {
               <span class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-              Generando Excel...
+              Consultando reporte...
             } @else {
-              Descargar Excel
+              Generar reporte
             }
           </button>
           <button
@@ -315,6 +315,165 @@
               {{ reportResult()!.title }}
             </p>
             <p class="mt-1 text-sm text-slate-600">{{ reportResult()!.detail }}</p>
+          </div>
+        }
+
+        @if (excelReports().length) {
+          <div class="mt-6 space-y-5 border-t border-slate-100 pt-6">
+            <div>
+              <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Filtros del resultado</p>
+              <h3 class="mt-1 text-lg font-black text-slate-900">Actividad del consultor</h3>
+              <p class="mt-1 text-sm text-slate-500">Los indicadores y ambas tablas se actualizan con los filtros seleccionados.</p>
+            </div>
+
+            <div class="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-4">
+              <label class="field-wrap">
+                <span class="field-label">Consultor</span>
+                <select class="field-input" [ngModel]="reportTableConsultant()" (ngModelChange)="reportTableConsultant.set($event)">
+                  <option value="">Todos los consultores</option>
+                  @for (consultor of excelConsultants(); track consultor) {
+                    <option [value]="consultor">{{ consultor }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field-wrap">
+                <span class="field-label">Cliente</span>
+                <select class="field-input" [ngModel]="reportTableClient()" (ngModelChange)="reportTableClient.set($event)">
+                  <option value="">Todos los clientes</option>
+                  @for (cliente of excelClients(); track cliente) {
+                    <option [value]="cliente">{{ cliente }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field-wrap">
+                <span class="field-label">Día reportado</span>
+                <select class="field-input" [ngModel]="reportTableDate()" (ngModelChange)="reportTableDate.set($event)">
+                  <option value="">Todos los días</option>
+                  @for (fecha of excelDates(); track fecha) {
+                    <option [value]="fecha">{{ formatFullDate(fecha) }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field-wrap">
+                <span class="field-label">Buscar en el reporte</span>
+                <input
+                  class="field-input"
+                  type="search"
+                  placeholder="Solicitud, gestión, módulo..."
+                  [ngModel]="reportTableSearch()"
+                  (ngModelChange)="reportTableSearch.set($event)" />
+              </label>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <article class="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Horas totales</p>
+                <p class="mt-2 text-3xl font-black text-blue-950">{{ formatHours(excelTotalHours()) }} h</p>
+                <p class="mt-1 text-xs font-bold text-blue-700">Según los filtros activos</p>
+              </article>
+              <article class="rounded-2xl border border-slate-200 bg-white p-4">
+                <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">Días trabajados</p>
+                <p class="mt-2 text-3xl font-black text-slate-900">{{ excelActiveDays() }}</p>
+                <p class="mt-1 text-xs font-bold text-slate-500">Días con horas registradas</p>
+              </article>
+              <article class="rounded-2xl border border-slate-200 bg-white p-4">
+                <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">Clientes atendidos</p>
+                <p class="mt-2 text-3xl font-black text-slate-900">{{ excelClientCount() }}</p>
+                <p class="mt-1 text-xs font-bold text-slate-500">Clientes distintos</p>
+              </article>
+              <article class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p class="text-[11px] font-black uppercase tracking-widest text-emerald-600">Registros</p>
+                <p class="mt-2 text-3xl font-black text-emerald-950">{{ filteredExcelReports().length }}</p>
+                <p class="mt-1 text-xs font-bold text-emerald-700">Actividades encontradas</p>
+              </article>
+            </div>
+
+            <section class="overflow-hidden rounded-2xl border border-slate-200">
+              <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                <h3 class="font-black text-slate-900">Total de horas por día y cliente</h3>
+                <p class="mt-1 text-xs text-slate-500">Cada fila consolida los registros del consultor para un cliente durante el día.</p>
+              </div>
+              <div class="max-h-[28rem] overflow-auto">
+                <table class="min-w-[880px] w-full text-left text-sm">
+                  <thead class="sticky top-0 z-10 bg-slate-900 text-xs uppercase tracking-wide text-white">
+                    <tr>
+                      <th class="px-4 py-3">Fecha</th>
+                      <th class="px-4 py-3">Consultor</th>
+                      <th class="px-4 py-3">Cliente</th>
+                      <th class="px-4 py-3 text-right">Horas</th>
+                      <th class="px-4 py-3 text-right">Registros</th>
+                      <th class="px-4 py-3 text-right">Solicitudes</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 bg-white">
+                    @for (row of excelDailySummary(); track row.fecha + row.consultor + row.cliente) {
+                      <tr class="align-top hover:bg-blue-50/60">
+                        <td class="whitespace-nowrap px-4 py-3 font-black text-slate-800">{{ formatFullDate(row.fecha) }}</td>
+                        <td class="px-4 py-3 font-semibold text-slate-700">{{ row.consultor }}</td>
+                        <td class="px-4 py-3 text-slate-600">{{ row.cliente }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-right font-black text-blue-700">{{ formatHours(row.horas) }} h</td>
+                        <td class="px-4 py-3 text-right font-semibold text-slate-700">{{ row.registros }}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-slate-700">{{ row.solicitudes }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td class="px-4 py-8 text-center font-semibold text-slate-500" colspan="6">No hay datos para los filtros seleccionados.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="overflow-hidden rounded-2xl border border-slate-200">
+              <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                <h3 class="font-black text-slate-900">Detalle de actividades reportadas</h3>
+                <p class="mt-1 text-xs text-slate-500">Trazabilidad completa del reporte recibido desde el servicio.</p>
+              </div>
+              <div class="max-h-[36rem] overflow-auto">
+                <table class="min-w-[1180px] w-full table-fixed text-left text-sm">
+                  <thead class="sticky top-0 z-10 bg-slate-900 text-xs uppercase tracking-wide text-white">
+                    <tr>
+                      <th class="w-28 px-4 py-3">Fecha</th>
+                      <th class="w-48 px-4 py-3">Consultor / cliente</th>
+                      <th class="w-48 px-4 py-3">Gestión / solicitud</th>
+                      <th class="w-80 px-4 py-3">Actividad</th>
+                      <th class="w-52 px-4 py-3">Clasificación</th>
+                      <th class="w-24 px-4 py-3 text-right">Horas</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 bg-white">
+                    @for (row of filteredExcelReports(); track row.identificador + row.fecha + $index) {
+                      <tr class="align-top hover:bg-blue-50/60">
+                        <td class="px-4 py-3">
+                          <p class="whitespace-nowrap font-black text-slate-800">{{ formatFullDate(row.fecha) }}</p>
+                          @if (row.horaInicio || row.horaFin) {
+                            <p class="mt-1 text-xs text-slate-500">{{ row.horaInicio || '--' }} – {{ row.horaFin || '--' }}</p>
+                          }
+                        </td>
+                        <td class="px-4 py-3">
+                          <p class="break-words font-bold text-slate-800">{{ row.consultor }}</p>
+                          <p class="mt-1 break-words text-xs text-slate-500">{{ row.cliente }}</p>
+                        </td>
+                        <td class="px-4 py-3">
+                          <p class="break-words font-bold text-blue-700">{{ row.gestion || row.identificador || 'Sin gestión' }}</p>
+                          <p class="mt-1 break-words text-xs text-slate-500">{{ row.solicitud || row.proyecto || 'Sin solicitud' }}</p>
+                        </td>
+                        <td class="px-4 py-3">
+                          <p class="break-words leading-5 text-slate-700">{{ row.descripcion || 'Sin descripción' }}</p>
+                          @if (row.funcional) { <p class="mt-1 break-words text-xs font-semibold text-slate-500">Funcional: {{ row.funcional }}</p> }
+                        </td>
+                        <td class="px-4 py-3">
+                          <p class="break-words font-semibold text-slate-700">{{ row.tipoActividad || row.categoria || 'Sin tipo' }}</p>
+                          <p class="mt-1 break-words text-xs text-slate-500">{{ row.modulo || 'Sin módulo' }} · {{ row.tecnologia || 'Sin tecnología' }}</p>
+                        </td>
+                        <td class="whitespace-nowrap px-4 py-3 text-right text-base font-black text-blue-700">{{ formatHours(row.horas) }} h</td>
+                      </tr>
+                    } @empty {
+                      <tr><td class="px-4 py-8 text-center font-semibold text-slate-500" colspan="6">No hay actividades para los filtros seleccionados.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </div>
         }
       </section>
