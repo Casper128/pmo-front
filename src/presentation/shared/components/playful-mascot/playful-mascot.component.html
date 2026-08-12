@@ -1,0 +1,28 @@
+@if (mascot.cue(); as cue) {
+  <div
+    class="mascot-stage"
+    [class.mascot-fly]="cue.trick === 'fly'"
+    [class.mascot-dance]="cue.trick === 'dance'"
+    [class.mascot-peek]="cue.trick === 'peek'"
+    [class.mascot-celebrate]="cue.trick === 'celebrate'"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="mascot-message">{{ cue.message }}</div>
+
+    @if (cue.trick === 'celebrate' || cue.moment === 'send') {
+      <span class="confetti confetti-one"></span>
+      <span class="confetti confetti-two"></span>
+      <span class="confetti confetti-three"></span>
+      <span class="confetti confetti-four"></span>
+    }
+
+    <canvas #pigCanvas class="pig-canvas" width="280" height="235" aria-hidden="true"></canvas>
+
+    @if (!rendererReady()) {
+      <div class="mascot-emoji" aria-hidden="true">
+        {{ cue.mascot === 'dog' ? '🐶' : cue.mascot === 'penguin' ? '🐧' : '🐲' }}
+      </div>
+    }
+  </div>
+}

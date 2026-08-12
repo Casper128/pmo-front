@@ -1,0 +1,176 @@
+:host {
+  pointer-events: none;
+}
+
+.mascot-stage {
+  position: fixed;
+  right: clamp(0.75rem, 3vw, 2rem);
+  bottom: clamp(0.75rem, 3vw, 2rem);
+  z-index: 400;
+  width: min(15rem, 48vw);
+  filter: drop-shadow(0 16px 18px rgb(15 23 42 / 0.24));
+  transform-origin: 50% 100%;
+}
+
+.pig-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: saturate(1.08) contrast(1.02);
+}
+
+.mascot-emoji {
+  position: absolute;
+  inset: 22% 8% 6%;
+  display: grid;
+  place-items: center;
+  font-size: clamp(5rem, 18vw, 8rem);
+  filter: drop-shadow(0 16px 16px rgb(15 23 42 / 0.22));
+}
+
+.mascot-message {
+  position: absolute;
+  right: 69%;
+  bottom: 74%;
+  width: max-content;
+  max-width: min(15rem, 62vw);
+  border: 2px solid #172554;
+  border-radius: 1rem 1rem 0.25rem 1rem;
+  background: white;
+  padding: 0.55rem 0.75rem;
+  color: #172554;
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1.2;
+  box-shadow: 0 10px 24px rgb(15 23 42 / 0.18);
+}
+
+.confetti {
+  position: absolute;
+  width: 0.55rem;
+  height: 0.9rem;
+  border-radius: 0.2rem;
+  animation: confetti-fall 1.4s ease-in infinite;
+}
+
+.confetti-one {
+  left: 12%;
+  background: #2563eb;
+  animation-delay: -0.2s;
+}
+.confetti-two {
+  left: 38%;
+  background: #f59e0b;
+  animation-delay: -0.7s;
+}
+.confetti-three {
+  right: 28%;
+  background: #10b981;
+  animation-delay: -1s;
+}
+.confetti-four {
+  right: 5%;
+  background: #8b5cf6;
+  animation-delay: -0.4s;
+}
+
+.mascot-fly {
+  animation: pig-fly 6.2s cubic-bezier(0.22, 0.78, 0.28, 1) both;
+}
+.mascot-dance {
+  animation: pig-dance 0.55s ease-in-out 11 alternate both;
+}
+.mascot-peek {
+  animation: pig-peek 6.2s ease-in-out both;
+}
+.mascot-celebrate {
+  animation: pig-celebrate 0.62s ease-in-out 10 both;
+}
+
+@keyframes pig-fly {
+  0% {
+    opacity: 0;
+    transform: translate(135vw, 25vh) rotate(16deg) scale(0.7);
+  }
+  45% {
+    opacity: 1;
+    transform: translate(-42vw, -28vh) rotate(-8deg) scale(1);
+  }
+  72% {
+    transform: translate(-12vw, -8vh) rotate(5deg) scale(1.03);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0) scale(0.95);
+  }
+}
+
+@keyframes pig-dance {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(-7deg) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-18px) rotate(7deg) scale(1.04);
+  }
+}
+
+@keyframes pig-peek {
+  0% {
+    opacity: 0;
+    transform: translateX(115%) rotate(12deg);
+  }
+  24%,
+  72% {
+    opacity: 1;
+    transform: translateX(18%) rotate(-4deg);
+  }
+  88% {
+    transform: translateX(8%) rotate(5deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(115%) rotate(12deg);
+  }
+}
+
+@keyframes pig-celebrate {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-26px) rotate(5deg) scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(-5deg);
+  }
+}
+
+@keyframes confetti-fall {
+  from {
+    opacity: 0;
+    transform: translateY(-55px) rotate(0);
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(145px) rotate(300deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-stage,
+  .confetti {
+    animation: none !important;
+  }
+
+  .mascot-stage {
+    opacity: 1;
+  }
+}

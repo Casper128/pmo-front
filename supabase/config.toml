@@ -1,0 +1,16 @@
+project_id = "pmo-front"
+
+[functions.pmo-config-admin]
+verify_jwt = false
+
+[functions.pmo-user-audit]
+verify_jwt = false
+
+[functions.pmo-send-logs]
+verify_jwt = false
+
+[functions.pmo-management-edit]
+verify_jwt = false
+
+[functions.pmo-location-admin]
+verify_jwt = false

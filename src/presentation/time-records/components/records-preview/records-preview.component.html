@@ -1,0 +1,324 @@
+<div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+  <!-- Header -->
+  <div class="sticky top-0 z-10 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p class="text-[11px] font-extrabold text-blue-600 uppercase tracking-widest">
+          Vista Previa de Registros
+        </p>
+        <p class="mt-1 text-sm font-semibold text-slate-700">
+          {{ recordCount }} registros en {{ groups.length }} día{{ groups.length !== 1 ? 's' : '' }}
+          @if (groups.length > 1) {
+            <span class="text-slate-400">·</span>
+            <span class="text-blue-700">{{ totalGeneral.toFixed(1) }}h totales</span>
+          }
+        </p>
+      </div>
+      <div class="grid grid-cols-2 gap-2 sm:flex">
+        <button
+          class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          [disabled]="sending"
+          (click)="sendAll.emit()"
+        >
+          @if (sending) {
+            <span
+              class="mr-2 inline-block size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+            ></span>
+            Enviando...
+          } @else {
+            Registrar
+          }
+        </button>
+        <button
+          class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          [disabled]="sending"
+          (click)="cancelImport.emit()"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile cards -->
+  <div class="space-y-3 border-t border-slate-100 bg-slate-50 p-3 xl:hidden sm:p-4">
+    @for (group of groups; track group.fecha) {
+      <section
+        class="overflow-hidden rounded-xl border bg-white shadow-sm"
+        [style.border-color]="group.alerta.border"
+      >
+        <div
+          class="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+          [style.background]="group.alerta.bg"
+        >
+          <div>
+            <p class="text-sm font-black text-blue-950">{{ group.fecha | fechaEsp }}</p>
+            <p class="text-xs text-slate-500">
+              {{ group.records.length }} registro{{ group.records.length !== 1 ? 's' : '' }}
+            </p>
+          </div>
+          <span
+            class="rounded-full border bg-white px-3 py-1 text-xs font-black"
+            [style.color]="group.alerta.color"
+            [style.border-color]="group.alerta.border"
+          >
+            {{ group.totalHoras.toFixed(1) }}h · {{ group.alerta.label }}
+          </span>
+        </div>
+
+        <div class="divide-y divide-slate-100">
+          @for (item of group.records; track item.index) {
+            @let missing = getErrors(item.record);
+            <article
+              class="space-y-3 p-4"
+              [class.bg-red-50]="missing.length > 0"
+              [class.bg-white]="missing.length === 0"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="font-mono text-xs font-bold text-slate-500">
+                    {{ item.record.horaIni }} - {{ item.record.horaFin }}
+                  </p>
+                  <p class="mt-1 text-sm font-black text-blue-700">{{ item.record.horas }}h</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    class="rounded-lg bg-blue-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-600"
+                    type="button"
+                    (click)="editRecord.emit(item.index)"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    class="rounded-lg bg-red-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-red-600"
+                    type="button"
+                    (click)="deleteRecord.emit(item.index)"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+
+              <p class="text-sm text-slate-700">{{ item.record.desc }}</p>
+
+              <div class="grid gap-2 sm:grid-cols-2">
+                <app-ui-select
+                  label="Cliente"
+                  [options]="selectOptions(clientes, 'Seleccione un cliente')"
+                  [ngModel]="item.record.cliente"
+                  (ngModelChange)="onClienteChange(item.index, item.record, $event)"
+                />
+
+                <app-ui-select
+                  label="Gestión Demanda"
+                  [options]="
+                    selectOptions(
+                      getSolicitudes(item.index),
+                      loadingDemandByIndex[item.index] ? 'Cargando...' : 'Seleccione una gestión'
+                    )
+                  "
+                  [disabled]="!item.record.cliente || loadingDemandByIndex[item.index]"
+                  [ngModel]="item.record.solicitud"
+                  (ngModelChange)="onSolicitudChange(item.index, item.record, $event)"
+                />
+              </div>
+
+              @if (missing.length > 0) {
+                <p class="rounded-lg bg-red-100 px-3 py-2 text-xs font-bold text-red-700">
+                  Revisar: {{ missing.join(', ') }}
+                </p>
+              }
+            </article>
+          }
+        </div>
+      </section>
+    }
+  </div>
+
+  <!-- Desktop table -->
+  <div class="hidden overflow-x-hidden xl:block">
+    <table class="ui-responsive-table text-sm">
+      <colgroup>
+        <col class="w-[11%]" />
+        <col class="w-[6%]" />
+        <col class="w-[6%]" />
+        <col class="w-[6%]" />
+        <col class="w-[15%]" />
+        <col class="w-[19%]" />
+        <col class="w-[23%]" />
+        <col class="w-[14%]" />
+      </colgroup>
+      <thead>
+        <tr
+          class="bg-slate-50 border-b-2 border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wide"
+        >
+          <th class="px-3 py-3 text-left">Fecha</th>
+          <th class="px-2 py-3 text-left">Inicio</th>
+          <th class="px-2 py-3 text-left">Fin</th>
+          <th class="px-2 py-3 text-left">Horas</th>
+          <th class="px-3 py-3 text-left">Cliente</th>
+          <th class="px-3 py-3 text-left">Gestión Demanda</th>
+          <th class="px-3 py-3 text-left">Descripción</th>
+          <th
+            class="sticky right-0 z-10 bg-slate-50 px-3 py-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"
+          >
+            Acciones
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (group of groups; track group.fecha) {
+          <!-- Day header row -->
+          <tr>
+            <td
+              colspan="8"
+              class="px-4 py-2.5 border-t-2"
+              [style.background]="group.alerta.bg"
+              [style.border-top-color]="group.alerta.border"
+              [style.border-bottom-color]="group.alerta.border"
+            >
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-[13px] font-extrabold text-blue-900"
+                    >📅 {{ group.fecha | fechaEsp }}</span
+                  >
+                  <span class="text-xs text-slate-400"
+                    >· {{ group.records.length }} registro{{
+                      group.records.length !== 1 ? 's' : ''
+                    }}</span
+                  >
+                </div>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="text-[13px] font-bold bg-white border rounded-full px-3 py-0.5"
+                    [style.color]="group.alerta.color"
+                    [style.border-color]="group.alerta.border"
+                  >
+                    {{ group.alerta.icon }} {{ group.totalHoras.toFixed(1) }}h totales
+                  </span>
+                  <span class="text-xs font-semibold" [style.color]="group.alerta.color">
+                    {{ group.alerta.label }}
+                  </span>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Record rows -->
+          @for (item of group.records; track item.index) {
+            @let missing = getErrors(item.record);
+            <tr
+              class="border-b border-slate-100 transition-colors"
+              [class.bg-red-50]="missing.length > 0"
+              [class.border-l-4]="missing.length > 0"
+              [class.border-l-red-400]="missing.length > 0"
+              [class.bg-white]="missing.length === 0"
+              [class.hover:bg-slate-50]="missing.length === 0"
+            >
+              <td class="px-3 py-2.5 text-slate-500 text-xs">{{ item.record.fecha }}</td>
+              <td class="px-2 py-2.5 text-slate-700 font-mono text-xs">
+                {{ item.record.horaIni }}
+              </td>
+              <td class="px-2 py-2.5 text-slate-700 font-mono text-xs">
+                {{ item.record.horaFin }}
+              </td>
+              <td class="px-2 py-2.5 font-bold text-blue-600">{{ item.record.horas }}h</td>
+              <td class="px-3 py-2.5">
+                <app-ui-select
+                  [options]="selectOptions(clientes, 'Seleccione un cliente')"
+                  [ngModel]="item.record.cliente"
+                  (ngModelChange)="onClienteChange(item.index, item.record, $event)"
+                />
+              </td>
+              <td class="px-3 py-2.5">
+                <app-ui-select
+                  [options]="
+                    selectOptions(
+                      getSolicitudes(item.index),
+                      loadingDemandByIndex[item.index] ? 'Cargando...' : 'Seleccione una gestión'
+                    )
+                  "
+                  [disabled]="!item.record.cliente || loadingDemandByIndex[item.index]"
+                  [ngModel]="item.record.solicitud"
+                  (ngModelChange)="onSolicitudChange(item.index, item.record, $event)"
+                />
+              </td>
+              <td class="px-3 py-2.5">
+                <p
+                  class="break-words text-slate-700 text-xs"
+                  [appOverflowTooltip]="item.record.desc"
+                  [appOverflowTooltipLines]="2"
+                  tabindex="0"
+                >
+                  {{ item.record.desc }}
+                </p>
+                @if (missing.length > 0) {
+                  <p class="text-[11px] text-red-700 font-bold mt-1">
+                    Revisar: {{ missing.join(', ') }}
+                  </p>
+                }
+              </td>
+              <td
+                class="sticky right-0 bg-inherit px-3 py-2.5 text-center whitespace-nowrap shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"
+              >
+                <button
+                  class="px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors mr-1"
+                  type="button"
+                  (click)="editRecord.emit(item.index)"
+                >
+                  Editar
+                </button>
+                <button
+                  class="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+                  type="button"
+                  (click)="deleteRecord.emit(item.index)"
+                >
+                  Eliminar
+                </button>
+              </td>
+            </tr>
+          }
+        }
+
+        <!-- Total footer (multi-day) -->
+        @if (groups.length > 1) {
+          <tr class="bg-blue-50 border-t-2 border-blue-200">
+            <td colspan="8" class="px-4 py-3 text-right">
+              <span class="text-sm text-slate-500">Total general:</span>
+              <span class="text-base font-extrabold text-blue-700 ml-2">
+                ⏱ {{ totalGeneral.toFixed(1) }}h en {{ groups.length }} días
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Actions footer -->
+  <div
+    class="sticky bottom-0 z-10 flex flex-col gap-2 border-t border-slate-100 bg-white px-5 py-4 sm:flex-row"
+  >
+    <button
+      class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-blue-600 text-white shadow-md hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      [disabled]="sending"
+      (click)="sendAll.emit()"
+    >
+      @if (sending) {
+        <span
+          class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"
+        ></span>
+        Enviando...
+      } @else {
+        Registrar todos
+      }
+    </button>
+    <button
+      class="flex-1 py-2.5 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"
+      [disabled]="sending"
+      (click)="cancelImport.emit()"
+    >
+      Cancelar
+    </button>
+  </div>
+</div>

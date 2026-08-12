@@ -1,0 +1,219 @@
+<div class="min-h-full bg-slate-50 p-4 sm:p-6">
+  <div class="mx-auto max-w-7xl space-y-5">
+    <app-ui-page-header
+      eyebrow="Trazabilidad"
+      title="Logs de envío"
+      description="Consulta envíos correctos y fallidos sin almacenar respuestas completas, contraseñas ni tokens."
+    >
+      <div
+        pageHeaderAside
+        class="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-right"
+      >
+        <p class="text-[10px] font-black uppercase tracking-widest text-blue-200">
+          Retención automática
+        </p>
+        <p class="mt-1 text-xl font-black">{{ retentionDays() }} días</p>
+      </div>
+    </app-ui-page-header>
+
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Periodo</p>
+          <h2 class="mt-1 text-lg font-black text-slate-900">Consulta del historial</h2>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          @for (item of periodOptions; track item.key) {
+            <button
+              class="rounded-xl border px-3 py-2 text-xs font-black transition"
+              type="button"
+              [class.border-blue-500]="period() === item.key"
+              [class.bg-blue-600]="period() === item.key"
+              [class.text-white]="period() === item.key"
+              [class.border-slate-200]="period() !== item.key"
+              [class.bg-white]="period() !== item.key"
+              [class.text-slate-600]="period() !== item.key"
+              (click)="setPeriod(item.key)"
+            >
+              {{ item.label }}
+            </button>
+          }
+        </div>
+      </div>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <app-ui-date-input
+          label="Desde"
+          [ngModel]="dateFrom()"
+          (ngModelChange)="onDateChange('from', $event)"
+        />
+        <app-ui-date-input
+          label="Hasta"
+          [ngModel]="dateTo()"
+          (ngModelChange)="onDateChange('to', $event)"
+        />
+        <app-ui-select
+          label="Estado"
+          [options]="statusOptions"
+          [ngModel]="status()"
+          (ngModelChange)="status.set($event)"
+        />
+        @if (isAdmin()) {
+          <app-ui-select
+            label="Alcance"
+            [options]="scopeOptions"
+            [ngModel]="scope()"
+            (ngModelChange)="onScopeChange($event)"
+          />
+        }
+        <div class="xl:col-span-2">
+          <app-ui-search-input
+            label="Buscar"
+            placeholder="Identificador, usuario o error..."
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event)"
+          />
+        </div>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button
+          class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700 disabled:bg-slate-400"
+          type="button"
+          [disabled]="loading()"
+          (click)="load()"
+        >
+          {{ loading() ? 'Consultando...' : 'Aplicar fechas' }}
+        </button>
+        <button
+          class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:text-slate-300"
+          type="button"
+          [disabled]="filteredLogs().length === 0"
+          (click)="copyVisibleLogs()"
+        >
+          Copiar resultado
+        </button>
+      </div>
+    </section>
+
+    @if (error()) {
+      <section
+        class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700"
+      >
+        {{ error() }}
+      </section>
+    }
+
+    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <app-ui-metric-card
+        label="Eventos"
+        [value]="filteredLogs().length"
+        description="En el filtro visible"
+      />
+      <app-ui-metric-card
+        label="Correctos"
+        [value]="successfulCount()"
+        description="Confirmados por el servicio"
+        tone="emerald"
+      />
+      <app-ui-metric-card
+        label="Con error"
+        [value]="errorCount()"
+        description="Pendientes de revisión"
+        tone="red"
+      />
+      <app-ui-metric-card
+        label="Consultores"
+        [value]="consultantCount()"
+        description="Según el alcance permitido"
+        tone="blue"
+      />
+    </section>
+
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div class="border-b border-slate-100 p-5">
+        <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">Detalle</p>
+        <h2 class="mt-1 text-lg font-black text-slate-900">Eventos almacenados en Supabase</h2>
+      </div>
+      @if (loading()) {
+        <div class="grid min-h-64 place-items-center">
+          <div class="text-center">
+            <span
+              class="mx-auto block size-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"
+            ></span>
+            <p class="mt-3 text-sm font-bold text-slate-500">Consultando logs...</p>
+          </div>
+        </div>
+      } @else {
+        <div class="ui-table-wrap max-h-[38rem]">
+          <table class="ui-responsive-table ui-responsive-table--stack text-left text-sm">
+            <thead
+              class="sticky top-0 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500"
+            >
+              <tr>
+                <th class="px-4 py-3">Estado</th>
+                <th class="px-4 py-3">Fecha</th>
+                <th class="px-4 py-3">Consultor</th>
+                <th class="px-4 py-3">Identificador</th>
+                <th class="px-4 py-3">Detalle</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (log of filteredLogs(); track log.id) {
+                <tr class="align-top hover:bg-slate-50">
+                  <td data-label="Estado" class="px-4 py-3">
+                    <span
+                      class="rounded-full px-2.5 py-1 text-xs font-black"
+                      [class.bg-emerald-50]="log.successful"
+                      [class.text-emerald-700]="log.successful"
+                      [class.bg-red-50]="!log.successful"
+                      [class.text-red-700]="!log.successful"
+                      >{{ log.successful ? 'OK' : 'ERROR' }}</span
+                    >
+                  </td>
+                  <td data-label="Fecha" class="px-4 py-3 font-bold text-slate-600">
+                    {{ formatDateTime(log.occurredAt) }}
+                  </td>
+                  <td data-label="Consultor" class="max-w-56 px-4 py-3 font-bold text-slate-700">
+                    <p
+                      [appOverflowTooltip]="log.userEmail"
+                      [appOverflowTooltipLines]="2"
+                      tabindex="0"
+                    >
+                      {{ log.userEmail }}
+                    </p>
+                  </td>
+                  <td
+                    data-label="Identificador"
+                    class="max-w-72 px-4 py-3 font-black text-slate-900"
+                  >
+                    <p
+                      [appOverflowTooltip]="log.reference"
+                      [appOverflowTooltipLines]="2"
+                      tabindex="0"
+                    >
+                      {{ log.reference }}
+                    </p>
+                  </td>
+                  <td data-label="Detalle" class="px-4 py-3 text-slate-600">
+                    <p
+                      [appOverflowTooltip]="log.errorMessage || 'Envío confirmado sin novedades.'"
+                      [appOverflowTooltipLines]="2"
+                      tabindex="0"
+                    >
+                      {{ log.errorMessage || 'Envío confirmado sin novedades.' }}
+                    </p>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="px-4 py-14 text-center font-bold text-slate-400" colspan="5">
+                    No hay logs para los filtros seleccionados.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  </div>
+</div>

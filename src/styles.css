@@ -1,10 +1,11 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @layer components {
   .field-wrap {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.375rem;
+    min-width: 0;
   }
 
   .field-label {
@@ -21,9 +22,20 @@
     color: #1e293b;
     font-family: inherit;
     font-size: 0.875rem;
+    font-weight: 600;
     line-height: 1.25rem;
-    padding: 0.625rem 0.75rem;
-    transition: border-color 150ms ease, box-shadow 150ms ease;
+    min-height: 3rem;
+    min-width: 0;
+    padding: 0.625rem 0.875rem;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .field-input:hover:not(:disabled) {
+    border-color: #60a5fa;
   }
 
   .field-input:focus {
@@ -33,10 +45,135 @@
   }
 
   select.field-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none' stroke='%23475569' stroke-width='2'%3E%3Cpath d='m6 8 4 4 4-4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.125rem;
     cursor: pointer;
+    padding-right: 2.75rem;
+  }
+
+  input[type='date'].field-input {
+    color-scheme: light;
+    cursor: pointer;
+  }
+
+  input[type='date'].field-input::-webkit-calendar-picker-indicator {
+    background-color: #eff6ff;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    padding: 0.35rem;
+  }
+
+  .field-input:disabled {
+    background-color: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
   }
 
   textarea.field-input {
     resize: vertical;
+  }
+
+  .ui-table-wrap {
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .ui-responsive-table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .ui-responsive-table th,
+  .ui-responsive-table td {
+    min-width: 0;
+    vertical-align: top;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .ui-overflow-clamp {
+    display: -webkit-box;
+    max-width: 100%;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+  }
+
+  .ui-overflow-clamp--1 {
+    display: block;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ui-overflow-clamp--2 {
+    -webkit-line-clamp: 2;
+  }
+
+  .ui-overflow-clamp--3 {
+    -webkit-line-clamp: 3;
+  }
+}
+
+@media (max-width: 767px) {
+  .ui-responsive-table--stack,
+  .ui-responsive-table--stack tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .ui-responsive-table--stack thead {
+    display: none;
+  }
+
+  .ui-responsive-table--stack tbody {
+    padding: 0.75rem;
+  }
+
+  .ui-responsive-table--stack tbody tr {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0.875rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.875rem;
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  }
+
+  .ui-responsive-table--stack tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .ui-responsive-table--stack tbody td {
+    display: grid;
+    grid-template-columns: minmax(6rem, 36%) minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.25rem 0 !important;
+    border: 0;
+    text-align: left !important;
+  }
+
+  .ui-responsive-table--stack tbody td::before {
+    content: attr(data-label);
+    color: #64748b;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1rem;
+    text-transform: uppercase;
+  }
+
+  .ui-responsive-table--stack tbody td[colspan] {
+    display: block;
+    text-align: center !important;
+  }
+
+  .ui-responsive-table--stack tbody td[colspan]::before {
+    content: none;
   }
 }

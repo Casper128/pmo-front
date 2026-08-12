@@ -1,0 +1,222 @@
+@if (visible && draft) {
+  <!-- Backdrop -->
+  <div
+    class="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto p-3 sm:py-6"
+    (click)="cancel.emit()"
+  >
+    <div
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden"
+      (click)="$event.stopPropagation()"
+    >
+      <!-- Header -->
+      <div
+        class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4"
+      >
+        <div>
+          <h3 class="text-base font-black text-blue-900">Editar registro</h3>
+          <p class="text-xs text-slate-500">Ajusta solo lo necesario antes de enviar.</p>
+        </div>
+        <button
+          (click)="cancel.emit()"
+          class="grid size-9 place-items-center rounded-full text-xl leading-none text-slate-400 transition hover:bg-white hover:text-slate-700"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="max-h-[72vh] space-y-4 overflow-y-auto px-5 py-5">
+        <!-- Proyecto -->
+        <section class="rounded-xl border border-slate-200 p-4">
+          <p class="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-blue-600">
+            Campos principales
+          </p>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <app-ui-select
+              label="Cliente"
+              [options]="selectOptions(clientes, 'Seleccione un cliente', draft.cliente)"
+              [(ngModel)]="draft.cliente"
+              (ngModelChange)="onClienteChange($event)"
+            />
+            <app-ui-select
+              label="Proyecto"
+              [options]="selectOptions(proyectos, 'Seleccione un proyecto', draft.proyecto)"
+              [disabled]="!draft.cliente"
+              [(ngModel)]="draft.proyecto"
+              (ngModelChange)="onProyectoChange($event)"
+            />
+            <app-ui-select
+              label="Gestión Demanda"
+              [options]="selectOptions(solicitudes, 'Seleccione una gestión', draft.solicitud)"
+              [disabled]="!draft.cliente"
+              [(ngModel)]="draft.solicitud"
+            />
+            <div class="field-wrap">
+              <label class="field-label">Funcional</label>
+              <input
+                class="field-input"
+                type="text"
+                [(ngModel)]="draft.funcional"
+                placeholder="ej. Angelica Rocio Erazo"
+              />
+            </div>
+            <app-ui-date-input
+              label="Fecha"
+              [(ngModel)]="draft.fecha"
+              (ngModelChange)="onFechaChange()"
+            />
+            <app-ui-time-input
+              label="Hora inicio"
+              [(ngModel)]="draft.horaIni"
+              (ngModelChange)="calcHoras()"
+            />
+            <app-ui-time-input
+              label="Hora fin"
+              [(ngModel)]="draft.horaFin"
+              (ngModelChange)="calcHoras()"
+            />
+            <div class="field-wrap">
+              <label class="field-label">Horas calculadas</label>
+              <input
+                class="field-input bg-slate-50 text-blue-700"
+                type="text"
+                readonly
+                [value]="draft.horas + ' h'"
+              />
+            </div>
+          </div>
+
+          @if (validationErrors.length > 0) {
+            <div
+              class="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700"
+            >
+              Revisa: {{ validationErrors.join(', ') }}
+            </div>
+          }
+
+          <div class="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div class="field-wrap">
+              <label class="field-label">Descripción</label>
+              <textarea
+                class="field-input min-h-[70px] resize-y"
+                [(ngModel)]="draft.desc"
+              ></textarea>
+            </div>
+            <div class="field-wrap">
+              <label class="field-label">Observación</label>
+              <textarea
+                class="field-input min-h-[70px] resize-y"
+                [(ngModel)]="draft.observacion"
+              ></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- Actividad -->
+        <details class="rounded-xl border border-slate-200 p-4">
+          <summary
+            class="cursor-pointer text-[11px] font-extrabold uppercase tracking-widest text-blue-600"
+          >
+            Campos avanzados
+          </summary>
+          <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div class="field-wrap">
+              <label class="field-label">RICEF</label>
+              <input
+                class="field-input"
+                type="text"
+                [(ngModel)]="draft.ricef"
+                placeholder="Ej: 4692"
+              />
+            </div>
+            <app-ui-select
+              label="Tipo actividad"
+              [options]="selectOptions(tiposActividad, undefined, draft.tipoActividad)"
+              [(ngModel)]="draft.tipoActividad"
+            />
+            <app-ui-select
+              label="Causa"
+              [options]="selectOptions(causas, undefined, draft.causa)"
+              [(ngModel)]="draft.causa"
+            />
+            <app-ui-select
+              label="Complejidad"
+              [options]="selectOptions(complejidades, undefined, draft.complejidad)"
+              [(ngModel)]="draft.complejidad"
+            />
+            <app-ui-select
+              label="Impacto"
+              [options]="selectOptions(impactos, undefined, draft.impacto)"
+              [(ngModel)]="draft.impacto"
+            />
+            <app-ui-select
+              label="Equipo"
+              [options]="selectOptions(equipos, undefined, draft.equipo)"
+              [(ngModel)]="draft.equipo"
+            />
+            <app-ui-select
+              label="Modo actuación"
+              [options]="selectOptions(modos, undefined, draft.modoActuacion)"
+              [(ngModel)]="draft.modoActuacion"
+            />
+            <app-ui-select
+              label="Lenguaje"
+              [options]="selectOptions(lenguajes, undefined, draft.lenguaje)"
+              [(ngModel)]="draft.lenguaje"
+            />
+            <app-ui-select
+              label="Tipo hora"
+              [options]="selectOptions(tiposHora, undefined, draft.tipoHora)"
+              [(ngModel)]="draft.tipoHora"
+            />
+            <app-ui-select
+              label="Prefijo"
+              [options]="selectOptions(prefijos, undefined, draft.prefijo)"
+              [(ngModel)]="draft.prefijo"
+            />
+            <app-ui-select
+              label="RICEF object"
+              [options]="selectOptions(objetosRicef, 'Seleccione un objeto', draft.objetoRicef)"
+              [(ngModel)]="draft.objetoRicef"
+            />
+            <div class="field-wrap">
+              <label class="field-label">Unity</label>
+              <input class="field-input" type="text" [(ngModel)]="draft.unity" />
+            </div>
+            <app-ui-date-input
+              label="Fecha estimada pruebas"
+              [(ngModel)]="draft.fechaEstimada"
+              (ngModelChange)="onTestDateChange()"
+            />
+            <app-ui-date-input
+              label="Fecha real pruebas"
+              [(ngModel)]="draft.fechaReal"
+              (ngModelChange)="onTestDateChange()"
+            />
+            <app-ui-select
+              label="Categoría"
+              [options]="selectOptions(categorias, undefined, draft.categoria)"
+              [(ngModel)]="draft.categoria"
+            />
+          </div>
+        </details>
+      </div>
+
+      <!-- Footer actions -->
+      <div class="flex gap-3 border-t border-slate-200 bg-white px-5 py-4">
+        <button
+          class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md hover:from-blue-700 hover:to-blue-600 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+          [disabled]="validationErrors.length > 0"
+          (click)="onSave()"
+        >
+          Guardar cambios
+        </button>
+        <button
+          class="flex-1 py-2.5 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"
+          (click)="cancel.emit()"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,923 @@
+<div class="min-h-screen bg-slate-50 p-4 sm:p-6">
+  <div class="mx-auto min-w-0 max-w-7xl space-y-5">
+    <app-ui-page-header
+      eyebrow="Analítica personal"
+      title="Estadísticas del consultor"
+      description="Consulta tu dedicación por periodo, cliente, módulo y tipo de actividad."
+    >
+      <button
+        pageHeaderAside
+        class="rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-black transition hover:bg-white/20 disabled:opacity-60"
+        type="button"
+        [disabled]="loading()"
+        (click)="loadRecords()"
+      >
+        {{ loading() ? 'Actualizando...' : 'Actualizar datos' }}
+      </button>
+    </app-ui-page-header>
+
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Filtros</p>
+          <h2 class="mt-1 text-lg font-black text-slate-900">Periodo y segmentación</h2>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button
+            class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50"
+            type="button"
+            (click)="setPeriod(7)"
+          >
+            7 días
+          </button>
+          <button
+            class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50"
+            type="button"
+            (click)="setPeriod(30)"
+          >
+            30 días
+          </button>
+          <button
+            class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50"
+            type="button"
+            (click)="setCurrentMonth()"
+          >
+            Mes
+          </button>
+          <button
+            class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-100"
+            type="button"
+            (click)="setLastMonths(6)"
+          >
+            6 meses
+          </button>
+        </div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <app-ui-date-input
+          label="Desde"
+          [ngModel]="dateFrom()"
+          (ngModelChange)="dateFrom.set($event)"
+        />
+        <app-ui-date-input
+          label="Hasta"
+          [ngModel]="dateTo()"
+          (ngModelChange)="dateTo.set($event)"
+        />
+        <app-ui-select
+          label="Cliente"
+          [options]="clientOptions()"
+          [ngModel]="client()"
+          (ngModelChange)="client.set($event)"
+        />
+        <app-ui-select
+          label="Módulo"
+          [options]="moduleOptions()"
+          [ngModel]="module()"
+          (ngModelChange)="module.set($event)"
+        />
+        <app-ui-select
+          label="Actividad"
+          [options]="activityOptions()"
+          [ngModel]="activity()"
+          (ngModelChange)="activity.set($event)"
+        />
+        <app-ui-select
+          label="Prefijo"
+          [options]="prefixOptions"
+          [ngModel]="prefix()"
+          (ngModelChange)="prefix.set($event)"
+        />
+      </div>
+      <div class="mt-4 flex items-center justify-between gap-3">
+        @if (dateError()) {
+          <p class="text-sm font-bold text-red-600">{{ dateError() }}</p>
+        } @else {
+          <p class="text-xs font-bold text-slate-400">
+            {{ filteredRecords().length }} de {{ ownRecords().length }} registros del endpoint están
+            incluidos en este periodo.
+          </p>
+        }
+        <button
+          class="text-xs font-black text-blue-700 hover:text-blue-900"
+          type="button"
+          (click)="clearFilters()"
+        >
+          Restablecer filtros
+        </button>
+      </div>
+    </section>
+
+    @if (loading() && !loaded()) {
+      <section
+        class="grid min-h-80 place-items-center rounded-2xl border border-slate-200 bg-white"
+      >
+        <div class="text-center">
+          <span
+            class="mx-auto block size-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"
+          ></span>
+          <p class="mt-3 text-sm font-bold text-slate-500">Consultando registros...</p>
+        </div>
+      </section>
+    } @else if (error()) {
+      <section
+        class="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-bold text-red-700"
+      >
+        {{ error() }}
+      </section>
+    } @else {
+      <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <app-ui-metric-card
+          label="Horas totales"
+          [value]="formatHours(totalHours()) + ' h'"
+          description="En el periodo filtrado"
+          tone="blue"
+        />
+        <app-ui-metric-card
+          label="Registros"
+          [value]="filteredRecords().length"
+          description="Actividades reportadas"
+        />
+        <app-ui-metric-card
+          label="Clientes"
+          [value]="uniqueClients()"
+          description="Clientes atendidos"
+        />
+        <app-ui-metric-card
+          label="Promedio diario"
+          [value]="formatHours(averageDailyHours()) + ' h'"
+          [description]="'Sobre ' + activeDays() + ' días activos'"
+          tone="emerald"
+        />
+        <app-ui-metric-card
+          label="Horas laborales"
+          [value]="laborPercentage() + '%'"
+          description="Del total reportado"
+          tone="violet"
+        />
+      </section>
+
+      <section
+        class="overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-violet-50 shadow-sm"
+      >
+        <div class="border-b border-blue-100 px-5 py-4">
+          <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">
+            Resumen ejecutivo
+          </p>
+          <h2 class="mt-1 text-lg font-black text-slate-900">
+            Lectura para {{ client() || 'todos los clientes' }}
+          </h2>
+          <p class="mt-1 text-sm text-slate-500">
+            Calculado directamente desde los registros del reporte de tiempos del periodo
+            seleccionado.
+          </p>
+        </div>
+        <div class="grid sm:grid-cols-2 xl:grid-cols-4">
+          <div class="border-b border-blue-100 p-5 sm:border-r xl:border-b-0">
+            <p class="text-xs font-bold text-slate-500">Módulo con mayor dedicación</p>
+            <p class="mt-2 break-words text-lg font-black text-blue-950">{{ mainModule() }}</p>
+          </div>
+          <div class="border-b border-blue-100 p-5 xl:border-b-0 xl:border-r">
+            <p class="text-xs font-bold text-slate-500">Actividad principal</p>
+            <p class="mt-2 break-words text-lg font-black text-violet-800">{{ mainActivity() }}</p>
+          </div>
+          <div class="border-b border-blue-100 p-5 sm:border-r sm:border-b-0">
+            <p class="text-xs font-bold text-slate-500">Tecnología más utilizada</p>
+            <p class="mt-2 break-words text-lg font-black text-emerald-800">
+              {{ mainTechnology() }}
+            </p>
+          </div>
+          <div class="p-5">
+            <p class="text-xs font-bold text-slate-500">Cobertura del servicio</p>
+            <p class="mt-2 text-lg font-black text-slate-900">
+              {{ moduleCount() }} módulos · {{ technologyCount() }} tecnologías
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs font-black uppercase tracking-widest text-slate-400">
+            Solicitudes atendidas
+          </p>
+          <p class="mt-2 text-2xl font-black text-blue-800">{{ requestCount() }}</p>
+          <p class="mt-1 text-xs font-bold text-slate-400">Gestiones únicas del reporte</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs font-black uppercase tracking-widest text-slate-400">Tecnologías</p>
+          <p class="mt-2 text-2xl font-black text-emerald-700">{{ technologyCount() }}</p>
+          <p class="mt-1 text-xs font-bold text-slate-400">Tecnologías utilizadas</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs font-black uppercase tracking-widest text-slate-400">
+            Horas no laborales
+          </p>
+          <p class="mt-2 text-2xl font-black text-amber-700">
+            {{ formatHours(nonLaborHours()) }} h
+          </p>
+          <p class="mt-1 text-xs font-bold text-slate-400">Esfuerzo fuera de hora laboral</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs font-black uppercase tracking-widest text-slate-400">
+            Promedio por registro
+          </p>
+          <p class="mt-2 text-2xl font-black text-violet-700">
+            {{ formatHours(averageRecordHours()) }} h
+          </p>
+          <p class="mt-1 text-xs font-bold text-slate-400">Duración media de una actividad</p>
+        </article>
+      </section>
+
+      <section class="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+        <div>
+          <p class="text-[11px] font-black uppercase tracking-widest text-amber-700">
+            Lecturas para el negocio
+          </p>
+          <h2 class="mt-1 text-lg font-black text-slate-900">Señales relevantes del periodo</h2>
+        </div>
+        <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-xl bg-white p-4">
+            <p class="text-xs font-bold text-slate-500">Concentración funcional</p>
+            <p class="mt-2 break-words text-base font-black text-slate-900">
+              {{ mainFunctional() }}
+            </p>
+            <p class="mt-1 text-xs font-bold text-amber-700">
+              {{ formatHours(functionalConcentration()) }}% de las horas
+            </p>
+          </div>
+          <div class="rounded-xl bg-white p-4">
+            <p class="text-xs font-bold text-slate-500">Horas sin funcional</p>
+            <p class="mt-2 text-xl font-black text-red-700">
+              {{ formatHours(unassignedFunctionalHours()) }} h
+            </p>
+            <p class="mt-1 text-xs font-bold text-slate-400">
+              {{ formatHours(unassignedFunctionalShare()) }}% requiere completar asignación
+            </p>
+          </div>
+          <div class="rounded-xl bg-white p-4">
+            <p class="text-xs font-bold text-slate-500">Diversidad tecnológica</p>
+            <p class="mt-2 text-xl font-black text-emerald-700">{{ technologyCount() }}</p>
+            <p class="mt-1 text-xs font-bold text-slate-400">
+              Tecnologías utilizadas en el servicio
+            </p>
+          </div>
+          <div class="rounded-xl bg-white p-4">
+            <p class="text-xs font-bold text-slate-500">Dimensiones homogéneas</p>
+            <p class="mt-2 text-xl font-black text-violet-700">
+              {{ homogeneousDimensionCount() }} de 5
+            </p>
+            <p class="mt-1 text-xs font-bold text-slate-400">
+              No segmentan el periodo y deben leerse como contexto
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-950 via-blue-950 to-slate-900 text-white shadow-lg"
+      >
+        <div class="border-b border-white/10 px-5 py-4">
+          <p class="text-[11px] font-black uppercase tracking-widest text-indigo-300">
+            Lectura analítica
+          </p>
+          <h2 class="mt-1 text-xl font-black">Composición de la demanda por prefijo</h2>
+          <p class="mt-1 text-sm text-slate-300">
+            Clasificación basada en el prefijo explícito y, cuando no existe, en el identificador
+            del reporte.
+          </p>
+        </div>
+        <div class="grid sm:grid-cols-2 xl:grid-cols-4">
+          <div class="border-b border-white/10 p-5 sm:border-r xl:border-b-0">
+            <p class="text-xs font-bold text-slate-300">Demanda operativa</p>
+            <p class="mt-2 text-2xl font-black text-cyan-300">{{ formatHours(demandHours()) }} h</p>
+            <p class="mt-1 text-xs text-slate-400">Necesidades CH + servicios SR</p>
+          </div>
+          <div class="border-b border-white/10 p-5 xl:border-b-0 xl:border-r">
+            <p class="text-xs font-bold text-slate-300">Atención de incidentes</p>
+            <p class="mt-2 text-2xl font-black text-amber-300">
+              {{ formatHours(incidentHours()) }} h
+            </p>
+            <p class="mt-1 text-xs text-slate-400">
+              {{ formatHours(incidentShare()) }}% del esfuerzo total
+            </p>
+          </div>
+          <div class="border-b border-white/10 p-5 sm:border-r sm:border-b-0">
+            <p class="text-xs font-bold text-slate-300">Trabajo en proyectos</p>
+            <p class="mt-2 text-2xl font-black text-emerald-300">
+              {{ formatHours(projectHours()) }} h
+            </p>
+            <p class="mt-1 text-xs text-slate-400">Dedicación identificada como PRY</p>
+          </div>
+          <div class="p-5">
+            <p class="text-xs font-bold text-slate-300">Calidad de clasificación</p>
+            <p class="mt-2 text-2xl font-black text-violet-300">
+              {{ formatHours(classifiedPercentage()) }}%
+            </p>
+            <p class="mt-1 text-xs text-slate-400">Registros con prefijo reconocido</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <app-analytics-chart-card
+          eyebrow="Mix de solicitudes"
+          title="Horas por prefijo"
+          [description]="
+            dominantPrefix() +
+            ' concentra ' +
+            formatHours(dominantPrefixShare()) +
+            '% del esfuerzo total.'
+          "
+          [data]="prefixBreakdown()"
+          type="doughnut"
+          ariaLabel="Distribución de horas por prefijo"
+          emptyMessage="Sin prefijos para analizar."
+          accent="indigo"
+        />
+        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div
+            class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 p-5"
+          >
+            <div>
+              <p class="text-[11px] font-black uppercase tracking-widest text-indigo-600">
+                Detalle de clasificación
+              </p>
+              <h2 class="mt-1 text-lg font-black text-slate-900">Resumen por prefijo</h2>
+              <p class="mt-1 text-sm text-slate-500">
+                Volumen, esfuerzo y duración promedio de cada tipo de demanda.
+              </p>
+            </div>
+            <button
+              class="rounded-lg border border-indigo-200 px-3 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-50"
+              type="button"
+              (click)="downloadBreakdownTablePng('Resumen por prefijo', 'Prefijo', prefixTable())"
+            >
+              Descargar PNG 3x
+            </button>
+          </div>
+          <div class="ui-table-wrap">
+            <table class="ui-responsive-table ui-responsive-table--stack text-left text-sm">
+              <thead
+                class="bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500"
+              >
+                <tr>
+                  <th class="px-4 py-3">Prefijo</th>
+                  <th class="px-4 py-3">Interpretación</th>
+                  <th class="px-4 py-3 text-right">Horas</th>
+                  <th class="px-4 py-3 text-right">Registros</th>
+                  <th class="px-4 py-3 text-right">Participación</th>
+                  <th class="px-4 py-3 text-right">Promedio</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (item of prefixTable(); track item.label) {
+                  <tr class="hover:bg-slate-50">
+                    <td data-label="Prefijo" class="px-4 py-3">
+                      <span
+                        class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-black text-indigo-700"
+                        >{{ item.label.split(' · ')[0] }}</span
+                      >
+                    </td>
+                    <td data-label="Interpretación" class="px-4 py-3 font-bold text-slate-700">
+                      <p
+                        [appOverflowTooltip]="item.label.split(' · ')[1] || item.label"
+                        [appOverflowTooltipLines]="2"
+                        tabindex="0"
+                      >
+                        {{ item.label.split(' · ')[1] || item.label }}
+                      </p>
+                    </td>
+                    <td data-label="Horas" class="px-4 py-3 text-right font-black text-blue-700">
+                      {{ formatHours(item.hours) }} h
+                    </td>
+                    <td
+                      data-label="Registros"
+                      class="px-4 py-3 text-right font-bold text-slate-600"
+                    >
+                      {{ item.count }}
+                    </td>
+                    <td
+                      data-label="Participación"
+                      class="px-4 py-3 text-right font-bold text-violet-700"
+                    >
+                      {{ formatHours(item.share) }}%
+                    </td>
+                    <td
+                      data-label="Promedio"
+                      class="px-4 py-3 text-right font-bold text-emerald-700"
+                    >
+                      {{ formatHours(item.hours / item.count) }} h
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="px-4 py-12 text-center font-bold text-slate-400" colspan="6">
+                      Sin información por prefijo.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-2">
+        <app-analytics-chart-card
+          eyebrow="ETL · Calendario"
+          title="Carga por día de la semana"
+          description="Las fechas se normalizan y agrupan de lunes a domingo para identificar patrones de concentración operativa."
+          [data]="weekdayBreakdown()"
+          type="bar"
+          ariaLabel="Distribución de horas por día de la semana"
+          emptyMessage="Sin fechas para transformar."
+          accent="cyan"
+        />
+        <app-analytics-chart-card
+          eyebrow="ETL · Complejidad"
+          title="Esfuerzo por nivel de complejidad"
+          description="Se limpian mayúsculas, espacios y valores vacíos antes de consolidar las horas de cada nivel."
+          [data]="complexityBreakdown()"
+          type="doughnut"
+          ariaLabel="Distribución de esfuerzo por complejidad"
+          emptyMessage="Sin complejidad para transformar."
+          accent="fuchsia"
+        />
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-3">
+        <app-analytics-chart-card
+          eyebrow="Composición"
+          title="Inversión por módulo"
+          description="Participación de cada frente en las horas totales."
+          [data]="moduleBreakdown()"
+          type="doughnut"
+          ariaLabel="Distribución de horas por módulo"
+          emptyMessage="Sin información por módulo."
+          accent="blue"
+        />
+        <app-analytics-chart-card
+          eyebrow="Tipo de trabajo"
+          title="Actividades realizadas"
+          description="Balance entre desarrollo, soporte y demás actividades."
+          [data]="activityBreakdown()"
+          type="pie"
+          ariaLabel="Distribución de horas por tipo de actividad"
+          emptyMessage="Sin información por actividad."
+          accent="violet"
+        />
+        <app-analytics-chart-card
+          eyebrow="Prioridades"
+          title="Gestiones con más esfuerzo"
+          description="Solicitudes que concentraron la dedicación del periodo."
+          [data]="managementBreakdown()"
+          type="bar"
+          ariaLabel="Horas invertidas por gestión"
+          emptyMessage="Sin información por gestión."
+          accent="emerald"
+          [configurable]="true"
+        />
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-3">
+        <app-analytics-chart-card
+          eyebrow="Jornada"
+          title="Tipo de hora"
+          description="Comparación entre dedicación laboral y otros tipos de hora."
+          [data]="hourTypeBreakdown()"
+          type="doughnut"
+          ariaLabel="Distribución por tipo de hora"
+          emptyMessage="Sin tipos de hora."
+          accent="amber"
+        />
+        <app-analytics-chart-card
+          eyebrow="Plataforma"
+          title="Horas por tecnología"
+          description="Tecnologías que demandaron mayor dedicación."
+          [data]="technologyBreakdown()"
+          type="bar"
+          ariaLabel="Horas por tecnología"
+          emptyMessage="Sin tecnologías."
+          accent="cyan"
+        />
+        <app-analytics-chart-card
+          eyebrow="Clasificación"
+          title="Categorías del servicio"
+          description="Distribución del esfuerzo según la categoría reportada."
+          [data]="categoryBreakdown()"
+          type="pie"
+          ariaLabel="Distribución por categoría"
+          emptyMessage="Sin categorías."
+          accent="rose"
+        />
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-2">
+        <app-analytics-chart-card
+          eyebrow="Origen del trabajo"
+          title="Horas por causa"
+          description="Motivos que originaron las actividades reportadas."
+          [data]="causeBreakdown()"
+          type="bar"
+          ariaLabel="Horas por causa de actividad"
+          emptyMessage="Sin causas registradas."
+          accent="orange"
+        />
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-red-600">
+            Foco de atención
+          </p>
+          <h2 class="mt-1 text-lg font-black text-slate-900">Actividades con mayor esfuerzo</h2>
+          <p class="mt-1 text-sm text-slate-500">
+            Los registros individuales que más horas consumieron.
+          </p>
+          <div class="mt-4 space-y-3">
+            @for (record of highestEffortRecords(); track record.identificador || $index) {
+              <div
+                class="grid grid-cols-[minmax(0,1fr)_auto] gap-4 rounded-xl border border-slate-100 bg-slate-50 p-3"
+              >
+                <div class="min-w-0">
+                  <p
+                    class="break-words text-sm font-black text-slate-800"
+                    [appOverflowTooltip]="
+                      record.descripcionActividad || record.observacion || managementName(record)
+                    "
+                    tabindex="0"
+                  >
+                    {{
+                      record.descripcionActividad || record.observacion || managementName(record)
+                    }}
+                  </p>
+                  <p class="mt-1 break-words text-xs font-bold text-slate-400">
+                    {{ clientName(record) }} · {{ moduleName(record) }} ·
+                    {{ formatRecordDate(record) }}
+                  </p>
+                </div>
+                <span class="self-center whitespace-nowrap text-base font-black text-red-700"
+                  >{{ formatHours(hours(record)) }} h</span
+                >
+              </div>
+            } @empty {
+              <p class="py-12 text-center text-sm font-bold text-slate-400">
+                Sin actividades para analizar.
+              </p>
+            }
+          </div>
+        </article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-2">
+        <app-analytics-chart-card
+          eyebrow="Distribución operativa"
+          title="Horas por tipo de actividad"
+          description="Comparación directa del esfuerzo dedicado a cada actividad."
+          [data]="activityBreakdown()"
+          type="bar"
+          ariaLabel="Horas por tipo de actividad"
+          emptyMessage="Sin actividades para analizar."
+          accent="blue"
+        />
+        <app-analytics-chart-card
+          eyebrow="Responsabilidad"
+          title="Horas por funcional"
+          description="Distribución de la dedicación según el funcional registrado."
+          [data]="functionalBreakdown()"
+          type="bar"
+          ariaLabel="Horas reportadas por funcional"
+          emptyMessage="Sin funcionales para analizar."
+          accent="emerald"
+        />
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-2">
+        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div
+            class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 p-5"
+          >
+            <div>
+              <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">
+                Detalle por actividad
+              </p>
+              <h2 class="mt-1 text-lg font-black text-slate-900">Resumen de tipos de actividad</h2>
+            </div>
+            <button
+              class="rounded-lg border border-blue-200 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50"
+              type="button"
+              (click)="
+                downloadBreakdownTablePng(
+                  'Resumen por tipo de actividad',
+                  'Actividad',
+                  activityTable()
+                )
+              "
+            >
+              Descargar PNG 3x
+            </button>
+          </div>
+          <div class="ui-table-wrap max-h-96">
+            <table class="ui-responsive-table ui-responsive-table--stack text-left text-sm">
+              <thead
+                class="sticky top-0 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500"
+              >
+                <tr>
+                  <th class="px-4 py-3">Actividad</th>
+                  <th class="px-4 py-3 text-right">Horas</th>
+                  <th class="px-4 py-3 text-right">Registros</th>
+                  <th class="px-4 py-3 text-right">Participación</th>
+                  <th class="px-4 py-3 text-right">Promedio</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (item of activityTable(); track item.label) {
+                  <tr class="hover:bg-slate-50">
+                    <td data-label="Actividad" class="px-4 py-3 font-black text-slate-700">
+                      <p
+                        [appOverflowTooltip]="item.label"
+                        [appOverflowTooltipLines]="2"
+                        tabindex="0"
+                      >
+                        {{ item.label }}
+                      </p>
+                    </td>
+                    <td data-label="Horas" class="px-4 py-3 text-right font-black text-blue-700">
+                      {{ formatHours(item.hours) }} h
+                    </td>
+                    <td
+                      data-label="Registros"
+                      class="px-4 py-3 text-right font-bold text-slate-600"
+                    >
+                      {{ item.count }}
+                    </td>
+                    <td
+                      data-label="Participación"
+                      class="px-4 py-3 text-right font-bold text-violet-700"
+                    >
+                      {{ formatHours(item.share) }}%
+                    </td>
+                    <td
+                      data-label="Promedio"
+                      class="px-4 py-3 text-right font-bold text-emerald-700"
+                    >
+                      {{ formatHours(item.hours / item.count) }} h
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="px-4 py-10 text-center font-bold text-slate-400" colspan="5">
+                      Sin información por actividad.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div
+            class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 p-5"
+          >
+            <div>
+              <p class="text-[11px] font-black uppercase tracking-widest text-emerald-600">
+                Detalle por funcional
+              </p>
+              <h2 class="mt-1 text-lg font-black text-slate-900">Resumen de funcionales</h2>
+            </div>
+            <button
+              class="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50"
+              type="button"
+              (click)="
+                downloadBreakdownTablePng('Resumen por funcional', 'Funcional', functionalTable())
+              "
+            >
+              Descargar PNG 3x
+            </button>
+          </div>
+          <div class="ui-table-wrap max-h-96">
+            <table class="ui-responsive-table ui-responsive-table--stack text-left text-sm">
+              <thead
+                class="sticky top-0 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500"
+              >
+                <tr>
+                  <th class="px-4 py-3">Funcional</th>
+                  <th class="px-4 py-3 text-right">Horas</th>
+                  <th class="px-4 py-3 text-right">Registros</th>
+                  <th class="px-4 py-3 text-right">Participación</th>
+                  <th class="px-4 py-3 text-right">Promedio</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (item of functionalTable(); track item.label) {
+                  <tr class="hover:bg-slate-50">
+                    <td data-label="Funcional" class="px-4 py-3 font-black text-slate-700">
+                      <p
+                        [appOverflowTooltip]="item.label"
+                        [appOverflowTooltipLines]="2"
+                        tabindex="0"
+                      >
+                        {{ item.label }}
+                      </p>
+                    </td>
+                    <td data-label="Horas" class="px-4 py-3 text-right font-black text-emerald-700">
+                      {{ formatHours(item.hours) }} h
+                    </td>
+                    <td
+                      data-label="Registros"
+                      class="px-4 py-3 text-right font-bold text-slate-600"
+                    >
+                      {{ item.count }}
+                    </td>
+                    <td
+                      data-label="Participación"
+                      class="px-4 py-3 text-right font-bold text-violet-700"
+                    >
+                      {{ formatHours(item.share) }}%
+                    </td>
+                    <td data-label="Promedio" class="px-4 py-3 text-right font-bold text-blue-700">
+                      {{ formatHours(item.hours / item.count) }} h
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="px-4 py-10 text-center font-bold text-slate-400" colspan="5">
+                      Sin información por funcional.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <app-analytics-chart-card
+          eyebrow="Tendencia"
+          title="Horas por día"
+          description="Últimos 31 días con actividad dentro del filtro."
+          [data]="dailyTrend()"
+          type="line"
+          ariaLabel="Evolución diaria de horas reportadas"
+          emptyMessage="No hay datos para graficar."
+          accent="blue"
+        />
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-emerald-600">
+            Distribución
+          </p>
+          <h2 class="mt-1 text-lg font-black text-slate-900">Horas por cliente</h2>
+          <div class="mt-5 space-y-4">
+            @for (item of clientBreakdown(); track item.label) {
+              <div>
+                <div class="mb-1.5 flex items-start justify-between gap-3 text-sm">
+                  <span class="break-words font-black text-slate-700">{{ item.label }}</span
+                  ><span class="shrink-0 font-black text-slate-900"
+                    >{{ formatHours(item.hours) }} h</span
+                  >
+                </div>
+                <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    class="h-full rounded-full bg-emerald-500"
+                    [style.width.%]="item.percentage"
+                  ></div>
+                </div>
+                <p class="mt-1 text-[11px] font-bold text-slate-400">{{ item.count }} registros</p>
+              </div>
+            } @empty {
+              <p class="py-12 text-center text-sm font-bold text-slate-400">
+                Sin información por cliente.
+              </p>
+            }
+          </div>
+        </article>
+      </section>
+
+      <section class="grid gap-4 lg:grid-cols-[22rem_1fr]">
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p class="text-[11px] font-black uppercase tracking-widest text-violet-600">
+            Especialidad
+          </p>
+          <h2 class="mt-1 text-lg font-black text-slate-900">Horas por módulo</h2>
+          <div class="mt-5 space-y-3">
+            @for (item of moduleBreakdown(); track item.label) {
+              <div class="rounded-xl bg-slate-50 p-3">
+                <div class="flex items-start justify-between gap-3">
+                  <span class="break-words text-sm font-black text-slate-700">{{ item.label }}</span
+                  ><span class="shrink-0 text-sm font-black text-violet-700"
+                    >{{ formatHours(item.hours) }} h</span
+                  >
+                </div>
+                <p class="mt-1 text-xs font-bold text-slate-400">{{ item.count }} actividades</p>
+              </div>
+            } @empty {
+              <p class="py-10 text-center text-sm font-bold text-slate-400">Sin módulos.</p>
+            }
+          </div>
+        </article>
+        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div class="grid gap-3 border-b border-slate-100 p-5 sm:grid-cols-[1fr_18rem]">
+            <div>
+              <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">Detalle</p>
+              <h2 class="mt-1 text-lg font-black text-slate-900">Registros del periodo</h2>
+            </div>
+            <app-ui-search-input
+              label="Buscar registro"
+              placeholder="Cliente, gestión, tecnología..."
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+            />
+          </div>
+          <div class="ui-table-wrap max-h-[30rem]">
+            <table class="ui-responsive-table ui-responsive-table--stack text-left text-sm">
+              <thead
+                class="sticky top-0 bg-slate-50 text-xs font-black uppercase tracking-wider text-slate-500"
+              >
+                <tr>
+                  <th class="px-4 py-3">Fecha</th>
+                  <th class="px-4 py-3">Cliente / gestión</th>
+                  <th class="px-4 py-3">Actividad reportada</th>
+                  <th class="px-4 py-3">Módulo / tecnología</th>
+                  <th class="px-4 py-3">Clasificación</th>
+                  <th class="px-4 py-3 text-right">Horas</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (record of filteredRecords(); track record.identificador || $index) {
+                  <tr class="align-top hover:bg-slate-50">
+                    <td data-label="Fecha" class="px-4 py-3 font-bold text-slate-600">
+                      {{ formatRecordDate(record) }}
+                    </td>
+                    <td data-label="Cliente / gestión" class="px-4 py-3">
+                      <p
+                        class="font-black text-slate-800"
+                        [appOverflowTooltip]="clientName(record)"
+                        [appOverflowTooltipLines]="2"
+                        tabindex="0"
+                      >
+                        {{ clientName(record) }}
+                      </p>
+                      <p
+                        class="mt-1 text-xs font-bold text-slate-400"
+                        [appOverflowTooltip]="managementName(record)"
+                        [appOverflowTooltipLines]="2"
+                        tabindex="0"
+                      >
+                        {{ managementName(record) }}
+                      </p>
+                    </td>
+                    <td data-label="Actividad reportada" class="px-4 py-3">
+                      <p
+                        class="text-slate-700"
+                        [appOverflowTooltip]="
+                          record.descripcionActividad || record.observacion || 'Sin descripción'
+                        "
+                        [appOverflowTooltipLines]="2"
+                        tabindex="0"
+                      >
+                        {{ record.descripcionActividad || record.observacion || 'Sin descripción' }}
+                      </p>
+                      <p
+                        class="mt-1 text-xs font-bold text-blue-600"
+                        [appOverflowTooltip]="activityName(record)"
+                        [appOverflowTooltipLines]="2"
+                        tabindex="0"
+                      >
+                        {{ activityName(record) }}
+                      </p>
+                    </td>
+                    <td data-label="Módulo / tecnología" class="px-4 py-3">
+                      <span
+                        class="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-black text-violet-700"
+                        >{{ moduleName(record) }}</span
+                      >
+                      <p class="mt-2 text-xs font-bold text-slate-400">
+                        {{ record.tecnologia || 'Sin tecnología' }}
+                      </p>
+                    </td>
+                    <td data-label="Clasificación" class="px-4 py-3">
+                      <p class="font-bold text-slate-600">
+                        {{ record.categoria || 'Sin categoría' }}
+                      </p>
+                      <p class="mt-1 text-xs font-bold text-amber-600">
+                        {{ record.tipoHora || 'Sin tipo de hora' }}
+                      </p>
+                    </td>
+                    <td data-label="Horas" class="px-4 py-3 text-right font-black text-emerald-700">
+                      {{ formatHours(hours(record)) }}
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="px-4 py-12 text-center font-bold text-slate-400" colspan="6">
+                      No hay registros que coincidan con los filtros.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    }
+  </div>
+</div>

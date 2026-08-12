@@ -1,0 +1,56 @@
+<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <div
+    class="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-slate-50 px-4 py-3"
+  >
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p class="text-[11px] font-extrabold uppercase tracking-widest text-blue-600">
+          Importar Múltiples Registros
+        </p>
+        <p class="mt-1 text-xs text-slate-500">Una fecha por bloque, una actividad por línea.</p>
+      </div>
+      <span
+        class="rounded-full border border-blue-200 bg-white px-3 py-1 text-[11px] font-black text-blue-700"
+        >Hora | Descripción | Funcional</span
+      >
+    </div>
+  </div>
+  <div class="flex flex-col gap-3 p-4">
+    <details
+      class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-500"
+    >
+      <summary class="cursor-pointer font-black uppercase tracking-widest text-slate-600">
+        Ver ejemplo
+      </summary>
+      <div class="mt-3 overflow-x-auto rounded-lg bg-white p-3 font-mono text-[12px] shadow-sm">
+        <p class="text-slate-800">26/05/2026</p>
+        <p>7:30AM-9:00AM | Desarrollo de ajuste FI | Nombre Funcional</p>
+        <p>9:30AM-11:00AM | Revisión con usuario | Nombre Funcional</p>
+      </div>
+    </details>
+
+    <label class="flex flex-col gap-1">
+      <span class="text-xs font-bold text-slate-600">Pega aquí tus registros de tiempo</span>
+      <textarea
+        class="min-h-[150px] w-full resize-y rounded-xl border border-slate-300 px-3 py-2.5 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        [(ngModel)]="rawText"
+        placeholder="26/05/2026&#10;7:30AM-9:00AM | Descripción de la actividad | Funcional&#10;9:30AM-11:00AM | Otra actividad | Funcional"
+      ></textarea>
+    </label>
+
+    <div class="grid grid-cols-2 gap-2">
+      <button
+        class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700"
+        (click)="onProcess()"
+      >
+        Procesar Registros
+      </button>
+      <button
+        class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+        (click)="clear()"
+      >
+        Limpiar
+      </button>
+    </div>
+  </div>
+</div>
