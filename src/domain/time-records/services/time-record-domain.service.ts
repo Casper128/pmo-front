@@ -22,6 +22,9 @@ export type ConfigurableTimeRecordField =
   | 'objetoRicef'
   | 'categoria';
 
+export type HourBillingCategory = 'billable' | 'factory' | 'non_billable';
+export type HourBillingFilter = 'all' | HourBillingCategory;
+
 export interface TimeRecordParameters {
   defaultFor(key: ConfigurableTimeRecordField): string;
   defaults(): Partial<typeof TIME_RECORD_DEFAULTS>;
@@ -179,7 +182,13 @@ export class TimeRecordDomainService {
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([fecha, items]) => {
-        const totalHoras = items.reduce((s, { record }) => s + parseFloat(record.horas || '0'), 0);
+        const totalHoras = items.reduce(
+          (sum, { record }) =>
+            this.isCountableHour(record.tipoHora)
+              ? sum + parseFloat(record.horas || '0')
+              : sum,
+          0,
+        );
         return { fecha, records: items, totalHoras, alerta: this.calcAlert(totalHoras, fecha) };
       });
   }
@@ -250,13 +259,13 @@ export class TimeRecordDomainService {
   getLaborRecordsHoursExceeded(records: TimeRecord[]): RecordHoursLimitViolation[] {
     return records
       .map((record, index) => ({ record, index }))
-      .filter(({ record }) => this.isLaborHour(record.tipoHora))
+      .filter(({ record }) => this.isCountableHour(record.tipoHora))
       .map(({ record, index }) => ({
         index,
         fecha: record.fecha,
         horas: Number(record.horas || 0),
         limiteHoras: this.maxDailyLaborHours(),
-        tipoHora: 'Laboral',
+        tipoHora: 'Computable',
       }))
       .filter((item) => Number.isFinite(item.horas) && item.horas > item.limiteHoras);
   }
@@ -265,7 +274,7 @@ export class TimeRecordDomainService {
     const totals = new Map<string, number>();
 
     records
-      .filter((record) => this.isLaborHour(record.tipoHora))
+      .filter((record) => this.isCountableHour(record.tipoHora))
       .forEach((record) => {
         const hours = Number(record.horas);
         if (!Number.isFinite(hours)) return;
@@ -278,7 +287,7 @@ export class TimeRecordDomainService {
         fecha,
         totalHoras,
         limiteHoras: this.maxDailyLaborHours(),
-        tipoHora: 'Laboral',
+        tipoHora: 'Computable',
       }));
   }
 
@@ -288,6 +297,31 @@ export class TimeRecordDomainService {
 
   isLaborHour(tipoHora: string): boolean {
     return this.normalizeText(tipoHora) === 'laboral';
+  }
+
+  isFactoryHour(tipoHora: string): boolean {
+    const normalized = this.normalizeText(tipoHora);
+    return normalized.includes('fabrica') || normalized.includes('factory');
+  }
+
+  isCountableHour(tipoHora: string): boolean {
+    return !this.isFactoryHour(tipoHora);
+  }
+
+  hourBillingCategory(tipoHora: string): HourBillingCategory {
+    const normalized = this.normalizeText(tipoHora).replace(/[-_]+/g, ' ');
+    if (normalized.includes('fabrica') || normalized.includes('factory')) return 'factory';
+    if (
+      normalized.includes('no facturable') ||
+      normalized.includes('no facturacion') ||
+      normalized.includes('nofacturable')
+    )
+      return 'non_billable';
+    return 'billable';
+  }
+
+  matchesHourBillingFilter(tipoHora: string, filter: HourBillingFilter): boolean {
+    return filter === 'all' || this.hourBillingCategory(tipoHora) === filter;
   }
 
   calcHoras(horaIni: string, horaFin: string): string {

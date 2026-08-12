@@ -53,7 +53,7 @@
           </button>
         </div>
       </div>
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         <app-ui-date-input
           label="Desde"
           [ngModel]="dateFrom()"
@@ -87,6 +87,12 @@
           [options]="prefixOptions"
           [ngModel]="prefix()"
           (ngModelChange)="prefix.set($event)"
+        />
+        <app-ui-select
+          label="Clasificación de hora"
+          [options]="hourBillingOptions"
+          [ngModel]="hourBillingFilter()"
+          (ngModelChange)="hourBillingFilter.set($event)"
         />
       </div>
       <div class="mt-4 flex items-center justify-between gap-3">
@@ -150,7 +156,7 @@
           tone="emerald"
         />
         <app-ui-metric-card
-          label="Horas laborales"
+          label="Horas facturables"
           [value]="laborPercentage() + '%'"
           description="Del total reportado"
           tone="violet"
@@ -211,12 +217,12 @@
         </article>
         <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p class="text-xs font-black uppercase tracking-widest text-slate-400">
-            Horas no laborales
+            Horas no facturables
           </p>
           <p class="mt-2 text-2xl font-black text-amber-700">
             {{ formatHours(nonLaborHours()) }} h
           </p>
-          <p class="mt-1 text-xs font-bold text-slate-400">Esfuerzo fuera de hora laboral</p>
+          <p class="mt-1 text-xs font-bold text-slate-400">Esfuerzo marcado como no facturable</p>
         </article>
         <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p class="text-xs font-black uppercase tracking-widest text-slate-400">

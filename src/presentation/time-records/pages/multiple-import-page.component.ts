@@ -3,7 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TimeRecord, DayGroup } from '@domain/time-records/models/time-record.model';
-import { TimeRecordDomainService } from '@domain/time-records/services/time-record-domain.service';
+import {
+  HourBillingFilter,
+  TimeRecordDomainService,
+} from '@domain/time-records/services/time-record-domain.service';
 import {
   SendAllRecordsUseCase,
   SendRecordLog,
@@ -179,7 +182,14 @@ export class MultipleImportPageComponent implements OnInit {
   reportTableConsultant = signal('');
   reportTableClient = signal('');
   reportTableDate = signal('');
+  reportTableHourFilter = signal<HourBillingFilter>('all');
   reportTableSearch = signal('');
+  readonly hourBillingOptions: readonly UiSelectOption[] = [
+    { value: 'all', label: 'Todos los tipos de hora' },
+    { value: 'billable', label: 'Facturables' },
+    { value: 'factory', label: 'Fábrica' },
+    { value: 'non_billable', label: 'No facturables' },
+  ];
 
   excelConsultants = computed(() =>
     this.uniqueText(this.excelReports().map((row) => row.consultor)),
@@ -209,6 +219,8 @@ export class MultipleImportPageComponent implements OnInit {
           return false;
         if (this.reportTableClient() && row.cliente !== this.reportTableClient()) return false;
         if (this.reportTableDate() && row.fecha !== this.reportTableDate()) return false;
+        if (!this.domain.matchesHourBillingFilter(row.tipoHora, this.reportTableHourFilter()))
+          return false;
         if (!search) return true;
         return [
           row.identificador,
@@ -277,6 +289,7 @@ export class MultipleImportPageComponent implements OnInit {
   managementError = signal('');
   managementFechaIni = signal('');
   managementFechaFin = signal('');
+  managementHourFilter = signal<HourBillingFilter>('all');
   managementSearch = '';
   managementEditVisible = signal(false);
   managementEditSaving = signal(false);
@@ -304,6 +317,8 @@ export class MultipleImportPageComponent implements OnInit {
       if (!date) return false;
       if (start && date < start) return false;
       if (end && date > end) return false;
+      if (!this.domain.matchesHourBillingFilter(report.tipoHora || '', this.managementHourFilter()))
+        return false;
       return true;
     });
   });
@@ -412,7 +427,15 @@ export class MultipleImportPageComponent implements OnInit {
   refreshGroups() {
     const recs = this.records();
     this.groups.set(this.domain.groupByDate(recs));
-    this.totalGeneral.set(recs.reduce((s, r) => s + parseFloat(r.horas || '0'), 0));
+    this.totalGeneral.set(
+      recs.reduce(
+        (sum, record) =>
+          this.domain.isCountableHour(record.tipoHora)
+            ? sum + parseFloat(record.horas || '0')
+            : sum,
+        0,
+      ),
+    );
   }
 
   onEdit(index: number) {
@@ -432,11 +455,11 @@ export class MultipleImportPageComponent implements OnInit {
       ...this.domain.getInvalidFields(updated),
     ];
     if (
-      this.domain.isLaborHour(updated.tipoHora) &&
+      this.domain.isCountableHour(updated.tipoHora) &&
       Number(updated.horas || 0) > this.domain.getMaxDailyLaborHours()
     ) {
       errors.push(
-        `Un registro laboral no puede superar ${this.domain.getMaxDailyLaborHours()} horas`,
+        `Un registro computable no puede superar ${this.domain.getMaxDailyLaborHours()} horas`,
       );
     }
     if (errors.length > 0) {
@@ -516,7 +539,7 @@ export class MultipleImportPageComponent implements OnInit {
       const suffix =
         registrosExcedidos.length > 3 ? `; y ${registrosExcedidos.length - 3} registro(s) mas` : '';
       this.showAlert(
-        `No se pueden enviar registros laborales de mas de ${this.domain.getMaxDailyLaborHours()} horas. Ajusta: ${ejemplos}${suffix}`,
+        `No se pueden enviar registros computables de más de ${this.domain.getMaxDailyLaborHours()} horas. Ajusta: ${ejemplos}${suffix}`,
         'error',
         'Envío bloqueado por duración inválida',
       );
@@ -534,7 +557,7 @@ export class MultipleImportPageComponent implements OnInit {
         .join('; ');
       const suffix = diasExcedidos.length > 3 ? `; y ${diasExcedidos.length - 3} dia(s) mas` : '';
       this.showAlert(
-        `No se pueden enviar registros con mas de ${this.domain.getMaxDailyLaborHours()} horas laborales por dia. Ajusta: ${ejemplos}${suffix}`,
+        `No se pueden enviar registros con más de ${this.domain.getMaxDailyLaborHours()} horas computables por día. Ajusta: ${ejemplos}${suffix}`,
         'error',
         'Envío bloqueado por exceso diario',
       );
@@ -794,6 +817,7 @@ export class MultipleImportPageComponent implements OnInit {
   clearManagementFilters() {
     this.managementFechaIni.set('');
     this.managementFechaFin.set('');
+    this.managementHourFilter.set('all');
     this.onManagementSearchChange('');
   }
 
@@ -842,7 +866,7 @@ export class MultipleImportPageComponent implements OnInit {
             this.reportResult.set({
               type: 'success',
               title: 'Reporte generado',
-              detail: `${this.excelReports().length} registros laborales procesados directamente en pantalla.`,
+              detail: `${this.excelReports().length} registros procesados directamente en pantalla. Puedes segmentarlos por facturación.`,
             });
             this.showAlert('Reporte generado correctamente', 'success');
           } catch (error) {
@@ -888,6 +912,7 @@ export class MultipleImportPageComponent implements OnInit {
     this.reportTableConsultant.set('');
     this.reportTableClient.set('');
     this.reportTableDate.set('');
+    this.reportTableHourFilter.set('all');
     this.reportTableSearch.set('');
     this.alert.set(null);
   }
@@ -963,13 +988,13 @@ export class MultipleImportPageComponent implements OnInit {
 
   managementDailyLaborHoursWithDraft(): number {
     const draft = this.managementEditDraft();
-    if (!draft || !this.domain.isLaborHour(draft.tipoHora)) return 0;
+    if (!draft || !this.domain.isCountableHour(draft.tipoHora)) return 0;
     const original = this.managementEditOriginal();
     return this.managementReports().reduce(
       (sum, report) => {
         if ((report.identificador || '') === (original?.identificador || '')) return sum;
         if (report.fechaInicio !== draft.fecha) return sum;
-        if (!this.domain.isLaborHour(report.tipoHora || 'Laboral')) return sum;
+        if (!this.domain.isCountableHour(report.tipoHora || '')) return sum;
         return sum + this.reportHours(report);
       },
       Number(draft.horas || 0),
@@ -1221,9 +1246,9 @@ export class MultipleImportPageComponent implements OnInit {
         horaInicio: this.excelTime(valueAt(row, columns.horaInicio)),
         horaFin: this.excelTime(valueAt(row, columns.horaFin)),
       }))
-      .filter((row) => row.fecha && Number.isFinite(row.horas) && this.isLaborHour(row.tipoHora));
+      .filter((row) => row.fecha && Number.isFinite(row.horas));
 
-    if (!reports.length) throw new Error('no se encontraron registros con tipo de hora Laboral');
+    if (!reports.length) throw new Error('no se encontraron registros de tiempo válidos');
     const preferredNames = new Map<string, { label: string; score: number }>();
     reports.forEach((report) => {
       const key = this.personNameKey(report.consultor);
@@ -1246,6 +1271,7 @@ export class MultipleImportPageComponent implements OnInit {
     this.reportTableConsultant.set(consultants.length === 1 ? consultants[0] : '');
     this.reportTableClient.set('');
     this.reportTableDate.set('');
+    this.reportTableHourFilter.set('all');
     this.reportTableSearch.set('');
   }
 
@@ -1259,11 +1285,6 @@ export class MultipleImportPageComponent implements OnInit {
 
   private uniqueText(values: string[]): string[] {
     return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
-  }
-
-  private isLaborHour(value: unknown): boolean {
-    const key = this.normalizeHeader(value);
-    return key === 'laboral' || key === 'hora laboral' || key === 'horas laborales';
   }
 
   private personNameKey(value: unknown): string {
@@ -1351,12 +1372,12 @@ export class MultipleImportPageComponent implements OnInit {
     if (!Number.isFinite(hours) || hours <= 0) errors.push('Horas debe ser mayor a 0');
     if (!calculatedHours) errors.push('Hora fin debe ser mayor a hora inicio');
 
-    if (this.domain.isLaborHour(draft.tipoHora)) {
+    if (this.domain.isCountableHour(draft.tipoHora)) {
       const limit = this.domain.getMaxDailyLaborHours();
-      if (hours > limit) errors.push(`Un registro laboral no puede superar ${limit} horas`);
+      if (hours > limit) errors.push(`Un registro computable no puede superar ${limit} horas`);
       const dailyTotal = this.managementDailyLaborHoursWithDraft();
       if (dailyTotal > limit)
-        errors.push(`El total laboral del dia queda en ${dailyTotal.toFixed(1)}h/${limit}h`);
+        errors.push(`El total computable del día queda en ${dailyTotal.toFixed(1)}h/${limit}h`);
     }
 
     this.managementEditErrors.set(errors);

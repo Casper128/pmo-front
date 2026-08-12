@@ -78,12 +78,12 @@
             <h2 class="mt-1 text-xl font-black text-slate-900">Consultar reporte consolidado</h2>
             <p class="mt-1 text-sm text-slate-500">
               La respuesta Excel del endpoint se procesa en memoria, unifica los nombres de
-              consultores y utiliza únicamente horas laborales.
+              consultores y permite analizar por horas facturables, de Fábrica y no facturables.
             </p>
           </div>
           <span
             class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700"
-            >Solo horas laborales</span
+            >Filtro por facturación</span
           >
         </div>
 
@@ -233,7 +233,7 @@
             </div>
 
             <div
-              class="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-4"
+              class="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-5"
             >
               <app-ui-select
                 label="Consultor"
@@ -252,6 +252,12 @@
                 [options]="reportDateOptions()"
                 [ngModel]="reportTableDate()"
                 (ngModelChange)="reportTableDate.set($event)"
+              />
+              <app-ui-select
+                label="Clasificación de hora"
+                [options]="hourBillingOptions"
+                [ngModel]="reportTableHourFilter()"
+                (ngModelChange)="reportTableHourFilter.set($event)"
               />
               <app-ui-search-input
                 label="Buscar en el reporte"
@@ -520,7 +526,7 @@
           </div>
 
           <div
-            class="mb-5 grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 md:grid-cols-[1fr_1fr_auto]"
+            class="mb-5 grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]"
           >
             <app-ui-date-input
               label="Fecha inicio"
@@ -531,6 +537,12 @@
               label="Fecha fin"
               [ngModel]="managementFechaFin()"
               (ngModelChange)="onManagementFechaFinChange($event)"
+            />
+            <app-ui-select
+              label="Clasificación de hora"
+              [options]="hourBillingOptions"
+              [ngModel]="managementHourFilter()"
+              (ngModelChange)="managementHourFilter.set($event)"
             />
             <button
               class="self-end rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-100"
@@ -750,7 +762,7 @@
                   />
                   <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                     <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      Total laboral del día
+                      Total computable del día
                     </p>
                     <p class="mt-1 text-2xl font-black text-slate-900">
                       {{ formatHours(managementDailyLaborHoursWithDraft()) }}h

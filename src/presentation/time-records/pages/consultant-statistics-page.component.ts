@@ -3,6 +3,10 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthGateway } from '@application/auth/auth.gateway';
 import { ManagementReport as ConsultantRecord } from '@domain/time-records/models/management-report.model';
+import {
+  HourBillingFilter,
+  TimeRecordDomainService,
+} from '@domain/time-records/services/time-record-domain.service';
 import { TimeManagementGateway } from '@application/time-records/ports/time-management.gateway';
 import { OverflowTooltipDirective } from '@presentation/shared/directives/overflow-tooltip.directive';
 import {
@@ -42,6 +46,7 @@ interface BreakdownItem {
 export class ConsultantStatisticsPageComponent implements OnInit {
   private management = inject(TimeManagementGateway);
   private auth = inject(AuthGateway);
+  private domain = inject(TimeRecordDomainService);
 
   records = signal<ConsultantRecord[]>([]);
   loading = signal(false);
@@ -53,6 +58,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   module = signal('');
   activity = signal('');
   prefix = signal('');
+  hourBillingFilter = signal<HourBillingFilter>('all');
   search = signal('');
 
   dateError = computed(() =>
@@ -78,12 +84,25 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     { value: 'PRY', label: 'PRY · Proyecto' },
     { value: 'OTRO', label: 'Sin clasificación' },
   ];
+  readonly hourBillingOptions: readonly UiSelectOption[] = [
+    { value: 'all', label: 'Todos los tipos de hora' },
+    { value: 'billable', label: 'Facturables' },
+    { value: 'factory', label: 'Fábrica' },
+    { value: 'non_billable', label: 'No facturables' },
+  ];
 
   filteredRecords = computed(() => {
     if (this.dateError()) return [];
     const term = this.normalize(this.search());
     return this.ownRecords()
       .filter((record) => {
+        if (
+          !this.domain.matchesHourBillingFilter(
+            record.tipoHora || '',
+            this.hourBillingFilter(),
+          )
+        )
+          return false;
         const date = this.recordDate(record);
         if (this.dateFrom() && date < this.dateFrom()) return false;
         if (this.dateTo() && date > this.dateTo()) return false;
@@ -139,7 +158,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     const total = this.totalHours();
     if (!total) return 0;
     const labor = this.filteredRecords()
-      .filter((record) => this.normalize(record.tipoHora) === 'laboral')
+      .filter((record) => this.domain.hourBillingCategory(record.tipoHora || '') === 'billable')
       .reduce((sum, record) => sum + this.hours(record), 0);
     return Math.round((labor / total) * 100);
   });
@@ -204,7 +223,9 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   );
   nonLaborHours = computed(() =>
     this.filteredRecords()
-      .filter((record) => this.normalize(record.tipoHora) !== 'laboral')
+      .filter(
+        (record) => this.domain.hourBillingCategory(record.tipoHora || '') === 'non_billable',
+      )
       .reduce((sum, record) => sum + this.hours(record), 0),
   );
   mainModule = computed(() => this.moduleBreakdown()[0]?.label || 'Sin datos');
@@ -376,6 +397,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     this.module.set('');
     this.activity.set('');
     this.prefix.set('');
+    this.hourBillingFilter.set('all');
     this.search.set('');
     this.setDefaultPeriod(this.ownRecords());
   }
