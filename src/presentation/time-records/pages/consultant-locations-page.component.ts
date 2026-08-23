@@ -54,7 +54,9 @@ export class ConsultantLocationsPageComponent implements OnInit, AfterViewInit, 
   error = signal('');
   selectedConsultant = signal('all');
   authorized = computed(() => {
-    const email = String(this.auth.user()?.email || '').trim().toLowerCase();
+    const email = String(this.auth.user()?.email || '')
+      .trim()
+      .toLowerCase();
     return environment.locationAdminEmails.includes(email);
   });
 
@@ -155,10 +157,8 @@ export class ConsultantLocationsPageComponent implements OnInit, AfterViewInit, 
   }
 
   statusClass(consultant: ConsultantLocation): string {
-    if (consultant.lastWithinHomeRadius === true)
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (consultant.lastWithinHomeRadius === false)
-      return 'border-red-200 bg-red-50 text-red-700';
+    if (consultant.lastWithinHomeRadius === true) return 'border-blue-200 bg-blue-50 text-blue-700';
+    if (consultant.lastWithinHomeRadius === false) return 'border-red-200 bg-red-50 text-red-700';
     return 'border-amber-200 bg-amber-50 text-amber-700';
   }
 

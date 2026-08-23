@@ -22,15 +22,7 @@ let selectSequence = 0;
   selector: 'app-ui-select',
   standalone: true,
   imports: [OverflowTooltipDirective],
-  styles: [
-    `
-      :host {
-        display: block;
-        min-width: 0;
-        width: 100%;
-      }
-    `,
-  ],
+  styleUrl: './ui-select.component.css',
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -38,136 +30,7 @@ let selectSequence = 0;
       multi: true,
     },
   ],
-  template: `
-    <div class="block w-full min-w-0">
-      @if (label) {
-        <label class="mb-1.5 block text-xs font-bold text-slate-600" [attr.for]="controlId">
-          {{ label }}
-        </label>
-      }
-      <button
-        #trigger
-        class="group flex min-h-12 w-full min-w-0 items-center gap-3 rounded-xl border bg-white py-2 pl-3.5 pr-2.5 text-left text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-        type="button"
-        role="combobox"
-        aria-haspopup="listbox"
-        [id]="controlId"
-        [disabled]="isDisabled"
-        [attr.aria-expanded]="open"
-        [attr.aria-controls]="listboxId"
-        [attr.aria-invalid]="error ? true : null"
-        [attr.aria-describedby]="descriptionId"
-        [class.border-red-400]="error"
-        [class.border-blue-500]="open && !error"
-        [class.border-slate-300]="!open && !error"
-        [class.ring-4]="open"
-        [class.ring-blue-100]="open"
-        [class.hover:border-blue-400]="!isDisabled"
-        (click)="toggle()"
-        (keydown)="onTriggerKeydown($event)"
-        (blur)="onTouched()"
-      >
-        <span
-          class="min-w-0 flex-1 truncate"
-          [class.text-slate-400]="!value"
-          [class.text-slate-800]="value"
-          [appOverflowTooltip]="selectedLabel"
-          >{{ selectedLabel || placeholder }}</span
-        >
-        <span
-          class="grid size-7 shrink-0 place-items-center rounded-lg transition"
-          [class.rotate-180]="open"
-          [class.bg-blue-100]="open"
-          [class.text-blue-700]="open"
-          [class.bg-slate-100]="!open"
-          [class.text-slate-500]="!open"
-          aria-hidden="true"
-        >
-          <svg viewBox="0 0 20 20" class="size-4 fill-none stroke-current" stroke-width="2">
-            <path d="m6 8 4 4 4-4" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </span>
-      </button>
-
-      @if (open) {
-        <div
-          #popover
-          class="fixed z-[200] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-950/20"
-          [style.top.px]="popoverTop"
-          [style.left.px]="popoverLeft"
-          [style.width.px]="popoverWidth"
-        >
-          @if (options.length > searchThreshold) {
-            <div class="relative mb-2">
-              <svg
-                class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 fill-none stroke-slate-400"
-                viewBox="0 0 24 24"
-                stroke-width="2"
-                aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-4-4" stroke-linecap="round" />
-              </svg>
-              <input
-                #searchInput
-                class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                type="search"
-                autocomplete="off"
-                placeholder="Buscar opción..."
-                [value]="query"
-                (input)="onSearch($event)"
-                (keydown)="onSearchKeydown($event)"
-              />
-            </div>
-          }
-          <div [id]="listboxId" class="max-h-64 space-y-1 overflow-y-auto" role="listbox">
-            @for (option of filteredOptions; track option.value; let index = $index) {
-              <button
-                class="group/option flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-40"
-                type="button"
-                role="option"
-                [disabled]="option.disabled ?? false"
-                [attr.aria-selected]="option.value === value"
-                [class.bg-blue-600]="option.value === value"
-                [class.text-white]="option.value === value"
-                [class.bg-blue-50]="index === activeIndex && option.value !== value"
-                [class.text-blue-900]="index === activeIndex && option.value !== value"
-                [class.text-slate-700]="index !== activeIndex && option.value !== value"
-                [class.hover:bg-slate-100]="option.value !== value"
-                (mouseenter)="activeIndex = index"
-                (click)="select(option)"
-              >
-                <span class="min-w-0 flex-1 break-words font-semibold">{{ option.label }}</span>
-                @if (option.value === value) {
-                  <svg
-                    class="size-4 shrink-0 fill-none stroke-current"
-                    viewBox="0 0 20 20"
-                    stroke-width="2.5"
-                  >
-                    <path d="m4 10 4 4 8-8" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                }
-              </button>
-            } @empty {
-              <div class="px-3 py-8 text-center text-sm font-semibold text-slate-400">
-                No hay opciones que coincidan.
-              </div>
-            }
-          </div>
-        </div>
-      }
-
-      @if (error || hint) {
-        <span
-          class="mt-1.5 block text-xs font-semibold"
-          [id]="descriptionId"
-          [class.text-red-600]="error"
-          [class.text-slate-400]="!error"
-          >{{ error || hint }}</span
-        >
-      }
-    </div>
-  `,
+  templateUrl: './ui-select.component.html',
 })
 export class UiSelectComponent implements ControlValueAccessor {
   @ViewChild('trigger') private trigger?: ElementRef<HTMLButtonElement>;
@@ -180,6 +43,7 @@ export class UiSelectComponent implements ControlValueAccessor {
   @Input() error = '';
   @Input() disabled = false;
   @Input() searchThreshold = 8;
+  @Input() searchPlaceholder = 'Buscar opción...';
 
   readonly controlId = `ui-select-${++selectSequence}`;
   readonly listboxId = `${this.controlId}-listbox`;
@@ -210,6 +74,16 @@ export class UiSelectComponent implements ControlValueAccessor {
     return term
       ? this.options.filter((option) => this.normalize(option.label).includes(term))
       : this.options;
+  }
+
+  get activeOptionId(): string | null {
+    return this.open && this.filteredOptions[this.activeIndex]
+      ? this.optionId(this.activeIndex)
+      : null;
+  }
+
+  optionId(index: number): string {
+    return `${this.controlId}-option-${index}`;
   }
 
   writeValue(value: string | null | undefined): void {

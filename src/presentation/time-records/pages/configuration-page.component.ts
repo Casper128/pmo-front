@@ -12,11 +12,12 @@ import {
   UiSelectOption,
 } from '@presentation/shared/components/ui-select/ui-select.component';
 import { UiPageHeaderComponent } from '@presentation/shared/components/ui-page-header/ui-page-header.component';
+import { UiFieldComponent } from '@presentation/shared/components/ui-field/ui-field.component';
 
 @Component({
   selector: 'app-configuration-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, UiSelectComponent, UiPageHeaderComponent],
+  imports: [CommonModule, FormsModule, UiSelectComponent, UiPageHeaderComponent, UiFieldComponent],
   templateUrl: './configuration-page.component.html',
 })
 export class ConfigurationPageComponent implements OnInit {
@@ -77,6 +78,11 @@ export class ConfigurationPageComponent implements OnInit {
 
   removeOption(field: AdvancedFieldConfiguration, index: number): void {
     const removed = field.options[index];
+    const label = removed?.label || removed?.value || 'esta opción';
+    if (
+      !window.confirm(`Eliminar ${label}? Este cambio afectará los valores disponibles al guardar.`)
+    )
+      return;
     field.options.splice(index, 1);
     if (field.defaultValue === removed?.value)
       field.defaultValue = field.options.find((item) => item.active)?.value || '';
@@ -90,6 +96,13 @@ export class ConfigurationPageComponent implements OnInit {
 
   async save(): Promise<void> {
     this.message.set(null);
+    if (!this.parameters.canManage()) {
+      this.message.set({
+        type: 'error',
+        text: 'Solo el administrador puede modificar la configuración global.',
+      });
+      return;
+    }
     try {
       await this.parameters.save(this.draftFields, this.draftSettings);
       this.syncDraft();
@@ -97,8 +110,8 @@ export class ConfigurationPageComponent implements OnInit {
         type: 'success',
         text:
           this.parameters.source() === 'supabase'
-            ? 'Tu configuración personal se guardó en Supabase.'
-            : 'Configuración guardada localmente. Se sincronizará cuando configures Supabase.',
+            ? 'Configuración global guardada.'
+            : 'Configuración global guardada localmente.',
       });
     } catch (error) {
       this.message.set({
@@ -109,11 +122,24 @@ export class ConfigurationPageComponent implements OnInit {
   }
 
   restoreDefaults(): void {
+    if (!this.parameters.canManage()) {
+      this.message.set({
+        type: 'error',
+        text: 'Solo el administrador puede restaurar la configuración global.',
+      });
+      return;
+    }
+    if (
+      !window.confirm(
+        'Restaurar los valores originales? Revisa los cambios antes de guardar la configuración global.',
+      )
+    )
+      return;
     this.parameters.resetLocal();
     this.syncDraft();
     this.message.set({
       type: 'success',
-      text: 'Se restauraron los valores originales. Pulsa “Guardar mi configuración” para conservarlos.',
+      text: 'Se restauraron los valores originales. Pulsa “Guardar configuración global” para conservarlos.',
     });
   }
 

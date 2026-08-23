@@ -1,0 +1,159 @@
+<div class="block w-full min-w-0">
+  @if (label) {
+    <label class="mb-1.5 block text-xs font-bold text-slate-600" [attr.for]="controlId">
+      {{ label }}
+    </label>
+  }
+  <button
+    #trigger
+    class="ui-control group flex w-full min-w-0 items-center gap-3 py-2 pl-3.5 pr-2.5 text-left"
+    type="button"
+    role="combobox"
+    aria-haspopup="dialog"
+    [id]="controlId"
+    [disabled]="isDisabled"
+    [attr.aria-expanded]="open"
+    [attr.aria-controls]="popoverId"
+    [attr.aria-invalid]="error ? true : null"
+    [attr.aria-describedby]="descriptionId"
+    [class.ui-control--error]="error"
+    [class.ui-control--open]="open && !error"
+    (click)="toggle()"
+    (keydown)="onTriggerKeydown($event)"
+    (blur)="onTouched()"
+  >
+    <span class="min-w-0 flex-1" [class.text-slate-400]="!value" [class.text-slate-800]="value">
+      {{ displayValue }}
+    </span>
+    <span
+      class="grid size-7 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-700 transition"
+      [class.bg-blue-100]="open"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 24 24" class="size-4 fill-none stroke-current" stroke-width="2">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </span>
+  </button>
+
+  @if (open) {
+    <section
+      #popover
+      class="ui-menu-surface fixed z-[250] overflow-hidden p-3"
+      role="dialog"
+      aria-modal="false"
+      [id]="popoverId"
+      [attr.aria-label]="'Seleccionar ' + (label || 'hora')"
+      [style.top.px]="popoverTop"
+      [style.left.px]="popoverLeft"
+      [style.width.px]="popoverWidth"
+    >
+      <div class="mb-3 flex items-center justify-between rounded-xl bg-blue-50 px-3 py-2.5">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-widest text-blue-500">
+            Hora seleccionada
+          </p>
+          <p class="mt-0.5 text-lg font-bold text-blue-950">{{ draftDisplay }}</p>
+        </div>
+        <button
+          class="rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-bold text-blue-700"
+          type="button"
+          (click)="selectNow()"
+        >
+          Ahora
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <p
+            class="mb-1.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400"
+          >
+            Hora
+          </p>
+          <div
+            #hourList
+            class="max-h-52 space-y-1 overflow-y-auto rounded-xl bg-slate-50 p-1"
+            role="listbox"
+            aria-label="Hora"
+          >
+            @for (hour of hours; track hour) {
+              <button
+                class="w-full rounded-lg px-2 py-2 text-sm font-bold transition"
+                type="button"
+                role="option"
+                [attr.aria-selected]="hour === selectedHour"
+                [attr.aria-pressed]="hour === selectedHour"
+                [class.bg-blue-600]="hour === selectedHour"
+                [class.text-white]="hour === selectedHour"
+                [class.text-slate-600]="hour !== selectedHour"
+                [class.hover:bg-blue-100]="hour !== selectedHour"
+                (click)="selectHour(hour)"
+              >
+                {{ hour }}
+              </button>
+            }
+          </div>
+        </div>
+        <div>
+          <p
+            class="mb-1.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400"
+          >
+            Minutos
+          </p>
+          <div
+            #minuteList
+            class="max-h-52 space-y-1 overflow-y-auto rounded-xl bg-slate-50 p-1"
+            role="listbox"
+            aria-label="Minutos"
+          >
+            @for (minute of minutes; track minute) {
+              <button
+                class="w-full rounded-lg px-2 py-2 text-sm font-bold transition"
+                type="button"
+                role="option"
+                [attr.aria-selected]="minute === selectedMinute"
+                [attr.aria-pressed]="minute === selectedMinute"
+                [class.bg-blue-600]="minute === selectedMinute"
+                [class.text-white]="minute === selectedMinute"
+                [class.text-slate-600]="minute !== selectedMinute"
+                [class.hover:bg-blue-100]="minute !== selectedMinute"
+                (click)="selectMinute(minute)"
+              >
+                {{ minute }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+        <button
+          class="ui-btn ui-btn-secondary min-h-9 px-3 py-2 text-xs"
+          type="button"
+          (click)="clear()"
+        >
+          Limpiar
+        </button>
+        <button
+          class="ui-btn ui-btn-primary min-h-9 px-3 py-2 text-xs"
+          type="button"
+          (click)="confirm()"
+        >
+          Listo
+        </button>
+      </div>
+    </section>
+  }
+
+  @if (error || hint) {
+    <span
+      class="mt-1.5 block text-xs font-semibold"
+      [id]="descriptionId"
+      [class.text-red-600]="error"
+      [class.text-slate-400]="!error"
+      >{{ error || hint }}</span
+    >
+  }
+</div>

@@ -1,0 +1,18 @@
+<div class="ui-segmented" role="radiogroup" [attr.aria-label]="label">
+  @for (option of options; track option.value; let index = $index) {
+    <button
+      class="ui-segmented__item"
+      type="button"
+      role="radio"
+      [id]="optionId(option.value)"
+      [disabled]="option.disabled"
+      [attr.aria-checked]="option.value === value"
+      [attr.tabindex]="option.value === value || (!hasSelectedValue() && index === 0) ? 0 : -1"
+      [class.is-selected]="option.value === value"
+      (click)="select(option.value)"
+      (keydown)="onKeydown($event, index)"
+    >
+      {{ option.label }}
+    </button>
+  }
+</div>

@@ -6,11 +6,14 @@ import { RegisterTimeRecordUseCase } from '@application/time-records/use-cases/r
 import { SendAllRecordsUseCase } from '@application/time-records/use-cases/send-all-records.use-case';
 import { TimeRecordRepository } from '@domain/time-records/repositories/time-record.repository';
 import { TimeRecordDomainService } from '@domain/time-records/services/time-record-domain.service';
+import { TimeRecordApiBodyBuilder } from '@domain/time-records/services/time-record-api-body.builder';
 import { AppParametersFacade } from '@application/configuration/app-parameters.facade';
 import { TimeManagementHttpAdapter } from '@infrastructure/time-records/adapters/time-management-http.adapter';
 import { TimeRecordHttpAdapter } from '@infrastructure/time-records/adapters/time-record-http.adapter';
 import { SendLogGateway } from '@application/time-records/ports/send-log.gateway';
 import { SupabaseSendLogAdapter } from '@infrastructure/time-records/adapters/supabase-send-log.adapter';
+import { ManagementTemplateGateway } from '@application/time-records/ports/management-template.gateway';
+import { ManagementTemplateAdapter } from '@infrastructure/time-records/adapters/management-template.adapter';
 
 export const TIME_RECORDS_PROVIDERS: Provider[] = [
   {
@@ -26,8 +29,17 @@ export const TIME_RECORDS_PROVIDERS: Provider[] = [
     useClass: SupabaseSendLogAdapter,
   },
   {
+    provide: ManagementTemplateGateway,
+    useClass: ManagementTemplateAdapter,
+  },
+  {
     provide: TimeRecordDomainService,
     useFactory: (parameters: AppParametersFacade) => new TimeRecordDomainService(parameters),
+    deps: [AppParametersFacade],
+  },
+  {
+    provide: TimeRecordApiBodyBuilder,
+    useFactory: (parameters: AppParametersFacade) => new TimeRecordApiBodyBuilder(parameters),
     deps: [AppParametersFacade],
   },
   {
@@ -36,9 +48,16 @@ export const TIME_RECORDS_PROVIDERS: Provider[] = [
       repository: TimeRecordRepository,
       location: LocationGateway,
       audit: UserAuditGateway,
-      domain: TimeRecordDomainService,
-    ) => new RegisterTimeRecordUseCase(repository, location, audit, domain),
-    deps: [TimeRecordRepository, LocationGateway, UserAuditGateway, TimeRecordDomainService],
+      templates: ManagementTemplateGateway,
+      bodyBuilder: TimeRecordApiBodyBuilder,
+    ) => new RegisterTimeRecordUseCase(repository, location, audit, templates, bodyBuilder),
+    deps: [
+      TimeRecordRepository,
+      LocationGateway,
+      UserAuditGateway,
+      ManagementTemplateGateway,
+      TimeRecordApiBodyBuilder,
+    ],
   },
   {
     provide: SendAllRecordsUseCase,

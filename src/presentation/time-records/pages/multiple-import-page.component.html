@@ -1,22 +1,20 @@
-<div class="min-h-screen bg-slate-50 p-4 sm:p-6">
-  <div class="mx-auto max-w-7xl">
+<div class="ui-page">
+  <div class="ui-page-content">
     <app-ui-page-header
       class="mb-5 block"
-      eyebrow="Panel PMO"
-      title="Importación y reportes de tiempos"
-      description="Pega tus actividades, valida los campos faltantes, ajusta los detalles y envía los registros al API original."
+      eyebrow="Tiempos"
+      title="Reportar y revisar tiempos"
+      description="Pega tus actividades, completa lo pendiente y registra con confianza."
     />
 
     <!-- Alert -->
     @if (alert()) {
       <div
-        class="mb-4 px-4 py-3 rounded-xl text-sm font-semibold border"
-        [class.bg-blue-50]="alert()!.type === 'success'"
-        [class.text-blue-800]="alert()!.type === 'success'"
-        [class.border-blue-200]="alert()!.type === 'success'"
-        [class.bg-red-50]="alert()!.type === 'error'"
-        [class.text-red-800]="alert()!.type === 'error'"
-        [class.border-red-200]="alert()!.type === 'error'"
+        class="ui-alert mb-4"
+        [class.ui-alert-success]="alert()!.type === 'success'"
+        [class.ui-alert-error]="alert()!.type === 'error'"
+        [attr.role]="alert()!.type === 'error' ? 'alert' : 'status'"
+        aria-live="polite"
       >
         {{ alert()!.text }}
       </div>
@@ -35,25 +33,41 @@
               [totalGeneral]="totalGeneral()"
               [sending]="sending()"
               [clientes]="clientes()"
+              [tipoHoraOptions]="tipoHoraOptions()"
               [defaultSolicitudes]="solicitudes()"
+              [defaultSolicitudOptions]="solicitudOptions()"
               (editRecord)="onEdit($event)"
               (deleteRecord)="onDelete($event)"
               (updateRecord)="onUpdateRecord($event.index, $event.record)"
+              (managementSelected)="onManagementSelected($event)"
               (sendAll)="onSendAll()"
               (cancelImport)="onCancelImport()"
             />
           } @else {
             <section
-              class="grid min-h-[28rem] place-items-center rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm"
+              class="ui-surface grid min-h-[28rem] place-items-center border-dashed p-8 text-center"
             >
               <div class="max-w-sm">
-                <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                  Vista previa
-                </p>
-                <h2 class="mt-2 text-xl font-black text-slate-800">Pega y procesa tus tiempos</h2>
+                <span
+                  class="mx-auto grid size-14 place-items-center rounded-2xl bg-blue-50 text-blue-700"
+                >
+                  <svg
+                    class="size-7 fill-none stroke-current"
+                    viewBox="0 0 24 24"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <p class="ui-eyebrow mt-4 text-slate-400">Vista previa</p>
+                <h2 class="mt-2 text-xl font-bold text-slate-800">Pega y procesa tus tiempos</h2>
                 <p class="mt-2 text-sm text-slate-500">
-                  La tabla aparecerá aquí con scroll interno, sin empujarte hasta el fondo de la
-                  página.
+                  La vista previa aparecerá aquí para completar y registrar tus actividades.
                 </p>
               </div>
             </section>
@@ -68,21 +82,30 @@
         (save)="onSaveEdit($event)"
         (cancel)="modalVisible.set(false)"
       />
+
+      <app-management-template-dialog
+        [template]="templateDialogVisible() ? templateDraft() : null"
+        [mode]="templateDialogMode()"
+        [saving]="templateDialogSaving()"
+        (templateChange)="onTemplateDraftChange($event)"
+        (save)="saveTemplateDialog()"
+        (close)="closeTemplateDialog()"
+      />
     } @else if (currentView() === 'download') {
-      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section class="ui-surface p-5">
         <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p class="text-[11px] font-black uppercase tracking-widest text-emerald-600">
+            <p class="text-[11px] font-bold uppercase tracking-widest text-blue-600">
               Reporte de tiempos
             </p>
-            <h2 class="mt-1 text-xl font-black text-slate-900">Consultar reporte consolidado</h2>
+            <h2 class="mt-1 text-xl font-bold text-slate-900">Consultar reporte consolidado</h2>
             <p class="mt-1 text-sm text-slate-500">
-              La respuesta Excel del endpoint se procesa en memoria, unifica los nombres de
-              consultores y permite analizar por horas facturables, de Fábrica y no facturables.
+              Consulta actividades por cliente y periodo para revisar horas facturables, de Fábrica
+              y no facturables.
             </p>
           </div>
           <span
-            class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700"
+            class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700"
             >Filtro por facturación</span
           >
         </div>
@@ -91,71 +114,19 @@
           class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"
         >
           <div>
-            <p class="text-[11px] font-black uppercase tracking-widest text-slate-500">
+            <p class="text-[11px] font-bold uppercase tracking-widest text-slate-500">
               Periodo rápido
             </p>
             <p class="mt-1 text-xs font-semibold text-slate-500">
               El rango termina hoy y puede modificarse manualmente.
             </p>
           </div>
-          <div
-            class="grid grid-cols-2 gap-2 sm:flex"
-            role="group"
-            aria-label="Seleccionar periodo del reporte"
-          >
-            <button
-              class="rounded-xl border px-3 py-2 text-xs font-black transition"
-              type="button"
-              [class.border-emerald-500]="reportPeriodPreset() === 'day'"
-              [class.bg-emerald-600]="reportPeriodPreset() === 'day'"
-              [class.text-white]="reportPeriodPreset() === 'day'"
-              [class.border-slate-200]="reportPeriodPreset() !== 'day'"
-              [class.bg-white]="reportPeriodPreset() !== 'day'"
-              [class.text-slate-600]="reportPeriodPreset() !== 'day'"
-              (click)="setReportPeriod('day')"
-            >
-              1 día
-            </button>
-            <button
-              class="rounded-xl border px-3 py-2 text-xs font-black transition"
-              type="button"
-              [class.border-emerald-500]="reportPeriodPreset() === '1m'"
-              [class.bg-emerald-600]="reportPeriodPreset() === '1m'"
-              [class.text-white]="reportPeriodPreset() === '1m'"
-              [class.border-slate-200]="reportPeriodPreset() !== '1m'"
-              [class.bg-white]="reportPeriodPreset() !== '1m'"
-              [class.text-slate-600]="reportPeriodPreset() !== '1m'"
-              (click)="setReportPeriod('1m')"
-            >
-              1 mes
-            </button>
-            <button
-              class="rounded-xl border px-3 py-2 text-xs font-black transition"
-              type="button"
-              [class.border-emerald-500]="reportPeriodPreset() === '3m'"
-              [class.bg-emerald-600]="reportPeriodPreset() === '3m'"
-              [class.text-white]="reportPeriodPreset() === '3m'"
-              [class.border-slate-200]="reportPeriodPreset() !== '3m'"
-              [class.bg-white]="reportPeriodPreset() !== '3m'"
-              [class.text-slate-600]="reportPeriodPreset() !== '3m'"
-              (click)="setReportPeriod('3m')"
-            >
-              3 meses
-            </button>
-            <button
-              class="rounded-xl border px-3 py-2 text-xs font-black transition"
-              type="button"
-              [class.border-emerald-500]="reportPeriodPreset() === '6m'"
-              [class.bg-emerald-600]="reportPeriodPreset() === '6m'"
-              [class.text-white]="reportPeriodPreset() === '6m'"
-              [class.border-slate-200]="reportPeriodPreset() !== '6m'"
-              [class.bg-white]="reportPeriodPreset() !== '6m'"
-              [class.text-slate-600]="reportPeriodPreset() !== '6m'"
-              (click)="setReportPeriod('6m')"
-            >
-              6 meses
-            </button>
-          </div>
+          <app-ui-segmented-control
+            label="Seleccionar periodo del reporte"
+            [options]="reportPeriodOptions"
+            [value]="reportPeriodPreset()"
+            (valueChange)="applyReportPeriodSegment($event)"
+          />
         </div>
 
         <div class="grid gap-4 md:grid-cols-3">
@@ -178,7 +149,7 @@
 
         <div class="mt-5 flex flex-wrap gap-3">
           <button
-            class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400 sm:flex-none"
+            class="ui-btn ui-btn-success flex-1 sm:flex-none"
             type="button"
             [disabled]="downloadingReport()"
             (click)="downloadReport()"
@@ -192,11 +163,7 @@
               Generar reporte
             }
           </button>
-          <button
-            class="rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50"
-            type="button"
-            (click)="clearReport()"
-          >
+          <button class="ui-btn ui-btn-secondary" type="button" (click)="clearReport()">
             Limpiar
           </button>
         </div>
@@ -204,14 +171,16 @@
         @if (reportResult()) {
           <div
             class="mt-5 rounded-2xl border p-5 text-center"
-            [class.border-emerald-200]="reportResult()!.type === 'success'"
-            [class.bg-emerald-50]="reportResult()!.type === 'success'"
+            [attr.role]="reportResult()!.type === 'success' ? 'status' : 'alert'"
+            aria-live="polite"
+            [class.border-blue-200]="reportResult()!.type === 'success'"
+            [class.bg-blue-50]="reportResult()!.type === 'success'"
             [class.border-amber-200]="reportResult()!.type === 'empty'"
             [class.bg-amber-50]="reportResult()!.type === 'empty'"
           >
             <p
-              class="text-base font-black"
-              [class.text-emerald-700]="reportResult()!.type === 'success'"
+              class="text-base font-bold"
+              [class.text-blue-700]="reportResult()!.type === 'success'"
               [class.text-amber-700]="reportResult()!.type === 'empty'"
             >
               {{ reportResult()!.title }}
@@ -223,10 +192,10 @@
         @if (excelReports().length) {
           <div class="mt-6 space-y-5 border-t border-slate-100 pt-6">
             <div>
-              <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">
+              <p class="text-[11px] font-bold uppercase tracking-widest text-blue-600">
                 Filtros del resultado
               </p>
-              <h3 class="mt-1 text-lg font-black text-slate-900">Actividad del consultor</h3>
+              <h3 class="mt-1 text-lg font-bold text-slate-900">Actividad del consultor</h3>
               <p class="mt-1 text-sm text-slate-500">
                 Los indicadores y ambas tablas se actualizan con los filtros seleccionados.
               </p>
@@ -288,13 +257,13 @@
                 label="Registros"
                 [value]="filteredExcelReports().length"
                 description="Actividades encontradas"
-                tone="emerald"
+                tone="blue"
               />
             </div>
 
             <section class="overflow-hidden rounded-2xl border border-slate-200">
               <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                <h3 class="font-black text-slate-900">Total de horas por día y consultor</h3>
+                <h3 class="font-bold text-slate-900">Total de horas por día y consultor</h3>
                 <p class="mt-1 text-xs text-slate-500">
                   Cada consultor aparece una sola vez por día; los clientes atendidos se muestran
                   juntos en la misma fila.
@@ -320,31 +289,20 @@
                       track row.fecha + row.consultor + row.cliente
                     ) {
                       <tr class="align-top hover:bg-blue-50/60">
-                        <td data-label="Fecha" class="px-4 py-3 font-black text-slate-800">
+                        <td data-label="Fecha" class="px-4 py-3 font-bold text-slate-800">
                           {{ formatFullDate(row.fecha) }}
                         </td>
                         <td data-label="Consultor" class="px-4 py-3 font-semibold text-slate-700">
-                          <p
-                            [appOverflowTooltip]="row.consultor"
-                            [appOverflowTooltipLines]="2"
-                            tabindex="0"
-                          >
+                          <p [appOverflowTooltip]="row.consultor" [appOverflowTooltipLines]="2">
                             {{ row.consultor }}
                           </p>
                         </td>
                         <td data-label="Clientes atendidos" class="px-4 py-3 text-slate-600">
-                          <p
-                            [appOverflowTooltip]="row.cliente"
-                            [appOverflowTooltipLines]="2"
-                            tabindex="0"
-                          >
+                          <p [appOverflowTooltip]="row.cliente" [appOverflowTooltipLines]="2">
                             {{ row.cliente }}
                           </p>
                         </td>
-                        <td
-                          data-label="Horas"
-                          class="px-4 py-3 text-right font-black text-blue-700"
-                        >
+                        <td data-label="Horas" class="px-4 py-3 text-right font-bold text-blue-700">
                           {{ formatHours(row.horas) }} h
                         </td>
                         <td
@@ -362,8 +320,14 @@
                       </tr>
                     } @empty {
                       <tr>
-                        <td class="px-4 py-8 text-center font-semibold text-slate-500" colspan="6">
-                          No hay datos para los filtros seleccionados.
+                        <td class="px-4 py-8" colspan="6">
+                          <app-ui-state-message
+                            [title]="excelEmptyTitle()"
+                            [description]="excelEmptyDescription()"
+                            [actionLabel]="excelEmptyActionLabel()"
+                            tone="warning"
+                            (action)="resolveExcelEmptyAction()"
+                          />
                         </td>
                       </tr>
                     }
@@ -374,7 +338,7 @@
 
             <section class="overflow-hidden rounded-2xl border border-slate-200">
               <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
-                <h3 class="font-black text-slate-900">Detalle de actividades reportadas</h3>
+                <h3 class="font-bold text-slate-900">Detalle de actividades reportadas</h3>
                 <p class="mt-1 text-xs text-slate-500">
                   Trazabilidad completa del reporte recibido desde el servicio.
                 </p>
@@ -400,7 +364,7 @@
                     ) {
                       <tr class="align-top hover:bg-blue-50/60">
                         <td data-label="Fecha" class="px-4 py-3">
-                          <p class="font-black text-slate-800">
+                          <p class="font-bold text-slate-800">
                             {{ formatFullDate(row.fecha) }}
                           </p>
                           @if (row.horaInicio || row.horaFin) {
@@ -414,7 +378,6 @@
                             class="break-words font-bold text-slate-800"
                             [appOverflowTooltip]="row.consultor"
                             [appOverflowTooltipLines]="2"
-                            tabindex="0"
                           >
                             {{ row.consultor }}
                           </p>
@@ -422,7 +385,6 @@
                             class="mt-1 break-words text-xs text-slate-500"
                             [appOverflowTooltip]="row.cliente"
                             [appOverflowTooltipLines]="2"
-                            tabindex="0"
                           >
                             {{ row.cliente }}
                           </p>
@@ -432,7 +394,6 @@
                             class="break-words font-bold text-blue-700"
                             [appOverflowTooltip]="row.gestion || row.identificador || 'Sin gestión'"
                             [appOverflowTooltipLines]="2"
-                            tabindex="0"
                           >
                             {{ row.gestion || row.identificador || 'Sin gestión' }}
                           </p>
@@ -440,7 +401,6 @@
                             class="mt-1 break-words text-xs text-slate-500"
                             [appOverflowTooltip]="row.solicitud || row.proyecto || 'Sin solicitud'"
                             [appOverflowTooltipLines]="2"
-                            tabindex="0"
                           >
                             {{ row.solicitud || row.proyecto || 'Sin solicitud' }}
                           </p>
@@ -450,7 +410,6 @@
                             class="break-words leading-5 text-slate-700"
                             [appOverflowTooltip]="row.descripcion || 'Sin descripción'"
                             [appOverflowTooltipLines]="2"
-                            tabindex="0"
                           >
                             {{ row.descripcion || 'Sin descripción' }}
                           </p>
@@ -458,7 +417,6 @@
                             <p
                               class="mt-1 break-words text-xs font-semibold text-slate-500"
                               [appOverflowTooltip]="row.funcional"
-                              tabindex="0"
                             >
                               Funcional: {{ row.funcional }}
                             </p>
@@ -472,21 +430,27 @@
                             {{ row.modulo || 'Sin módulo' }} ·
                             {{ row.tecnologia || 'Sin tecnología' }}
                           </p>
-                          <p class="mt-1 text-xs font-black text-emerald-700">
+                          <p class="mt-1 text-xs font-bold text-blue-700">
                             {{ row.tipoHora || 'Laboral' }}
                           </p>
                         </td>
                         <td
                           data-label="Horas"
-                          class="px-4 py-3 text-right text-base font-black text-blue-700"
+                          class="px-4 py-3 text-right text-base font-bold text-blue-700"
                         >
                           {{ formatHours(row.horas) }} h
                         </td>
                       </tr>
                     } @empty {
                       <tr>
-                        <td class="px-4 py-8 text-center font-semibold text-slate-500" colspan="6">
-                          No hay actividades para los filtros seleccionados.
+                        <td class="px-4 py-8" colspan="6">
+                          <app-ui-state-message
+                            [title]="excelEmptyTitle()"
+                            [description]="excelEmptyDescription()"
+                            [actionLabel]="excelEmptyActionLabel()"
+                            tone="warning"
+                            (action)="resolveExcelEmptyAction()"
+                          />
                         </td>
                       </tr>
                     }
@@ -499,20 +463,20 @@
       </section>
     } @else {
       <section class="space-y-4">
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="ui-surface p-5">
           <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">
+              <p class="text-[11px] font-bold uppercase tracking-widest text-blue-600">
                 Semana corrida
               </p>
-              <h2 class="mt-1 text-xl font-black text-slate-900">Horas reportadas por dia</h2>
+              <h2 class="mt-1 text-xl font-bold text-slate-900">Horas reportadas por dia</h2>
               <p class="mt-1 text-sm text-slate-500">
-                Total diario calculado desde los reportes recibidos del endpoint de gestion.
+                Total diario calculado desde los reportes recibidos.
               </p>
               <p class="mt-1 text-xs font-bold text-blue-700">{{ managementRangeLabel() }}</p>
             </div>
             <button
-              class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+              class="ui-btn ui-btn-secondary min-h-10 px-4 py-2 text-sm"
               type="button"
               [disabled]="managementLoading()"
               (click)="loadManagementReports()"
@@ -545,7 +509,7 @@
               (ngModelChange)="managementHourFilter.set($event)"
             />
             <button
-              class="self-end rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-100"
+              class="ui-btn ui-btn-secondary self-end"
               type="button"
               (click)="clearManagementFilters()"
             >
@@ -564,29 +528,33 @@
           @if (managementLoading() && !managementLoaded()) {
             <div
               class="grid h-72 place-items-center rounded-xl border border-dashed border-slate-200 text-sm font-bold text-slate-500"
+              role="status"
+              aria-live="polite"
             >
               Cargando reportes...
             </div>
           } @else if (managementError()) {
-            <div
-              class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"
-            >
-              {{ managementError() }}
-            </div>
+            <app-ui-state-message
+              title="No pudimos cargar los reportes"
+              [description]="managementError()"
+              actionLabel="Reintentar carga"
+              tone="error"
+              (action)="loadManagementReports()"
+            />
           } @else {
             <app-weekly-hours-chart [data]="managementWeekChart()" />
           }
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="ui-surface">
           <div class="grid gap-3 border-b border-slate-100 p-5 lg:grid-cols-[1fr_20rem]">
             <div>
-              <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">
+              <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                 Lista de reportes
               </p>
-              <h2 class="mt-1 text-xl font-black text-slate-900">Detalle de tiempos</h2>
+              <h2 class="mt-1 text-xl font-bold text-slate-900">Detalle de tiempos</h2>
               <p class="mt-1 text-sm text-slate-500">
-                {{ filteredManagementReports().length }} registros en el rango seleccionado
+                {{ filteredManagementReports().length }} registros visibles
               </p>
             </div>
             <app-ui-search-input
@@ -602,7 +570,7 @@
               class="ui-responsive-table ui-responsive-table--stack divide-y divide-slate-100 text-left text-sm"
             >
               <thead
-                class="sticky top-0 z-10 bg-slate-50 text-xs font-black uppercase tracking-wider text-slate-500"
+                class="sticky top-0 z-10 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500"
               >
                 <tr>
                   <th class="px-4 py-3">Fecha</th>
@@ -611,7 +579,7 @@
                   <th class="px-4 py-3">Actividad</th>
                   <th class="px-4 py-3">Tecnologia</th>
                   <th class="px-4 py-3 text-right">Horas</th>
-                  <th class="px-4 py-3 text-right">Acciones</th>
+                  <th class="w-40 px-4 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 bg-white">
@@ -625,10 +593,9 @@
                     </td>
                     <td data-label="Gestión" class="px-4 py-3">
                       <p
-                        class="font-black text-slate-900"
+                        class="font-bold text-slate-900"
                         [appOverflowTooltip]="managementName(report)"
                         [appOverflowTooltipLines]="2"
-                        tabindex="0"
                       >
                         {{ managementName(report) }}
                       </p>
@@ -640,7 +607,6 @@
                       <span
                         [appOverflowTooltip]="clientName(report)"
                         [appOverflowTooltipLines]="2"
-                        tabindex="0"
                         >{{ clientName(report) }}</span
                       >
                     </td>
@@ -650,41 +616,114 @@
                           report.descripcionActividad || report.observacion || 'Sin descripción'
                         "
                         [appOverflowTooltipLines]="2"
-                        tabindex="0"
                       >
                         {{ report.descripcionActividad || report.observacion || 'Sin descripcion' }}
                       </p>
                     </td>
                     <td data-label="Tecnología" class="px-4 py-3">
                       <span
-                        class="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700"
+                        class="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700"
                         >{{ report.tecnologia || 'N/A' }}</span
                       >
                       <p class="mt-2 text-xs font-bold text-slate-400">
-                        {{ report.modulo || 'Sin modulo' }}
+                        {{ moduleFromReport(report) || 'Sin modulo' }}
                       </p>
                     </td>
                     <td
                       data-label="Horas"
-                      class="px-4 py-3 text-right text-base font-black text-emerald-700"
+                      class="px-4 py-3 text-right text-base font-bold text-blue-700"
                     >
                       {{ formatHours(reportHours(report)) }}
                     </td>
                     <td data-label="Acciones" class="px-4 py-3 text-right">
-                      <button
-                        class="rounded-xl border border-blue-200 px-3 py-2 text-xs font-black text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                        type="button"
-                        [disabled]="managementEditSaving()"
-                        (click)="openManagementEdit(report)"
+                      <div
+                        class="inline-flex min-w-max items-center justify-end rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
+                        aria-label="Acciones del reporte"
                       >
-                        Editar
-                      </button>
+                        <button
+                          class="ui-icon-btn border-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                          type="button"
+                          title="Ver campos cargados"
+                          aria-label="Ver campos cargados"
+                          (click)="openManagementDetail(report)"
+                        >
+                          <svg
+                            class="size-4 fill-none stroke-current"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                          <span class="sr-only">Ver campos</span>
+                        </button>
+                        <span class="mx-0.5 h-5 w-px bg-slate-200" aria-hidden="true"></span>
+                        <button
+                          class="ui-icon-btn border-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:bg-white disabled:text-slate-300"
+                          type="button"
+                          title="Editar reporte"
+                          aria-label="Editar reporte"
+                          [disabled]="managementEditSaving()"
+                          (click)="openManagementEdit(report)"
+                        >
+                          <svg
+                            class="size-4 fill-none stroke-current"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            aria-hidden="true"
+                          >
+                            <path d="M12 20h9" stroke-linecap="round" />
+                            <path
+                              d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                          <span class="sr-only">Editar</span>
+                        </button>
+                        <span class="mx-0.5 h-5 w-px bg-slate-200" aria-hidden="true"></span>
+                        <button
+                          class="ui-icon-btn border-0 text-red-600 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:bg-white disabled:text-slate-300"
+                          type="button"
+                          title="Eliminar reporte"
+                          aria-label="Eliminar reporte"
+                          [disabled]="managementDeleteSaving() || !report.identificador"
+                          (click)="openManagementDelete(report)"
+                        >
+                          <svg
+                            class="size-4 fill-none stroke-current"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            aria-hidden="true"
+                          >
+                            <path d="M4 7h16" stroke-linecap="round" />
+                            <path d="M10 11v6M14 11v6" stroke-linecap="round" />
+                            <path
+                              d="M6 7l1 14h10l1-14M9 7V4h6v3"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                          <span class="sr-only">Eliminar</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td class="px-4 py-10 text-center text-sm font-bold text-slate-500" colspan="7">
-                      No hay reportes para mostrar.
+                    <td class="px-4 py-8" colspan="7">
+                      <app-ui-state-message
+                        [title]="managementEmptyTitle()"
+                        [description]="managementEmptyDescription()"
+                        [actionLabel]="managementEmptyActionLabel()"
+                        tone="warning"
+                        (action)="resolveManagementEmptyAction()"
+                      />
                     </td>
                   </tr>
                 }
@@ -695,338 +734,295 @@
       </section>
     }
 
+    <app-management-report-detail-modal
+      [report]="managementDetailReport()"
+      (close)="closeManagementDetail()"
+    />
+
     @if (managementEditVisible()) {
       @if (managementEditDraft(); as draft) {
-        <div
-          class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-3 sm:py-8"
-          (click)="closeManagementEdit()"
+        <app-ui-modal
+          [open]="true"
+          size="xl"
+          eyebrow="Edición de reporte"
+          title="Editar reporte"
+          [description]="draft.identificador"
+          (close)="closeManagementEdit()"
         >
-          <div
-            class="w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl"
-            (click)="$event.stopPropagation()"
+          <span
+            modalIcon
+            class="grid size-11 shrink-0 place-items-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700"
           >
-            <div
-              class="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4"
+            <svg
+              class="size-5 fill-none stroke-current"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              aria-hidden="true"
             >
-              <div>
-                <h3 class="text-base font-black text-blue-950">Editar reporte</h3>
-                <p class="mt-1 text-xs font-bold text-slate-500">{{ draft.identificador }}</p>
-              </div>
-              <button
-                class="grid size-9 place-items-center rounded-full text-xl leading-none text-slate-400 transition hover:bg-white hover:text-slate-700"
-                type="button"
-                [disabled]="managementEditSaving()"
-                (click)="closeManagementEdit()"
-              >
-                x
-              </button>
-            </div>
+              <path d="M12 20h9" stroke-linecap="round" />
+              <path
+                d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
 
-            <div class="max-h-[72vh] space-y-4 overflow-y-auto px-5 py-5">
-              <section class="rounded-xl border border-slate-200 p-4">
-                <p class="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-blue-600">
-                  Fecha y dedicación
-                </p>
-                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div modalBody class="space-y-4">
+            <section class="ui-surface bg-white p-4">
+              <p class="ui-eyebrow mb-3">Campos principales</p>
+              <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div>
                   <app-ui-date-input
                     label="Fecha"
                     [(ngModel)]="draft.fecha"
                     (ngModelChange)="onManagementEditChange()"
                   />
+                </div>
+                <div>
                   <app-ui-time-input
                     label="Hora inicio"
                     [(ngModel)]="draft.horaIni"
                     (ngModelChange)="onManagementEditTimeChange()"
                   />
+                </div>
+                <div>
                   <app-ui-time-input
                     label="Hora fin"
                     [(ngModel)]="draft.horaFin"
                     (ngModelChange)="onManagementEditTimeChange()"
                   />
-                  <label class="field-wrap">
-                    <span class="field-label">Horas reales</span>
-                    <input
-                      class="field-input"
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      [(ngModel)]="draft.horas"
-                      (ngModelChange)="onManagementEditChange()"
-                    />
-                  </label>
+                </div>
+                <div>
                   <app-ui-select
                     label="Tipo hora"
                     [options]="managementEditOptions('tipoHora', draft.tipoHora)"
                     [(ngModel)]="draft.tipoHora"
                     (ngModelChange)="onManagementEditChange()"
                   />
-                  <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      Total computable del día
-                    </p>
-                    <p class="mt-1 text-2xl font-black text-slate-900">
-                      {{ formatHours(managementDailyLaborHoursWithDraft()) }}h
-                    </p>
-                  </div>
                 </div>
-              </section>
-
-              <section class="rounded-xl border border-slate-200 p-4">
-                <p class="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-blue-600">
-                  Actividad reportada
-                </p>
-                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <app-ui-select
-                    label="Tipo de actividad"
-                    [options]="managementEditOptions('tipoActividad', draft.tipoActividad)"
-                    [(ngModel)]="draft.tipoActividad"
-                    (ngModelChange)="onManagementEditChange()"
-                  />
-                  <app-ui-select
-                    label="Causa"
-                    [options]="managementEditOptions('causa', draft.causa)"
-                    [(ngModel)]="draft.causa"
-                    (ngModelChange)="onManagementEditChange()"
-                  />
-                  <app-ui-select
-                    label="Prefijo"
-                    [options]="managementEditOptions('prefijo', draft.prefijo)"
-                    [(ngModel)]="draft.prefijo"
-                    (ngModelChange)="onManagementEditChange()"
-                  />
-                  <app-ui-select
-                    label="Complejidad"
-                    [options]="managementEditOptions('complejidad', draft.complejidad)"
-                    [(ngModel)]="draft.complejidad"
-                    (ngModelChange)="onManagementEditChange()"
-                  />
-                  <app-ui-select
-                    label="Categoría"
-                    [options]="managementEditOptions('categoria', draft.categoria)"
-                    [(ngModel)]="draft.categoria"
-                    (ngModelChange)="onManagementEditChange()"
-                  />
-                  <app-ui-select
-                    label="Impacto"
-                    [options]="managementEditOptions('impacto', draft.impacto)"
-                    [(ngModel)]="draft.impacto"
-                    (ngModelChange)="onManagementEditChange()"
-                  />
-                  <app-ui-select
-                    label="Equipo"
-                    [options]="managementEditOptions('equipo', draft.equipo)"
-                    [(ngModel)]="draft.equipo"
-                    (ngModelChange)="onManagementEditChange()"
-                  />
-                  <app-ui-select
-                    label="Modo de actuación"
-                    [options]="managementEditOptions('modoActuacion', draft.modoActuacion)"
-                    [(ngModel)]="draft.modoActuacion"
-                    (ngModelChange)="onManagementEditChange()"
-                  />
-                  <app-ui-select
-                    label="Lenguaje"
-                    [options]="managementEditOptions('lenguaje', draft.lenguaje)"
-                    [(ngModel)]="draft.lenguaje"
-                    (ngModelChange)="onManagementEditChange()"
-                  />
-                  <app-ui-select
-                    label="Objeto RICEF"
-                    [options]="managementEditOptions('objetoRicef', draft.objetoRicef)"
-                    [(ngModel)]="draft.objetoRicef"
-                    (ngModelChange)="onManagementEditChange()"
-                  />
-                  <label class="field-wrap md:col-span-2">
-                    <span class="field-label">Funcional</span>
-                    <input
-                      class="field-input"
-                      type="text"
-                      [(ngModel)]="draft.funcional"
-                      (ngModelChange)="onManagementEditChange()"
-                    />
-                  </label>
-                </div>
-
-                <label class="field-wrap mt-3">
-                  <span class="field-label">Descripción y observación</span>
-                  <textarea
-                    class="field-input min-h-24 resize-y"
-                    [(ngModel)]="draft.descripcion"
-                    (ngModelChange)="onManagementEditChange()"
-                  ></textarea>
-                  <span class="mt-1 text-xs font-semibold text-slate-400">
-                    Este único texto se enviará igual como descripción de actividad y observación.
-                  </span>
-                </label>
-              </section>
-            </div>
-
-            @if (managementEditErrors().length) {
-              <div
-                class="mx-5 mb-5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700"
-              >
-                Revisa: {{ managementEditErrors().join(', ') }}
+                <app-ui-field
+                  label="Horas reales"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  [(ngModel)]="draft.horas"
+                  (ngModelChange)="onManagementEditChange()"
+                />
+                <app-ui-field
+                  label="Total computable del día"
+                  tone="emphasis"
+                  [readonly]="true"
+                  [ngModel]="formatHours(managementDailyLaborHoursWithDraft()) + ' h'"
+                />
+                <app-ui-field
+                  class="md:col-span-2 xl:col-span-4"
+                  label="Descripción y observación"
+                  type="textarea"
+                  [rows]="3"
+                  hint="Se usará como descripción y observación."
+                  [(ngModel)]="draft.descripcion"
+                  (ngModelChange)="onManagementEditChange()"
+                />
               </div>
-            }
-
-            <div class="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row">
-              <button
-                class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                type="button"
-                [disabled]="managementEditSaving() || managementEditErrors().length > 0"
-                (click)="saveManagementEdit()"
-              >
-                @if (managementEditSaving()) {
-                  <span
-                    class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
-                  ></span>
-                  Guardando...
-                } @else {
-                  Guardar cambios
-                }
-              </button>
-              <button
-                class="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50"
-                type="button"
-                [disabled]="managementEditSaving()"
-                (click)="closeManagementEdit()"
-              >
-                Cancelar
-              </button>
-            </div>
+            </section>
           </div>
-        </div>
+
+          @if (managementEditErrors().length) {
+            <div modalBody class="ui-alert ui-alert-error mt-4" role="alert">
+              <p>Revisa antes de guardar:</p>
+              <ul class="mt-2 list-disc space-y-1 pl-5">
+                @for (error of managementEditErrors(); track error) {
+                  <li>{{ error }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          <div modalFooter class="flex flex-col gap-3 sm:flex-row">
+            <button
+              class="ui-btn ui-btn-primary flex-1"
+              type="button"
+              [disabled]="managementEditSaving() || managementEditErrors().length > 0"
+              (click)="saveManagementEdit()"
+            >
+              @if (managementEditSaving()) {
+                <span
+                  class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                ></span>
+                Guardando...
+              } @else {
+                Guardar cambios
+              }
+            </button>
+            <button
+              class="ui-btn ui-btn-secondary flex-1"
+              type="button"
+              [disabled]="managementEditSaving()"
+              (click)="closeManagementEdit()"
+            >
+              Cancelar
+            </button>
+          </div>
+        </app-ui-modal>
       }
     }
 
-    @if (sendPhase() !== 'idle') {
-      <div
-        class="fixed inset-0 z-[300] grid place-items-center overflow-y-auto bg-slate-950/75 p-4 backdrop-blur-sm"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="send-progress-title"
+    @if (managementDeleteReport(); as report) {
+      <app-ui-modal
+        [open]="true"
+        variant="destructive"
+        size="sm"
+        eyebrow="Confirmación"
+        title="Eliminar reporte"
+        [description]="report.identificador || managementName(report)"
+        (close)="closeManagementDelete()"
       >
-        <section
-          class="w-full max-w-lg overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-2xl"
-        >
-          <div
-            class="bg-gradient-to-r from-slate-950 via-blue-950 to-blue-800 px-6 py-5 text-white"
-          >
-            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-blue-200">
-              Envío protegido
-            </p>
-            <h2 id="send-progress-title" class="mt-1 text-xl font-black">
-              @if (sendPhase() === 'sending') {
-                Registrando reportes
-              } @else if (sendPhase() === 'saving-logs') {
-                Guardando trazabilidad
-              } @else if (sendPhase() === 'completed') {
-                Proceso finalizado
-              } @else {
-                El proceso necesita atención
-              }
-            </h2>
+        <div modalBody class="space-y-3">
+          <p class="text-sm font-semibold leading-6 text-slate-600">
+            Esta acción eliminará el registro seleccionado. Confirma solo si el reporte es
+            incorrecto y no debe permanecer en la gestión.
+          </p>
+          <div class="rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-bold text-red-800">
+            {{ managementName(report) }}
           </div>
+        </div>
 
-          <div class="px-6 py-6">
-            @if (sendPhase() === 'sending' || sendPhase() === 'saving-logs') {
-              <div class="flex items-start gap-4">
-                <span class="grid size-12 shrink-0 place-items-center rounded-full bg-blue-600">
-                  <span
-                    class="size-6 animate-spin rounded-full border-2 border-white/35 border-t-white"
-                  ></span>
-                </span>
-                <div>
-                  <p class="font-black text-slate-950">
-                    {{
-                      sendPhase() === 'sending'
-                        ? 'Espera mientras enviamos los registros.'
-                        : 'Los reportes terminaron. Confirmando los logs en Supabase.'
-                    }}
-                  </p>
-                  <p class="mt-1 text-sm font-semibold leading-6 text-slate-500">
-                    No cierres la aplicación ni realices otra tarea hasta que finalice el proceso.
-                  </p>
-                </div>
-              </div>
-              <div class="mt-5">
-                <div
-                  class="mb-2 flex items-center justify-between text-xs font-black text-slate-500"
-                >
-                  <span>{{ sendProcessed() }} de {{ sendTotal() }} registros procesados</span>
-                  <span>{{ sendProgressPercent() }}%</span>
-                </div>
-                <div
-                  class="h-3 overflow-hidden rounded-full bg-slate-100"
-                  role="progressbar"
-                  [attr.aria-valuenow]="sendProgressPercent()"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                >
-                  <div
-                    class="h-full rounded-full bg-gradient-to-r from-blue-600 to-emerald-500 transition-all duration-300"
-                    [style.width.%]="sendProgressPercent()"
-                  ></div>
-                </div>
-              </div>
-            } @else if (sendPhase() === 'completed') {
-              <div class="text-center">
+        <div modalFooter class="flex flex-col gap-3 sm:flex-row">
+          <button
+            class="ui-btn ui-btn-danger flex-1"
+            type="button"
+            [disabled]="managementDeleteSaving()"
+            (click)="confirmManagementDelete()"
+          >
+            @if (managementDeleteSaving()) {
+              <span
+                class="size-4 animate-spin rounded-full border-2 border-red-300 border-t-red-700"
+              ></span>
+              Eliminando...
+            } @else {
+              Eliminar reporte
+            }
+          </button>
+          <button
+            class="ui-btn ui-btn-secondary flex-1"
+            type="button"
+            [disabled]="managementDeleteSaving()"
+            (click)="closeManagementDelete()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </app-ui-modal>
+    }
+
+    @if (sendPhase() !== 'idle') {
+      <app-ui-modal
+        [open]="sendPhase() !== 'idle'"
+        [title]="
+          sendPhase() === 'sending'
+            ? 'Registrando reportes'
+            : sendPhase() === 'saving-logs'
+              ? 'Confirmando envío'
+              : sendPhase() === 'completed'
+                ? 'Envío finalizado'
+                : 'El proceso necesita atención'
+        "
+        size="sm"
+        (close)="
+          sendPhase() === 'sending' || sendPhase() === 'saving-logs' ? null : continueAfterSend()
+        "
+      >
+        <div modalBody>
+          @if (sendPhase() === 'sending' || sendPhase() === 'saving-logs') {
+            <div class="flex items-start gap-4">
+              <span class="grid size-12 shrink-0 place-items-center rounded-full bg-blue-600">
                 <span
-                  class="mx-auto grid size-14 place-items-center rounded-full bg-emerald-100 text-2xl font-black text-emerald-700"
-                  >✓</span
-                >
-                <p class="mt-4 text-lg font-black text-slate-950">
-                  Los envíos y sus logs fueron confirmados.
+                  class="size-6 animate-spin rounded-full border-2 border-white/35 border-t-white"
+                ></span>
+              </span>
+              <div>
+                <p class="font-bold text-slate-950">
+                  {{
+                    sendPhase() === 'sending'
+                      ? 'Espera mientras enviamos los registros.'
+                      : 'Estamos confirmando el resultado.'
+                  }}
                 </p>
-                <p class="mt-2 text-sm font-semibold text-slate-500">
-                  {{ sendSuccessCount() }} correctos · {{ sendErrorCount() }} con error
-                </p>
-              </div>
-              <div class="mt-6 grid gap-2 sm:grid-cols-2">
-                <button
-                  class="rounded-xl border border-blue-200 px-4 py-3 text-sm font-black text-blue-700 transition hover:bg-blue-50"
-                  type="button"
-                  (click)="goToSendLogs()"
-                >
-                  Ver logs en Supabase
-                </button>
-                <button
-                  class="rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:bg-blue-700"
-                  type="button"
-                  (click)="continueAfterSend()"
-                >
-                  Seguir registrando
-                </button>
-              </div>
-            } @else if (sendPhase() === 'log-error') {
-              <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <p class="font-black text-amber-950">
-                  Los reportes respondieron, pero Supabase no confirmó los logs.
-                </p>
-                <p class="mt-2 break-words text-sm font-semibold leading-6 text-amber-800">
-                  {{ sendFailureMessage() }}
+                <p class="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                  Mantén esta ventana abierta hasta finalizar.
                 </p>
               </div>
-              <p class="mt-4 text-sm font-semibold text-slate-600">
-                Los registros permanecen bloqueados para evitar duplicarlos. Reintenta únicamente la
-                trazabilidad.
+            </div>
+            <div class="mt-5">
+              <div class="mb-2 flex items-center justify-between text-xs font-bold text-slate-500">
+                <span>{{ sendProcessed() }} de {{ sendTotal() }} registros procesados</span>
+                <span>{{ sendProgressPercent() }}%</span>
+              </div>
+              <div
+                class="h-3 overflow-hidden rounded-full bg-slate-100"
+                role="progressbar"
+                [attr.aria-valuenow]="sendProgressPercent()"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                <div
+                  class="h-full rounded-full bg-blue-600 transition-all duration-300"
+                  [style.width.%]="sendProgressPercent()"
+                ></div>
+              </div>
+            </div>
+          } @else if (sendPhase() === 'completed') {
+            <div class="text-center">
+              <span
+                class="mx-auto grid size-14 place-items-center rounded-full bg-blue-100 text-2xl font-bold text-blue-700"
+                >✓</span
+              >
+              <p class="mt-4 text-lg font-bold text-slate-950">Los registros quedaron enviados.</p>
+              <p class="mt-2 text-sm font-semibold text-slate-500">
+                {{ sendSuccessCount() }} correctos · {{ sendErrorCount() }} con error
               </p>
+            </div>
+          } @else if (sendPhase() === 'log-error') {
+            <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p class="font-bold text-amber-950">No se pudo confirmar el historial.</p>
+              <p class="mt-2 break-words text-sm font-semibold leading-6 text-amber-800">
+                {{ sendFailureMessage() }}
+              </p>
+            </div>
+            <p class="mt-4 text-sm font-semibold text-slate-600">
+              Los registros permanecen bloqueados para evitar duplicarlos.
+            </p>
+          } @else {
+            <div class="rounded-2xl border border-red-200 bg-red-50 p-4">
+              <p class="font-bold text-red-950">No fue posible completar el envío.</p>
+              <p class="mt-2 break-words text-sm font-semibold leading-6 text-red-800">
+                {{ sendFailureMessage() }}
+              </p>
+            </div>
+          }
+        </div>
+        @if (sendPhase() !== 'sending' && sendPhase() !== 'saving-logs') {
+          <div modalFooter>
+            @if (sendPhase() === 'completed') {
               <button
-                class="mt-5 w-full rounded-xl bg-amber-600 px-4 py-3 text-sm font-black text-white transition hover:bg-amber-700"
+                class="ui-btn ui-btn-primary w-full"
+                type="button"
+                (click)="continueAfterSend()"
+              >
+                Seguir registrando
+              </button>
+            } @else if (sendPhase() === 'log-error') {
+              <button
+                class="ui-btn w-full bg-amber-600 text-white hover:bg-amber-700"
                 type="button"
                 (click)="retrySendLogs()"
               >
-                Reintentar guardar logs
+                Reintentar confirmación
               </button>
             } @else {
-              <div class="rounded-2xl border border-red-200 bg-red-50 p-4">
-                <p class="font-black text-red-950">No fue posible completar el envío.</p>
-                <p class="mt-2 break-words text-sm font-semibold leading-6 text-red-800">
-                  {{ sendFailureMessage() }}
-                </p>
-              </div>
               <button
-                class="mt-5 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50"
+                class="ui-btn ui-btn-secondary w-full"
                 type="button"
                 (click)="continueAfterSend()"
               >
@@ -1034,8 +1030,8 @@
               </button>
             }
           </div>
-        </section>
-      </div>
+        }
+      </app-ui-modal>
     }
 
     @if (alertDialog(); as dialog) {
@@ -1047,20 +1043,20 @@
         (click)="closeAlertDialog()"
       >
         <section
-          class="w-full max-w-lg overflow-hidden rounded-2xl border border-red-200 bg-white shadow-2xl"
+          class="w-full max-w-lg overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm"
           (click)="$event.stopPropagation()"
         >
           <div class="flex items-start gap-4 border-b border-red-100 bg-red-50 px-5 py-5">
             <span
-              class="grid size-11 shrink-0 place-items-center rounded-full bg-red-600 text-xl font-black text-white"
+              class="grid size-11 shrink-0 place-items-center rounded-full bg-red-600 text-xl font-bold text-white"
               aria-hidden="true"
               >!</span
             >
             <div class="min-w-0 flex-1">
-              <p class="text-[11px] font-black uppercase tracking-[0.2em] text-red-600">
+              <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-red-600">
                 Validación de registros
               </p>
-              <h2 id="send-alert-title" class="mt-1 text-lg font-black text-slate-950">
+              <h2 id="send-alert-title" class="mt-1 text-lg font-bold text-slate-950">
                 {{ dialog.title }}
               </h2>
             </div>
@@ -1086,7 +1082,7 @@
           </div>
           <div class="border-t border-slate-100 px-5 py-4">
             <button
-              class="w-full rounded-xl bg-red-600 px-4 py-3 text-sm font-black text-white transition hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-200"
+              class="w-full rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-200"
               type="button"
               autofocus
               (click)="closeAlertDialog()"

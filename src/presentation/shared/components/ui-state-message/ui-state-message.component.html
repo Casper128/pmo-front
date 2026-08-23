@@ -1,0 +1,58 @@
+<section
+  class="rounded-2xl border border-dashed p-6 text-center"
+  [ngClass]="toneClasses[tone]"
+  role="status"
+>
+  <span
+    class="mx-auto grid size-12 place-items-center rounded-2xl border bg-white"
+    [ngClass]="iconClasses[tone]"
+    aria-hidden="true"
+  >
+    @if (tone === 'error') {
+      <svg class="size-6 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+        <path
+          d="M12 8v5m0 4h.01M10.3 4.8 2.9 18a1.6 1.6 0 0 0 1.4 2.4h15.4a1.6 1.6 0 0 0 1.4-2.4L13.7 4.8a2 2 0 0 0-3.4 0Z"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    } @else if (tone === 'warning') {
+      <svg class="size-6 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+        <path
+          d="M12 9v4m0 4h.01M4.9 19h14.2L12 5 4.9 19Z"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    } @else if (tone === 'success') {
+      <svg class="size-6 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+        <path d="m5 12 4 4L19 6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    } @else {
+      <svg class="size-6 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+        <path
+          d="M5 5h14v14H5V5Zm4 4h6m-6 4h6m-6 4h3"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    }
+  </span>
+  <h3 class="mt-4 text-base font-bold text-slate-900">{{ title }}</h3>
+  @if (description) {
+    <p class="mx-auto mt-2 max-w-xl text-sm font-semibold leading-6 text-slate-500">
+      {{ description }}
+    </p>
+  }
+  @if (actionLabel) {
+    <button
+      class="ui-btn mt-5"
+      [class.ui-btn-primary]="tone !== 'error'"
+      [class.ui-btn-danger]="tone === 'error'"
+      type="button"
+      (click)="action.emit()"
+    >
+      {{ actionLabel }}
+    </button>
+  }
+</section>

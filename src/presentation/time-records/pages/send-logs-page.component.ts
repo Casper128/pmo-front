@@ -12,6 +12,11 @@ import { OverflowTooltipDirective } from '@presentation/shared/directives/overfl
 import { UiMetricCardComponent } from '@presentation/shared/components/ui-metric-card/ui-metric-card.component';
 import { UiSearchInputComponent } from '@presentation/shared/components/ui-search-input/ui-search-input.component';
 import { UiPageHeaderComponent } from '@presentation/shared/components/ui-page-header/ui-page-header.component';
+import { UiStateMessageComponent } from '@presentation/shared/components/ui-state-message/ui-state-message.component';
+import {
+  UiSegmentedControlComponent,
+  UiSegmentedOption,
+} from '@presentation/shared/components/ui-segmented-control/ui-segmented-control.component';
 
 type LogPeriod = 'week' | '30d' | '90d' | 'custom';
 type LogPeriodPreset = Exclude<LogPeriod, 'custom'>;
@@ -28,6 +33,8 @@ type LogPeriodPreset = Exclude<LogPeriod, 'custom'>;
     UiMetricCardComponent,
     UiSearchInputComponent,
     UiPageHeaderComponent,
+    UiStateMessageComponent,
+    UiSegmentedControlComponent,
   ],
   templateUrl: './send-logs-page.component.html',
 })
@@ -60,6 +67,10 @@ export class SendLogsPageComponent implements OnInit {
     { key: '30d', label: '30 días' },
     { key: '90d', label: '90 días' },
   ];
+  readonly periodSegmentOptions: readonly UiSegmentedOption[] = this.periodOptions.map((item) => ({
+    value: item.key,
+    label: item.label,
+  }));
 
   filteredLogs = computed(() => {
     const term = this.normalize(this.search());
@@ -75,6 +86,14 @@ export class SendLogsPageComponent implements OnInit {
   successfulCount = computed(() => this.filteredLogs().filter((log) => log.successful).length);
   errorCount = computed(() => this.filteredLogs().filter((log) => !log.successful).length);
   consultantCount = computed(() => new Set(this.filteredLogs().map((log) => log.userEmail)).size);
+  emptyStateTitle = computed(() =>
+    this.logs().length ? 'No hay eventos con esos filtros' : 'No hay eventos en este periodo',
+  );
+  emptyStateDescription = computed(() =>
+    this.logs().length
+      ? 'Cambia el estado, el alcance o la búsqueda para revisar otros envíos cargados.'
+      : 'Prueba con un rango más amplio o envía un reporte para generar trazabilidad nueva.',
+  );
 
   ngOnInit(): void {
     this.setPeriod('week');
@@ -93,6 +112,10 @@ export class SendLogsPageComponent implements OnInit {
     this.dateTo.set(this.toDateValue(end));
     this.period.set(period);
     this.load();
+  }
+
+  applyPeriodSegment(period: string): void {
+    if (period === 'week' || period === '30d' || period === '90d') this.setPeriod(period);
   }
 
   onDateChange(target: 'from' | 'to', value: string): void {
@@ -120,6 +143,7 @@ export class SendLogsPageComponent implements OnInit {
           this.isAdmin.set(collection.isAdmin);
           this.retentionDays.set(collection.retentionDays);
           this.loading.set(false);
+          this.error.set('');
         },
         error: (error: unknown) => {
           this.loading.set(false);
@@ -148,8 +172,8 @@ export class SendLogsPageComponent implements OnInit {
     }).format(new Date(value));
   }
 
-  private errorMessage(error: unknown): string {
-    if (!error || typeof error !== 'object') return 'No fue posible consultar los logs.';
+  errorMessage(error: unknown): string {
+    if (!error || typeof error !== 'object') return 'No fue posible consultar el historial.';
     const response = error as Record<string, unknown>;
     const nested = response['error'];
     if (nested && typeof nested === 'object') {
@@ -158,7 +182,7 @@ export class SendLogsPageComponent implements OnInit {
     }
     return typeof response['message'] === 'string'
       ? response['message']
-      : 'No fue posible consultar los logs.';
+      : 'No fue posible consultar el historial.';
   }
 
   private normalize(value: string): string {

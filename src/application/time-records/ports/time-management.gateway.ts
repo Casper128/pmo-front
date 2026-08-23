@@ -8,5 +8,6 @@ import {
 export abstract class TimeManagementGateway {
   abstract list(consultantId: string | number | null): Observable<ManagementReport[]>;
   abstract update(identifier: string, body: Record<string, unknown>): Observable<void>;
+  abstract delete(identifier: string): Observable<void>;
   abstract download(filter: ReportDownloadFilter): Observable<ReportDownloadResponse>;
 }

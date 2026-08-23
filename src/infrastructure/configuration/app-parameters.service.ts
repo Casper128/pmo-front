@@ -64,9 +64,9 @@ export const DEFAULT_ADVANCED_FIELDS: AdvancedFieldConfiguration[] = [
     options: options([
       'Garantia',
       'Data Maestra',
-      'Configuración',
-      'Escenario No Probado',
-      'Escenario No Contemplado',
+      'Falta Configuraion',
+      'EscenarioNoProbado',
+      'EscenarioNoContemplado',
       'Nueva Funcionalidad',
       'Administrativo',
       'Reunion',
@@ -91,7 +91,7 @@ export const DEFAULT_ADVANCED_FIELDS: AdvancedFieldConfiguration[] = [
     options: options([
       'Financiero',
       'Comercial',
-      'Logístico',
+      'Logistico',
       'PlaneacionDemanda',
       'Analitica',
       'Portales',
@@ -146,7 +146,7 @@ export const DEFAULT_ADVANCED_FIELDS: AdvancedFieldConfiguration[] = [
     key: 'objetoRicef',
     label: 'Objeto RICEF',
     defaultValue: '',
-    options: options(['interfases', 'Reportes', 'Conversiones', 'Enhacement', 'Formularios']),
+    options: options(['Interfases', 'Reportes', 'Conversiones', 'Enhacement', 'Formularios']),
   },
   {
     key: 'categoria',
@@ -166,7 +166,7 @@ export const DEFAULT_WORK_SETTINGS: WorkSettings = {
 @Injectable()
 export class AppParametersService extends AppParametersFacade {
   private auth = inject(AuthGateway);
-  private readonly storagePrefix = 'pmo_app_parameters_v2';
+  private readonly storageKeyName = 'pmo_app_parameters_global_v1';
   private activeLoads = 0;
 
   fields = signal<AdvancedFieldConfiguration[]>(this.cloneFields(DEFAULT_ADVANCED_FIELDS));
@@ -214,10 +214,10 @@ export class AppParametersService extends AppParametersFacade {
       if (!response.ok) throw new Error(await this.responseError(response));
       const payload = (await response.json()) as ConfigurationPayload;
       this.serverAdminAccess.set(payload?.isAdmin === true);
-      if (Array.isArray(payload?.fields) && payload.fields.length) {
-        this.fields.set(this.sanitizeFields(payload.fields));
-      } else if (payload?.optionRows?.length) {
+      if (payload?.optionRows?.length) {
         this.fields.set(this.mergeRows(payload.optionRows));
+      } else if (Array.isArray(payload?.fields) && payload.fields.length) {
+        this.fields.set(this.sanitizeFields(payload.fields));
       }
       const settings = payload?.workSettings;
       if (settings) {
@@ -233,7 +233,7 @@ export class AppParametersService extends AppParametersFacade {
     } catch (error) {
       this.source.set('local');
       this.error.set(
-        `Supabase no disponible; se usan parámetros locales. ${error instanceof Error ? error.message : ''}`.trim(),
+        `Sincronización no disponible; se usan parámetros locales. ${error instanceof Error ? error.message : ''}`.trim(),
       );
     } finally {
       this.activeLoads = Math.max(0, this.activeLoads - 1);
@@ -262,6 +262,8 @@ export class AppParametersService extends AppParametersFacade {
   }
 
   async save(fields: AdvancedFieldConfiguration[], workSettings: WorkSettings): Promise<void> {
+    if (!this.canManage())
+      throw new Error('Solo el administrador puede guardar la configuración global.');
     this.saving.set(true);
     this.error.set('');
     try {
@@ -281,7 +283,7 @@ export class AppParametersService extends AppParametersFacade {
             },
             body: JSON.stringify({
               fields: normalizedFields,
-              ...(this.canManage() ? { workSettings: normalizedSettings } : {}),
+              workSettings: normalizedSettings,
             }),
           },
         );
@@ -291,7 +293,7 @@ export class AppParametersService extends AppParametersFacade {
         this.source.set('local');
       }
       this.fields.set(normalizedFields);
-      if (this.canManage()) this.workSettings.set(normalizedSettings);
+      this.workSettings.set(normalizedSettings);
       this.persistLocal();
     } finally {
       this.saving.set(false);
@@ -299,8 +301,9 @@ export class AppParametersService extends AppParametersFacade {
   }
 
   resetLocal(): void {
+    if (!this.canManage()) return;
     this.fields.set(this.cloneFields(DEFAULT_ADVANCED_FIELDS));
-    if (this.canManage()) this.workSettings.set({ ...DEFAULT_WORK_SETTINGS });
+    this.workSettings.set({ ...DEFAULT_WORK_SETTINGS });
     this.persistLocal();
   }
 
@@ -381,12 +384,7 @@ export class AppParametersService extends AppParametersFacade {
   }
 
   private storageKey(): string {
-    const user = this.auth.user();
-    const identity = this.normalize(user?.id || user?.email || 'anonymous').replace(
-      /[^a-z0-9@._-]/g,
-      '_',
-    );
-    return `${this.storagePrefix}_${identity}`;
+    return this.storageKeyName;
   }
 
   private cloneFields(fields: AdvancedFieldConfiguration[]): AdvancedFieldConfiguration[] {
@@ -416,7 +414,7 @@ export class AppParametersService extends AppParametersFacade {
       return await fetch(url, { ...init, signal: controller.signal });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new Error('Supabase tardó demasiado en responder.');
+        throw new Error('La sincronización tardó demasiado en responder.');
       }
       throw error;
     } finally {
@@ -427,9 +425,9 @@ export class AppParametersService extends AppParametersFacade {
   private async responseError(response: Response): Promise<string> {
     try {
       const body = await response.json();
-      return body?.error || body?.message || `Supabase respondió ${response.status}`;
+      return body?.error || body?.message || `La sincronización respondió ${response.status}`;
     } catch {
-      return `Supabase respondió ${response.status}`;
+      return `La sincronización respondió ${response.status}`;
     }
   }
 }

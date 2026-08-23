@@ -13,6 +13,7 @@ import { TimeRecord } from '@domain/time-records/models/time-record.model';
 import { TimeRecordDomainService } from '@domain/time-records/services/time-record-domain.service';
 import { LoadSelectOptionsUseCase } from '@application/time-records/use-cases/load-select-options.use-case';
 import { ParameterOption } from '@domain/configuration/app-parameters.model';
+import { ManagementDemandOption } from '@domain/time-records/models/management-template.model';
 import { AppParametersFacade } from '@application/configuration/app-parameters.facade';
 import {
   UiSelectComponent,
@@ -20,6 +21,9 @@ import {
 } from '@presentation/shared/components/ui-select/ui-select.component';
 import { UiDateInputComponent } from '@presentation/shared/components/ui-date-input/ui-date-input.component';
 import { UiTimeInputComponent } from '@presentation/shared/components/ui-time-input/ui-time-input.component';
+import { UiModalComponent } from '@presentation/shared/components/ui-modal/ui-modal.component';
+import { UiFieldComponent } from '@presentation/shared/components/ui-field/ui-field.component';
+import { UiFormSectionComponent } from '@presentation/shared/components/ui-form-section/ui-form-section.component';
 
 @Component({
   selector: 'app-edit-record-modal',
@@ -30,6 +34,9 @@ import { UiTimeInputComponent } from '@presentation/shared/components/ui-time-in
     UiSelectComponent,
     UiDateInputComponent,
     UiTimeInputComponent,
+    UiModalComponent,
+    UiFieldComponent,
+    UiFormSectionComponent,
   ],
   templateUrl: './edit-record-modal.component.html',
 })
@@ -50,6 +57,7 @@ export class EditRecordModalComponent implements OnChanges {
   clientes: string[] = [];
   proyectos: string[] = [];
   solicitudes: string[] = [];
+  solicitudOptionsList: ManagementDemandOption[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['record'] && this.record) {
@@ -73,10 +81,12 @@ export class EditRecordModalComponent implements OnChanges {
     if (resetFields && this.draft) {
       this.draft.proyecto = '';
       this.draft.solicitud = '';
+      this.draft.gestionId = '';
     }
     if (!cliente) {
       this.proyectos = [];
       this.solicitudes = [];
+      this.solicitudOptionsList = [];
       return;
     }
     this.loadProjects(cliente, resetFields ? '' : this.draft?.proyecto || '');
@@ -85,7 +95,16 @@ export class EditRecordModalComponent implements OnChanges {
   onProyectoChange(proyecto: string) {
     if (!this.draft?.cliente) return;
     this.draft.solicitud = '';
+    this.draft.gestionId = '';
     this.loadSolicitudes(this.draft.cliente, proyecto);
+  }
+
+  onSolicitudChange(gestionId: string): void {
+    if (!this.draft) return;
+    const option = this.solicitudOptionsList.find((item) => item.id === gestionId);
+    this.draft.gestionId = gestionId;
+    this.draft.solicitud = option?.requestValue || option?.name || gestionId;
+    this.refreshValidation();
   }
 
   calcHoras() {
@@ -100,19 +119,9 @@ export class EditRecordModalComponent implements OnChanges {
     this.refreshValidation();
   }
 
-  onTestDateChange() {
-    this.refreshValidation();
-  }
-
   onSave() {
     this.refreshValidation();
     if (this.draft && this.validationErrors.length === 0) this.save.emit({ ...this.draft });
-  }
-
-  private fillTestDatesFromRecordDate() {
-    if (!this.draft?.fecha) return;
-    if (!this.draft.fechaEstimada) this.draft.fechaEstimada = this.draft.fecha;
-    if (!this.draft.fechaReal) this.draft.fechaReal = this.draft.fecha;
   }
 
   private refreshValidation() {
@@ -126,38 +135,8 @@ export class EditRecordModalComponent implements OnChanges {
     ];
   }
 
-  get tiposActividad(): ParameterOption[] {
-    return this.parameters.optionsFor('tipoActividad');
-  }
-  get causas(): ParameterOption[] {
-    return this.parameters.optionsFor('causa');
-  }
-  get complejidades(): ParameterOption[] {
-    return this.parameters.optionsFor('complejidad');
-  }
-  get impactos(): ParameterOption[] {
-    return this.parameters.optionsFor('impacto');
-  }
-  get equipos(): ParameterOption[] {
-    return this.parameters.optionsFor('equipo');
-  }
-  get modos(): ParameterOption[] {
-    return this.parameters.optionsFor('modoActuacion');
-  }
-  get lenguajes(): ParameterOption[] {
-    return this.parameters.optionsFor('lenguaje');
-  }
   get tiposHora(): ParameterOption[] {
     return this.parameters.optionsFor('tipoHora');
-  }
-  get prefijos(): ParameterOption[] {
-    return this.parameters.optionsFor('prefijo');
-  }
-  get objetosRicef(): ParameterOption[] {
-    return this.parameters.optionsFor('objetoRicef');
-  }
-  get categorias(): ParameterOption[] {
-    return this.parameters.optionsFor('categoria');
   }
 
   selectOptions(
@@ -180,17 +159,35 @@ export class EditRecordModalComponent implements OnChanges {
   private loadProjects(cliente: string, currentProject: string): void {
     this.options.proyectos(cliente).subscribe((projects) => {
       this.proyectos = projects;
-      this.loadSolicitudes(cliente, currentProject);
+      const project = currentProject || projects[0] || '';
+      if (this.draft && !this.draft.proyecto) this.draft.proyecto = project;
+      this.loadSolicitudes(cliente, project);
     });
   }
 
   private loadSolicitudes(cliente: string, proyecto: string): void {
     if (!proyecto) {
       this.solicitudes = [];
+      this.solicitudOptionsList = [];
       return;
     }
-    this.options.solicitudes(cliente, proyecto).subscribe((solicitudes) => {
-      this.solicitudes = solicitudes;
+    this.options.solicitudOptions(cliente, proyecto).subscribe((solicitudes) => {
+      this.solicitudOptionsList = solicitudes;
+      this.solicitudes = solicitudes.map((item) => item.name);
     });
+  }
+
+  solicitudSelectOptions(currentRecord?: TimeRecord): UiSelectOption[] {
+    const mapped = this.solicitudOptionsList.map((item) => ({ value: item.id, label: item.name }));
+    if (
+      currentRecord?.solicitud &&
+      !mapped.some((item) => item.value === (currentRecord.gestionId || currentRecord.solicitud))
+    ) {
+      mapped.unshift({
+        value: currentRecord.gestionId || currentRecord.solicitud,
+        label: currentRecord.solicitud,
+      });
+    }
+    return [{ value: '', label: 'Seleccione una gestión' }, ...mapped];
   }
 }

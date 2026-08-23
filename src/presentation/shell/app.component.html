@@ -1,0 +1,182 @@
+<main class="min-h-screen bg-[#f5f5f7] text-slate-900">
+  @if (restoringSession()) {
+    <section class="grid min-h-screen place-items-center px-4">
+      <div class="ui-glass rounded-2xl px-6 py-5 text-center">
+        <span
+          class="mx-auto block size-7 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"
+        ></span>
+        <p class="mt-3 text-sm font-bold text-blue-950">Validando sesion...</p>
+      </div>
+    </section>
+  } @else if (!auth.isLoggedIn()) {
+    <section class="grid min-h-screen place-items-center bg-[#f5f5f7] px-4 py-8">
+      <div
+        class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+      >
+        <form (ngSubmit)="login()">
+          <div class="mb-8 flex items-center gap-3">
+            <div class="ui-brand-mark size-11">PM</div>
+            <div>
+              <p class="text-sm font-bold text-slate-950">PMO</p>
+              <h1 class="text-2xl font-bold tracking-tight text-slate-950">Registro de tiempos</h1>
+            </div>
+          </div>
+
+          <p class="mb-6 text-sm leading-6 text-slate-500">
+            Reporta tiempos, revisa avances y administra la operación.
+          </p>
+
+          @if (loginError()) {
+            <div class="ui-alert ui-alert-error mt-5">
+              {{ loginError() }}
+            </div>
+          }
+
+          <div class="mt-7 space-y-4">
+            <app-ui-field
+              label="Email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              [(ngModel)]="email"
+              [required]="true"
+            />
+            <app-ui-field
+              label="Contraseña"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              [(ngModel)]="password"
+              [required]="true"
+            />
+          </div>
+
+          <button class="ui-btn ui-btn-primary mt-7 w-full" type="submit" [disabled]="loggingIn()">
+            @if (loggingIn()) {
+              <span
+                class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+              ></span>
+            }
+            Ingresar
+          </button>
+        </form>
+      </div>
+    </section>
+  } @else {
+    <div class="flex h-screen overflow-hidden">
+      <aside
+        class="ui-sidebar sticky top-0 hidden h-screen shrink-0 overflow-hidden p-3 transition-[width] duration-200 lg:flex lg:flex-col"
+        [class.w-72]="!sidebarCollapsed()"
+        [class.w-20]="sidebarCollapsed()"
+        [class.ui-sidebar--collapsed]="sidebarCollapsed()"
+      >
+        <div
+          class="mb-6 flex items-center gap-2"
+          [class.justify-center]="sidebarCollapsed()"
+        >
+          <div class="flex min-w-0 items-center gap-3">
+            <div class="ui-brand-mark size-11 shrink-0">PM</div>
+            <div class="min-w-0" [class.hidden]="sidebarCollapsed()">
+              <p class="font-bold text-slate-950">PMO</p>
+              <p class="truncate text-xs text-slate-500" appOverflowTooltip tabindex="0">Tiempos</p>
+            </div>
+          </div>
+        </div>
+        <nav
+          class="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain"
+          [class.pr-1]="!sidebarCollapsed()"
+          aria-label="Navegación principal"
+        >
+          @for (section of navSections; track section.label) {
+            @if (!section.adminOnly || parameters.canManage()) {
+              <section>
+                <p
+                  class="mb-1 px-3 text-[11px] font-semibold text-slate-400"
+                  [class.sr-only]="sidebarCollapsed()"
+                >
+                  {{ section.label }}
+                </p>
+                <div class="space-y-1">
+                  @for (item of section.items; track item.route) {
+                    <a
+                      class="ui-nav-link"
+                      [class.justify-center]="sidebarCollapsed()"
+                      [routerLink]="item.route"
+                      routerLinkActive="is-active"
+                      [title]="item.label"
+                    >
+                      <span class="ui-nav-link__mark" aria-hidden="true">{{
+                        item.label.charAt(0)
+                      }}</span>
+                      <span class="truncate" [class.sr-only]="sidebarCollapsed()">{{
+                        item.label
+                      }}</span>
+                    </a>
+                  }
+                </div>
+              </section>
+            }
+          }
+        </nav>
+        <div class="mt-3 border-t border-slate-200/80 pt-3">
+          <button
+            class="ui-sidebar-toggle"
+            type="button"
+            [class.ui-sidebar-toggle--compact]="sidebarCollapsed()"
+            [attr.aria-label]="sidebarCollapsed() ? 'Expandir navegación' : 'Contraer navegación'"
+            [attr.aria-expanded]="!sidebarCollapsed()"
+            title="Mostrar u ocultar navegación"
+            (click)="toggleSidebar()"
+          >
+            @if (sidebarCollapsed()) {
+              <span aria-hidden="true">›</span>
+              <span class="sr-only">Expandir navegación</span>
+            } @else {
+              <span aria-hidden="true">‹</span>
+              <span>Contraer</span>
+            }
+          </button>
+        </div>
+      </aside>
+
+      <div
+        class="flex h-screen min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-16 lg:pb-0"
+      >
+        <app-ui-toolbar
+          title="Gestión de tiempos"
+          subtitle="Reportes y avances"
+          [commands]="menuBarItems"
+          [initials]="initials()"
+          [userName]="auth.user()?.name || ''"
+          (logout)="logout()"
+        />
+
+        <router-outlet></router-outlet>
+      </div>
+
+      <nav
+        class="fixed inset-x-0 bottom-0 z-30 grid auto-cols-fr grid-flow-col border-t border-slate-200 bg-white/95 px-2 py-2 text-xs font-bold text-slate-500 backdrop-blur lg:hidden"
+        aria-label="Navegación principal"
+      >
+        @for (item of mobileNavItems; track item.route) {
+          <a
+            class="rounded-xl px-2 py-2 text-center transition hover:bg-slate-100"
+            [routerLink]="item.route"
+            routerLinkActive="bg-blue-50 text-blue-700"
+          >
+            {{ item.label }}
+          </a>
+        }
+        @if (parameters.canManage()) {
+          <a
+            class="rounded-xl px-2 py-2 text-center transition hover:bg-slate-100"
+            [routerLink]="mobileAdminItem.route"
+            routerLinkActive="bg-blue-50 text-blue-700"
+          >
+            {{ mobileAdminItem.label }}
+          </a>
+        }
+      </nav>
+    </div>
+  }
+</main>

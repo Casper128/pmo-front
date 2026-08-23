@@ -32,9 +32,25 @@ import { UiMetricCardComponent } from '@presentation/shared/components/ui-metric
 import { UiSearchInputComponent } from '@presentation/shared/components/ui-search-input/ui-search-input.component';
 import { UiPageHeaderComponent } from '@presentation/shared/components/ui-page-header/ui-page-header.component';
 import { UiTimeInputComponent } from '@presentation/shared/components/ui-time-input/ui-time-input.component';
+import { UiModalComponent } from '@presentation/shared/components/ui-modal/ui-modal.component';
+import { UiStateMessageComponent } from '@presentation/shared/components/ui-state-message/ui-state-message.component';
+import { UiFieldComponent } from '@presentation/shared/components/ui-field/ui-field.component';
+import {
+  UiSegmentedControlComponent,
+  UiSegmentedOption,
+} from '@presentation/shared/components/ui-segmented-control/ui-segmented-control.component';
 import { AppParametersFacade } from '@application/configuration/app-parameters.facade';
 import { AdvancedFieldKey } from '@domain/configuration/app-parameters.model';
-import { PlayfulMascotService } from '@presentation/shared/components/playful-mascot/playful-mascot.service';
+import { ManagementTemplateGateway } from '@application/time-records/ports/management-template.gateway';
+import {
+  AdvancedTemplateValues,
+  ManagementAdvancedTemplate,
+  ManagementDemandOption,
+  REQUIRED_ADVANCED_TEMPLATE_FIELDS,
+  isMissingAdvancedTemplateValue,
+} from '@domain/time-records/models/management-template.model';
+import { ManagementReportDetailModalComponent } from '../components/management-report-detail-modal/management-report-detail-modal.component';
+import { ManagementTemplateDialogComponent } from '../components/management-template-dialog/management-template-dialog.component';
 
 interface ManagementEditDraft {
   identificador: string;
@@ -43,18 +59,7 @@ interface ManagementEditDraft {
   horaFin: string;
   horas: string;
   tipoHora: string;
-  tipoActividad: string;
   descripcion: string;
-  causa: string;
-  prefijo: string;
-  complejidad: string;
-  categoria: string;
-  impacto: string;
-  equipo: string;
-  modoActuacion: string;
-  lenguaje: string;
-  objetoRicef: string;
-  funcional: string;
 }
 
 interface DailyHours {
@@ -119,6 +124,12 @@ type SendPhase = 'idle' | 'sending' | 'saving-logs' | 'completed' | 'log-error' 
     UiSearchInputComponent,
     UiPageHeaderComponent,
     UiTimeInputComponent,
+    UiModalComponent,
+    UiStateMessageComponent,
+    UiFieldComponent,
+    UiSegmentedControlComponent,
+    ManagementReportDetailModalComponent,
+    ManagementTemplateDialogComponent,
   ],
   templateUrl: './multiple-import-page.component.html',
 })
@@ -132,9 +143,15 @@ export class MultipleImportPageComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private parameters = inject(AppParametersFacade);
-  private mascot = inject(PlayfulMascotService);
+  private templates = inject(ManagementTemplateGateway);
 
   currentView = signal<'import' | 'download' | 'management'>('import');
+  readonly reportPeriodOptions: readonly UiSegmentedOption[] = [
+    { value: 'day', label: '1 día' },
+    { value: '1m', label: '1 mes' },
+    { value: '3m', label: '3 meses' },
+    { value: '6m', label: '6 meses' },
+  ];
   records = signal<TimeRecord[]>([]);
   groups = signal<DayGroup[]>([]);
   totalGeneral = signal(0);
@@ -167,10 +184,18 @@ export class MultipleImportPageComponent implements OnInit {
   clientes = signal<string[]>([]);
   proyectos = signal<string[]>([]);
   solicitudes = signal<string[]>([]);
+  solicitudOptions = signal<ManagementDemandOption[]>([]);
   defaultCliente = signal('');
   defaultProyecto = signal('');
   defaultSolicitud = signal('');
+  defaultGestionId = signal('');
   loadingDemand = signal(false);
+  configuredManagementIds = signal<Set<string>>(new Set());
+  configuredManagementTemplates = signal<Map<string, ManagementAdvancedTemplate>>(new Map());
+  templateDialogVisible = signal(false);
+  templateDialogSaving = signal(false);
+  templateDialogMode = signal<'create' | 'edit'>('create');
+  templateDraft = signal<ManagementAdvancedTemplate | null>(null);
 
   reportCliente = '';
   reportFechaIni = '';
@@ -190,6 +215,11 @@ export class MultipleImportPageComponent implements OnInit {
     { value: 'factory', label: 'Fábrica' },
     { value: 'non_billable', label: 'No facturables' },
   ];
+  readonly tipoHoraOptions = computed<UiSelectOption[]>(() =>
+    this.parameters
+      .optionsFor('tipoHora')
+      .map((option) => ({ value: option.value, label: option.label, disabled: !option.active })),
+  );
 
   excelConsultants = computed(() =>
     this.uniqueText(this.excelReports().map((row) => row.consultor)),
@@ -282,6 +312,19 @@ export class MultipleImportPageComponent implements OnInit {
   excelClientCount = computed(
     () => new Set(this.filteredExcelReports().map((row) => row.cliente)).size,
   );
+  excelEmptyTitle = computed(() =>
+    this.excelReports().length
+      ? 'No hay actividades con esos filtros'
+      : 'Genera un reporte para ver actividades',
+  );
+  excelEmptyDescription = computed(() =>
+    this.excelReports().length
+      ? 'Limpia la búsqueda, cambia cliente, consultor, fecha o clasificación de hora para recuperar registros visibles.'
+      : 'Selecciona cliente y rango de fechas. La app cargará el Excel recibido y lo convertirá en tablas verificables.',
+  );
+  excelEmptyActionLabel = computed(() =>
+    this.excelReports().length ? 'Limpiar filtros' : 'Generar reporte',
+  );
 
   managementReports = signal<ManagementReport[]>([]);
   managementLoading = signal(false);
@@ -296,6 +339,9 @@ export class MultipleImportPageComponent implements OnInit {
   managementEditDraft = signal<ManagementEditDraft | null>(null);
   managementEditOriginal = signal<ManagementReport | null>(null);
   managementEditErrors = signal<string[]>([]);
+  managementDetailReport = signal<ManagementReport | null>(null);
+  managementDeleteReport = signal<ManagementReport | null>(null);
+  managementDeleteSaving = signal(false);
 
   managementDateError = computed(() => {
     const start = this.managementFechaIni();
@@ -311,48 +357,37 @@ export class MultipleImportPageComponent implements OnInit {
     const end = this.managementFechaFin();
     if (this.managementDateError()) return [];
 
-    return this.managementReports().filter((report) => {
-      if (!this.isCurrentUserReport(report)) return false;
-      const date = report.fechaInicio || '';
-      if (!date) return false;
-      if (start && date < start) return false;
-      if (end && date > end) return false;
-      if (!this.domain.matchesHourBillingFilter(report.tipoHora || '', this.managementHourFilter()))
-        return false;
-      return true;
-    });
+    return this.filterManagementReportsByDate(this.managementReports(), start, end);
   });
 
   filteredManagementReports = computed(() => {
-    const term = this.normalizeText(this.managementSearch);
-    const rows = [...this.dateFilteredManagementReports()].sort((a, b) =>
-      `${b.fechaInicio || ''} ${b.HoraInicio || ''}`.localeCompare(
-        `${a.fechaInicio || ''} ${a.HoraInicio || ''}`,
-      ),
-    );
-    if (!term) return rows;
-
-    return rows.filter((report) =>
-      [
-        report.identificador,
-        report.descripcionActividad,
-        report.solicitud,
-        report.funcional,
-        report.tecnologia,
-        report.modulo,
-        this.clientName(report),
-      ].some((value) => this.normalizeText(value).includes(term)),
+    return this.searchManagementReports(
+      this.dateFilteredManagementReports(),
+      this.managementSearch,
     );
   });
+  managementEmptyTitle = computed(() =>
+    this.managementReports().length
+      ? 'No hay reportes con esos filtros'
+      : 'Aún no hay reportes cargados',
+  );
+  managementEmptyDescription = computed(() =>
+    this.managementReports().length
+      ? 'Ajusta el rango, cambia la clasificación de hora o limpia la búsqueda para ver más registros.'
+      : 'Usa Actualizar para consultar los reportes enviados al backend y verificar sus campos cargados.',
+  );
+  managementEmptyActionLabel = computed(() =>
+    this.managementReports().length ? 'Limpiar filtros' : 'Actualizar reportes',
+  );
 
   managementWeekChart = computed<DailyHours[]>(() => {
-    const rows = this.dateFilteredManagementReports();
+    const rows = this.filteredManagementReports();
     const start = this.managementFechaIni();
     const end = this.managementFechaFin();
 
     if (!start || !end) {
       const latestDate = rows
-        .map((report) => report.fechaInicio)
+        .map((report) => this.managementReportDate(report))
         .filter((date): date is string => !!date)
         .sort()
         .at(-1);
@@ -380,7 +415,7 @@ export class MultipleImportPageComponent implements OnInit {
       const day = new Date(startDate);
       day.setDate(startDate.getDate() + index);
       const date = this.toDateInputValue(day);
-      const dayRows = rows.filter((report) => report.fechaInicio === date);
+      const dayRows = rows.filter((report) => this.managementReportDate(report) === date);
       return {
         date,
         label: this.formatFullDate(date),
@@ -396,6 +431,7 @@ export class MultipleImportPageComponent implements OnInit {
     if (view === 'import' || view === 'download' || view === 'management')
       this.currentView.set(view);
     this.loadDefaultSelection();
+    this.loadManagementTemplates();
     if (view === 'download' && !this.reportFechaIni && !this.reportFechaFin) {
       this.setReportPeriod('1m');
     }
@@ -439,7 +475,6 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   onEdit(index: number) {
-    this.mascot.play('edit');
     this.editingIndex.set(index);
     this.editingRecord.set({ ...this.records()[index] });
     this.modalVisible.set(true);
@@ -470,7 +505,6 @@ export class MultipleImportPageComponent implements OnInit {
     this.records.set(recs);
     this.refreshGroups();
     this.modalVisible.set(false);
-    this.mascot.play('success');
     this.showAlert('✓ Registro actualizado', 'success');
   }
 
@@ -478,8 +512,6 @@ export class MultipleImportPageComponent implements OnInit {
     const recs = [...this.records()];
     recs[index] = {
       ...updated,
-      fechaEstimada: updated.fechaEstimada || updated.fecha,
-      fechaReal: updated.fechaReal || updated.fecha,
     };
     this.records.set(recs);
     this.refreshGroups();
@@ -501,6 +533,23 @@ export class MultipleImportPageComponent implements OnInit {
 
     if (this.records().length === 0) {
       this.showAlert('No hay registros listos para enviar.', 'error', 'Envío bloqueado');
+      return;
+    }
+
+    const blockedTemplate = this.firstBlockedManagementTemplate();
+    if (blockedTemplate) {
+      if (blockedTemplate.template) {
+        this.openTemplateEdit(blockedTemplate.template);
+      } else {
+        this.ensureManagementTemplate(blockedTemplate.option);
+      }
+      const missingText = blockedTemplate.missing.length
+        ? ` Faltan: ${blockedTemplate.missing.join(', ')}.`
+        : '';
+      this.alert.set({
+        type: 'error',
+        text: `Llena la configuración avanzada de la gestión antes de enviar.${missingText}`,
+      });
       return;
     }
 
@@ -565,7 +614,6 @@ export class MultipleImportPageComponent implements OnInit {
     }
 
     this.sending.set(true);
-    this.mascot.play('send');
     this.sendPhase.set('sending');
     this.sendTotal.set(this.records().length);
     this.sendProcessed.set(0);
@@ -641,6 +689,68 @@ export class MultipleImportPageComponent implements OnInit {
     this.defaultSolicitud.set(solicitud);
   }
 
+  onDefaultGestionChange(gestionId: string) {
+    const option = this.solicitudOptions().find((item) => item.id === gestionId);
+    this.defaultGestionId.set(gestionId);
+    this.defaultSolicitud.set(option?.requestValue || option?.name || gestionId);
+    if (option) this.ensureManagementTemplate(option);
+  }
+
+  onManagementSelected(option: ManagementDemandOption): void {
+    this.ensureManagementTemplate(option);
+  }
+
+  openTemplateEdit(template: ManagementAdvancedTemplate): void {
+    this.templateDialogMode.set('edit');
+    this.templateDraft.set({ ...template, values: { ...template.values } });
+    this.templateDialogVisible.set(true);
+  }
+
+  closeTemplateDialog(): void {
+    if (this.templateDialogSaving()) return;
+    this.templateDialogVisible.set(false);
+    this.templateDraft.set(null);
+  }
+
+  saveTemplateDialog(): void {
+    const draft = this.templateDraft();
+    if (!draft?.gestionId) return;
+    const missing = this.missingRequiredTemplateFields(draft);
+    if (missing.length) {
+      this.showAlert(`Faltan campos obligatorios: ${missing.join(', ')}.`, 'error');
+      return;
+    }
+    const templateToSave: ManagementAdvancedTemplate = {
+      ...draft,
+      values: { ...draft.values },
+      completed: true,
+    };
+    this.templateDialogSaving.set(true);
+    this.templates.save(templateToSave).subscribe({
+      next: (saved) => {
+        this.templateDialogSaving.set(false);
+        this.configuredManagementIds.update((ids) => new Set(ids).add(saved.gestionId));
+        this.configuredManagementTemplates.update((items) =>
+          this.mergeManagementTemplate(items, saved),
+        );
+        this.templateDialogVisible.set(false);
+        this.templateDraft.set(null);
+        this.showAlert('Configuración avanzada guardada para la gestión.', 'success');
+      },
+      error: (error) => {
+        this.templateDialogSaving.set(false);
+        this.showAlert(
+          `No se pudo guardar la configuración: ${error?.message || 'intenta nuevamente'}`,
+          'error',
+        );
+      },
+    });
+  }
+
+  onTemplateDraftChange(template: ManagementAdvancedTemplate): void {
+    this.templateDraft.set(template);
+  }
+
   onReportFechaIniChange(value: string) {
     this.reportFechaIni = value;
     if (!this.reportFechaFin) this.reportFechaFin = value;
@@ -679,6 +789,12 @@ export class MultipleImportPageComponent implements OnInit {
     this.reportResult.set(null);
     this.alert.set(null);
     this.alertDialog.set(null);
+  }
+
+  applyReportPeriodSegment(period: string): void {
+    if (period === 'day' || period === '1m' || period === '3m' || period === '6m') {
+      this.setReportPeriod(period);
+    }
   }
 
   loadManagementReports() {
@@ -720,10 +836,8 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   openManagementEdit(report: ManagementReport) {
-    this.mascot.play('edit');
     const fecha =
-      this.domain.normalizeDateValue(report.fechaInicio || '') ||
-      this.domain.normalizeDateValue(report.HoraInicio || '');
+      this.managementReportDate(report) || this.domain.normalizeDateValue(report.HoraInicio || '');
     const draft: ManagementEditDraft = {
       identificador: report.identificador || '',
       fecha,
@@ -731,18 +845,7 @@ export class MultipleImportPageComponent implements OnInit {
       horaFin: this.extractTimeValue(report.HoraFin || ''),
       horas: String(report.tiempoRealHoras || ''),
       tipoHora: report.tipoHora || 'Laboral',
-      tipoActividad: report.tipoActividad || '',
       descripcion: report.descripcionActividad || report.observacion || '',
-      causa: report.causa || '',
-      prefijo: report.prefijo || '',
-      complejidad: report.complejidad || '',
-      categoria: report.categoria || '',
-      impacto: report.impacto || '',
-      equipo: report.equipo || '',
-      modoActuacion: report.modoActuacion || '',
-      lenguaje: report.lenguaje || '',
-      objetoRicef: this.managementReportText(report, ['objetoRicef', 'objetoRICEF', 'ricefObject']),
-      funcional: report.funcional || '',
     };
 
     if (!draft.horas && draft.horaIni && draft.horaFin) {
@@ -755,12 +858,79 @@ export class MultipleImportPageComponent implements OnInit {
     this.refreshManagementEditValidation();
   }
 
+  openManagementDelete(report: ManagementReport): void {
+    if (!report.identificador || this.managementDeleteSaving()) return;
+    this.managementDeleteReport.set(report);
+  }
+
+  closeManagementDelete(): void {
+    if (this.managementDeleteSaving()) return;
+    this.managementDeleteReport.set(null);
+  }
+
+  confirmManagementDelete(): void {
+    const report = this.managementDeleteReport();
+    const identifier = String(report?.identificador || '').trim();
+    if (!identifier || this.managementDeleteSaving()) return;
+    this.managementDeleteSaving.set(true);
+    this.management.delete(identifier).subscribe({
+      next: () => {
+        this.managementDeleteSaving.set(false);
+        this.managementReports.update((rows) =>
+          rows.filter((item) => String(item.identificador || '') !== identifier),
+        );
+        this.managementDeleteReport.set(null);
+        this.loadManagementReports();
+        this.showAlert('Reporte eliminado correctamente', 'success');
+      },
+      error: (error) => {
+        this.managementDeleteSaving.set(false);
+        this.showAlert(
+          this.managementDeleteErrorMessage(error),
+          'error',
+        );
+      },
+    });
+  }
+
+  private managementDeleteErrorMessage(error: unknown): string {
+    const response = error as { error?: unknown; status?: number };
+    const body = response?.error as { error?: unknown; message?: unknown } | string | undefined;
+    const backendMessage =
+      typeof body === 'string'
+        ? body
+        : typeof body?.error === 'string'
+          ? body.error
+          : typeof body?.message === 'string'
+            ? body.message
+            : '';
+
+    if (backendMessage && !/failed to fetch/i.test(backendMessage)) {
+      return `No se pudo eliminar el reporte: ${backendMessage}`;
+    }
+    if (response?.status === 0) {
+      return 'No se pudo contactar el servicio de eliminación. Verifica que la función de borrado esté desplegada y vuelve a intentarlo.';
+    }
+    if (/failed to fetch/i.test(backendMessage)) {
+      return 'No se pudo contactar el backend PMO desde el servicio de eliminación. Revisa el despliegue y las variables de la función.';
+    }
+    return 'No se pudo eliminar el reporte. Intenta nuevamente.';
+  }
+
   closeManagementEdit() {
     if (this.managementEditSaving()) return;
     this.managementEditVisible.set(false);
     this.managementEditDraft.set(null);
     this.managementEditOriginal.set(null);
     this.managementEditErrors.set([]);
+  }
+
+  openManagementDetail(report: ManagementReport): void {
+    this.managementDetailReport.set(report);
+  }
+
+  closeManagementDetail(): void {
+    this.managementDetailReport.set(null);
   }
 
   onManagementEditTimeChange() {
@@ -795,13 +965,37 @@ export class MultipleImportPageComponent implements OnInit {
     const draft = this.managementEditDraft();
     if (!draft || this.managementEditErrors().length) return;
 
+    const report = this.managementEditOriginal();
+    const management = report ? this.managementOptionFromReport(report) : null;
+    if (management && !this.templateForManagement(management)) {
+      this.templates.get(management.id).subscribe((template) => {
+        if (template) {
+          this.configuredManagementIds.update((ids) => new Set(ids).add(management.id));
+          this.configuredManagementTemplates.update((items) =>
+            this.mergeManagementTemplate(items, template),
+          );
+          this.persistManagementEdit(draft);
+          return;
+        }
+        this.ensureManagementTemplate(management);
+        this.alert.set({
+          type: 'error',
+          text: 'Crea la configuración avanzada de esta gestión antes de actualizar el reporte.',
+        });
+      });
+      return;
+    }
+
+    this.persistManagementEdit(draft);
+  }
+
+  private persistManagementEdit(draft: ManagementEditDraft): void {
     this.managementEditSaving.set(true);
     this.management.update(draft.identificador, this.buildManagementEditBody(draft)).subscribe({
       next: () => {
         this.managementEditSaving.set(false);
         this.applyManagementEditLocally(draft);
         this.closeManagementEdit();
-        this.mascot.play('success');
         this.showAlert('Reporte actualizado correctamente', 'success');
       },
       error: (error) => {
@@ -819,6 +1013,30 @@ export class MultipleImportPageComponent implements OnInit {
     this.managementFechaFin.set('');
     this.managementHourFilter.set('all');
     this.onManagementSearchChange('');
+  }
+
+  clearReportTableFilters() {
+    this.reportTableConsultant.set('');
+    this.reportTableClient.set('');
+    this.reportTableDate.set('');
+    this.reportTableHourFilter.set('all');
+    this.reportTableSearch.set('');
+  }
+
+  resolveExcelEmptyAction() {
+    if (this.excelReports().length) {
+      this.clearReportTableFilters();
+      return;
+    }
+    this.downloadReport();
+  }
+
+  resolveManagementEmptyAction() {
+    if (this.managementReports().length) {
+      this.clearManagementFilters();
+      return;
+    }
+    this.loadManagementReports();
   }
 
   downloadReport() {
@@ -909,11 +1127,7 @@ export class MultipleImportPageComponent implements OnInit {
     this.reportPeriodPreset.set('custom');
     this.reportResult.set(null);
     this.excelReports.set([]);
-    this.reportTableConsultant.set('');
-    this.reportTableClient.set('');
-    this.reportTableDate.set('');
-    this.reportTableHourFilter.set('all');
-    this.reportTableSearch.set('');
+    this.clearReportTableFilters();
     this.alert.set(null);
   }
 
@@ -993,7 +1207,7 @@ export class MultipleImportPageComponent implements OnInit {
     return this.managementReports().reduce(
       (sum, report) => {
         if ((report.identificador || '') === (original?.identificador || '')) return sum;
-        if (report.fechaInicio !== draft.fecha) return sum;
+        if (this.managementReportDate(report) !== draft.fecha) return sum;
         if (!this.domain.isCountableHour(report.tipoHora || '')) return sum;
         return sum + this.reportHours(report);
       },
@@ -1012,6 +1226,78 @@ export class MultipleImportPageComponent implements OnInit {
       report.identificador ||
       'Sin gestion'
     );
+  }
+
+  private filterManagementReportsByDate(
+    reports: readonly ManagementReport[],
+    start: string,
+    end: string,
+  ): ManagementReport[] {
+    return reports.filter((report) => {
+      if (!this.isCurrentUserReport(report)) return false;
+      const date = this.managementReportDate(report);
+      if (!date) return false;
+      if (start && date < start) return false;
+      if (end && date > end) return false;
+      if (!this.domain.matchesHourBillingFilter(report.tipoHora || '', this.managementHourFilter()))
+        return false;
+      return true;
+    });
+  }
+
+  private searchManagementReports(
+    reports: readonly ManagementReport[],
+    search: string,
+  ): ManagementReport[] {
+    const term = this.normalizeText(search);
+    const rows = [...reports].sort((a, b) =>
+      this.managementSortKey(b).localeCompare(this.managementSortKey(a)),
+    );
+    if (!term) return rows;
+
+    return rows.filter((report) =>
+      [
+        report.identificador,
+        report.descripcionActividad,
+        report.solicitud,
+        report.funcional,
+        report.tecnologia,
+        this.moduleFromReport(report),
+        this.clientName(report),
+      ].some((value) => this.normalizeText(value).includes(term)),
+    );
+  }
+
+  moduleFromReport(report: ManagementReport): string {
+    return String(report.modulo || '').trim();
+  }
+
+  private managementSortKey(report: ManagementReport): string {
+    return `${this.managementReportDate(report)} ${this.managementReportStartTime(report)}`;
+  }
+
+  managementOptionFromReport(report: ManagementReport): ManagementDemandOption | null {
+    const id = this.managementReportText(report, [
+      'gestionId',
+      'idGestion',
+      'idSolicitud',
+      'solicitudId',
+      'id_solicitud',
+      'id_gestion',
+      'solicitud',
+      'gestionDemanda',
+    ]);
+    const name = this.managementName(report);
+    const value = (id || name).trim();
+    if (!value || value === 'Sin gestion') return null;
+    return {
+      id: value,
+      name: name === 'Sin gestion' ? value : name,
+      client: this.clientName(report),
+      project: report.proyecto ? String(report.proyecto) : undefined,
+      module: report.modulo ? String(report.modulo) : undefined,
+      raw: report,
+    };
   }
 
   formatHours(value: number): string {
@@ -1106,7 +1392,6 @@ export class MultipleImportPageComponent implements OnInit {
       this.showPreview.set(this.records().length > 0);
     }
     this.sendPhase.set('completed');
-    this.mascot.play('success');
   }
 
   private resetSendTracking() {
@@ -1135,23 +1420,187 @@ export class MultipleImportPageComponent implements OnInit {
       cliente: record.cliente || this.defaultCliente(),
       proyecto: record.proyecto || this.defaultProyecto(),
       solicitud: record.solicitud || this.defaultSolicitud(),
-      fechaEstimada: record.fechaEstimada || record.fecha,
-      fechaReal: record.fechaReal || record.fecha,
+      gestionId: record.gestionId || this.defaultGestionId(),
     };
   }
 
   private loadSolicitudes(cliente: string, proyecto: string) {
     if (!cliente) {
       this.solicitudes.set([]);
+      this.solicitudOptions.set([]);
       this.loadingDemand.set(false);
       return;
     }
 
-    this.options.solicitudes(cliente, proyecto).subscribe((solicitudes) => {
-      this.solicitudes.set(solicitudes);
-      this.defaultSolicitud.set(solicitudes[0] ?? '');
+    this.options.solicitudOptions(cliente, proyecto).subscribe((solicitudes) => {
+      this.solicitudOptions.set(solicitudes);
+      this.solicitudes.set(solicitudes.map((item) => item.name));
+      const selected = solicitudes[0] ?? null;
+      this.defaultSolicitud.set(selected?.requestValue || selected?.name || '');
+      this.defaultGestionId.set(selected?.id || '');
       this.loadingDemand.set(false);
     });
+  }
+
+  private loadManagementTemplates(): void {
+    this.templates.list().subscribe((templates) => {
+      this.configuredManagementIds.set(new Set(templates.map((item) => item.gestionId)));
+      this.configuredManagementTemplates.set(this.buildManagementTemplateMap(templates));
+    });
+  }
+
+  private ensureManagementTemplate(option: ManagementDemandOption): void {
+    this.templates.registerKnownManagement(option);
+    if (!option.id || this.templateDialogVisible() || this.templateForManagement(option)) {
+      return;
+    }
+    this.templates.get(option.id).subscribe((template) => {
+      if (template) {
+        const templateWithControlData = this.withManagementControlData(template, option);
+        this.configuredManagementIds.update((ids) => new Set(ids).add(option.id));
+        this.configuredManagementTemplates.update((items) =>
+          this.mergeManagementTemplate(items, templateWithControlData),
+        );
+        if (templateWithControlData !== template) this.templates.save(templateWithControlData).subscribe();
+        return;
+      }
+      this.templateDialogMode.set('create');
+      this.templateDraft.set({
+        gestionId: option.id,
+        gestionName: option.name,
+        client: option.client,
+        project: option.project,
+        values: this.defaultTemplateValues(option),
+        completed: false,
+      });
+      this.templateDialogVisible.set(true);
+    });
+  }
+
+  private firstBlockedManagementTemplate(): {
+    option: ManagementDemandOption;
+    template: ManagementAdvancedTemplate | null;
+    missing: string[];
+  } | null {
+    const configuredTemplates = this.configuredManagementTemplates();
+    for (const record of this.records()) {
+      const gestionId = (record.gestionId || record.solicitud || '').trim();
+      if (!gestionId) continue;
+      const option = this.templates.knownManagement(gestionId) || {
+        id: gestionId,
+        name: record.solicitud || gestionId,
+        client: record.cliente,
+        project: record.proyecto,
+      };
+      const matchedTemplate = this.templateForManagement(option, configuredTemplates);
+      if (matchedTemplate) {
+        const missing = this.missingRequiredTemplateFields(matchedTemplate);
+        if (missing.length) {
+          return { option, template: matchedTemplate, missing };
+        }
+        continue;
+      }
+      return { option, template: null, missing: [] };
+    }
+    return null;
+  }
+
+  private defaultTemplateValues(option?: ManagementDemandOption): AdvancedTemplateValues {
+    return {
+      proyecto: option?.project || this.defaultProyecto(),
+      unity: option?.module || '',
+      funcional: '',
+      tipoActividad: this.parameters.defaultFor('tipoActividad'),
+      causa: this.parameters.defaultFor('causa'),
+      complejidad: this.parameters.defaultFor('complejidad'),
+      impacto: this.parameters.defaultFor('impacto'),
+      equipo: this.parameters.defaultFor('equipo'),
+      modoActuacion: this.parameters.defaultFor('modoActuacion'),
+      lenguaje: this.parameters.defaultFor('lenguaje'),
+      prefijo: this.parameters.defaultFor('prefijo'),
+      objetoRicef: this.parameters.defaultFor('objetoRicef'),
+      categoria: this.parameters.defaultFor('categoria'),
+    };
+  }
+
+  private withManagementControlData(
+    template: ManagementAdvancedTemplate,
+    option: ManagementDemandOption,
+  ): ManagementAdvancedTemplate {
+    const values = { ...template.values };
+    let changed = false;
+    if (option.module && !values.unity) {
+      values.unity = option.module;
+      changed = true;
+    }
+    if (option.client && !template.client) changed = true;
+    if (option.project && !template.project) changed = true;
+    return changed
+      ? {
+          ...template,
+          client: template.client || option.client,
+          project: template.project || option.project,
+          values,
+        }
+      : template;
+  }
+
+  private missingRequiredTemplateFields(template: ManagementAdvancedTemplate): string[] {
+    return REQUIRED_ADVANCED_TEMPLATE_FIELDS.filter((field) =>
+      isMissingAdvancedTemplateValue(template.values[field.key]),
+    ).map((field) => field.label);
+  }
+
+  private buildManagementTemplateMap(
+    templates: readonly ManagementAdvancedTemplate[],
+  ): Map<string, ManagementAdvancedTemplate> {
+    return templates.reduce(
+      (map, template) => this.mergeManagementTemplate(map, template),
+      new Map<string, ManagementAdvancedTemplate>(),
+    );
+  }
+
+  private mergeManagementTemplate(
+    map: Map<string, ManagementAdvancedTemplate>,
+    template: ManagementAdvancedTemplate,
+  ): Map<string, ManagementAdvancedTemplate> {
+    const next = new Map(map);
+    this.managementTemplateKeys(template).forEach((key) => next.set(key, template));
+    return next;
+  }
+
+  private templateForManagement(
+    option: ManagementDemandOption,
+    templates = this.configuredManagementTemplates(),
+  ): ManagementAdvancedTemplate | null {
+    return (
+      this.managementOptionKeys(option)
+        .map((key) => templates.get(key))
+        .find((template): template is ManagementAdvancedTemplate => !!template) || null
+    );
+  }
+
+  private managementTemplateKeys(template: ManagementAdvancedTemplate): string[] {
+    return this.uniqueText([
+      template.gestionId,
+      template.gestionName,
+      this.normalizeManagementName(template.gestionName),
+    ]);
+  }
+
+  private managementOptionKeys(option: ManagementDemandOption): string[] {
+    return this.uniqueText([
+      option.id,
+      option.name,
+      option.requestValue || '',
+      this.normalizeManagementName(option.name),
+      this.normalizeManagementName(option.id),
+      this.normalizeManagementName(option.requestValue),
+    ]);
+  }
+
+  private normalizeManagementName(value: unknown): string {
+    return this.normalizeText(value).replace(/\s+/g, ' ');
   }
 
   private syncReportDatesFromRecords(records: TimeRecord[]) {
@@ -1167,7 +1616,7 @@ export class MultipleImportPageComponent implements OnInit {
   private syncManagementDatesFromReports(reports: ManagementReport[]) {
     if (this.managementFechaIni() || this.managementFechaFin()) return;
     const latestDate = reports
-      .map((report) => report.fechaInicio)
+      .map((report) => this.managementReportDate(report))
       .filter((date): date is string => !!date)
       .sort()
       .at(-1);
@@ -1363,9 +1812,7 @@ export class MultipleImportPageComponent implements OnInit {
     if (!this.domain.isValidDateValue(draft.fecha)) errors.push('Fecha invalida');
     if (!this.domain.isValidTimeValue(draft.horaIni)) errors.push('Hora inicio invalida');
     if (!this.domain.isValidTimeValue(draft.horaFin)) errors.push('Hora fin invalida');
-    if (!draft.tipoActividad.trim()) errors.push('Tipo de actividad requerido');
     if (!draft.descripcion.trim()) errors.push('Descripcion requerida');
-    if (!draft.funcional.trim()) errors.push('Funcional requerido');
 
     const calculatedHours = this.domain.calcHoras(draft.horaIni, draft.horaFin);
     const hours = Number(draft.horas || calculatedHours || 0);
@@ -1392,21 +1839,10 @@ export class MultipleImportPageComponent implements OnInit {
       HoraInicio: `${y}-${mo}-${d}T${ih}:${im}:00.000Z`,
       HoraFin: `${y}-${mo}-${d}T${fh}:${fm}:00.000Z`,
       tiempoRealHoras: draft.horas,
-      fechaInicio: this.buildColombiaDateLabel(draft.fecha, '05:00'),
+      fechaInicio: this.buildColombiaDateLabel(draft.fecha, draft.horaIni),
       tipoHora: draft.tipoHora || 'Laboral',
-      tipoActividad: draft.tipoActividad,
       descripcionActividad: draft.descripcion.trim(),
       observacion: draft.descripcion.trim(),
-      causa: draft.causa,
-      prefijo: draft.prefijo,
-      complejidad: draft.complejidad,
-      categoria: draft.categoria,
-      impacto: draft.impacto,
-      equipo: draft.equipo,
-      modoActuacion: draft.modoActuacion,
-      lenguaje: draft.lenguaje,
-      objetoRicef: draft.objetoRicef,
-      funcional: draft.funcional.trim(),
     };
   }
 
@@ -1416,24 +1852,13 @@ export class MultipleImportPageComponent implements OnInit {
         if ((report.identificador || '') !== draft.identificador) return report;
         return {
           ...report,
-          fechaInicio: draft.fecha,
+          fechaInicio: this.buildColombiaDateLabel(draft.fecha, draft.horaIni),
           HoraInicio: this.buildIsoDateTime(draft.fecha, draft.horaIni),
           HoraFin: this.buildIsoDateTime(draft.fecha, draft.horaFin),
           tiempoRealHoras: draft.horas,
           tipoHora: draft.tipoHora,
-          tipoActividad: draft.tipoActividad,
           descripcionActividad: draft.descripcion,
           observacion: draft.descripcion,
-          causa: draft.causa,
-          prefijo: draft.prefijo,
-          complejidad: draft.complejidad,
-          categoria: draft.categoria,
-          impacto: draft.impacto,
-          equipo: draft.equipo,
-          modoActuacion: draft.modoActuacion,
-          lenguaje: draft.lenguaje,
-          objetoRicef: draft.objetoRicef,
-          funcional: draft.funcional,
         };
       }),
     );
@@ -1441,6 +1866,22 @@ export class MultipleImportPageComponent implements OnInit {
 
   private buildIsoDateTime(date: string, time: string): string {
     return `${date}T${time}:00.000Z`;
+  }
+
+  managementReportDate(report: ManagementReport): string {
+    return (
+      this.domain.normalizeDateValue(report.fechaInicio || '') ||
+      this.domain.normalizeDateValue(report.HoraInicio || '') ||
+      this.extractDateValue(report.fechaInicio || '') ||
+      this.extractDateValue(report.HoraInicio || '')
+    );
+  }
+
+  private managementReportStartTime(report: ManagementReport): string {
+    return (
+      this.extractTimeValue(report.HoraInicio || '') ||
+      this.extractTimeValue(report.fechaInicio || '')
+    );
   }
 
   private managementReportText(report: ManagementReport, keys: string[]): string {
@@ -1456,8 +1897,35 @@ export class MultipleImportPageComponent implements OnInit {
     if (!value) return '';
     const isoMatch = value.match(/T(\d{2}:\d{2})/);
     if (isoMatch) return isoMatch[1];
+    const textualMatch = value.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
+    if (textualMatch) return `${textualMatch[1].padStart(2, '0')}:${textualMatch[2]}`;
     const plainMatch = value.match(/^(\d{2}:\d{2})/);
     return plainMatch ? plainMatch[1] : '';
+  }
+
+  private extractDateValue(value: string): string {
+    if (!value) return '';
+    const iso = value.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const textual = value.match(
+      /\b(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})/i,
+    );
+    if (!textual) return '';
+    const months: Record<string, string> = {
+      jan: '01',
+      feb: '02',
+      mar: '03',
+      apr: '04',
+      may: '05',
+      jun: '06',
+      jul: '07',
+      aug: '08',
+      sep: '09',
+      oct: '10',
+      nov: '11',
+      dec: '12',
+    };
+    return `${textual[3]}-${months[textual[1].toLowerCase()] || '01'}-${textual[2].padStart(2, '0')}`;
   }
 
   private buildColombiaDateLabel(date: string, time: string): string {

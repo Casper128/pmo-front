@@ -17,7 +17,10 @@ import { UiDateInputComponent } from '@presentation/shared/components/ui-date-in
 import { UiMetricCardComponent } from '@presentation/shared/components/ui-metric-card/ui-metric-card.component';
 import { UiSearchInputComponent } from '@presentation/shared/components/ui-search-input/ui-search-input.component';
 import { UiPageHeaderComponent } from '@presentation/shared/components/ui-page-header/ui-page-header.component';
-import { AnalyticsChartCardComponent } from '../components/analytics-chart-card/analytics-chart-card.component';
+import {
+  UiSegmentedControlComponent,
+  UiSegmentedOption,
+} from '@presentation/shared/components/ui-segmented-control/ui-segmented-control.component';
 
 interface BreakdownItem {
   label: string;
@@ -39,7 +42,7 @@ interface BreakdownItem {
     UiMetricCardComponent,
     UiSearchInputComponent,
     UiPageHeaderComponent,
-    AnalyticsChartCardComponent,
+    UiSegmentedControlComponent,
   ],
   templateUrl: './consultant-statistics-page.component.html',
 })
@@ -60,6 +63,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   prefix = signal('');
   hourBillingFilter = signal<HourBillingFilter>('all');
   search = signal('');
+  periodPreset = signal('30');
 
   dateError = computed(() =>
     this.dateFrom() && this.dateTo() && this.dateFrom() > this.dateTo()
@@ -84,6 +88,12 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     { value: 'PRY', label: 'PRY · Proyecto' },
     { value: 'OTRO', label: 'Sin clasificación' },
   ];
+  readonly periodPresetOptions: readonly UiSegmentedOption[] = [
+    { value: '7', label: '7 días' },
+    { value: '30', label: '30 días' },
+    { value: 'month', label: 'Mes' },
+    { value: '6m', label: '6 meses' },
+  ];
   readonly hourBillingOptions: readonly UiSelectOption[] = [
     { value: 'all', label: 'Todos los tipos de hora' },
     { value: 'billable', label: 'Facturables' },
@@ -96,12 +106,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     const term = this.normalize(this.search());
     return this.ownRecords()
       .filter((record) => {
-        if (
-          !this.domain.matchesHourBillingFilter(
-            record.tipoHora || '',
-            this.hourBillingFilter(),
-          )
-        )
+        if (!this.domain.matchesHourBillingFilter(record.tipoHora || '', this.hourBillingFilter()))
           return false;
         const date = this.recordDate(record);
         if (this.dateFrom() && date < this.dateFrom()) return false;
@@ -223,9 +228,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   );
   nonLaborHours = computed(() =>
     this.filteredRecords()
-      .filter(
-        (record) => this.domain.hourBillingCategory(record.tipoHora || '') === 'non_billable',
-      )
+      .filter((record) => this.domain.hourBillingCategory(record.tipoHora || '') === 'non_billable')
       .reduce((sum, record) => sum + this.hours(record), 0),
   );
   mainModule = computed(() => this.moduleBreakdown()[0]?.label || 'Sin datos');
@@ -369,6 +372,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   }
 
   setPeriod(days: number): void {
+    this.periodPreset.set(String(days));
     const latest = this.latestRecordDate() || this.toInputDate(new Date());
     const start = this.parseDate(latest);
     start.setDate(start.getDate() - (days - 1));
@@ -377,12 +381,14 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   }
 
   setCurrentMonth(): void {
+    this.periodPreset.set('month');
     const latest = this.parseDate(this.latestRecordDate() || this.toInputDate(new Date()));
     this.dateFrom.set(this.toInputDate(new Date(latest.getFullYear(), latest.getMonth(), 1)));
     this.dateTo.set(this.toInputDate(new Date(latest.getFullYear(), latest.getMonth() + 1, 0)));
   }
 
   setLastMonths(months: number): void {
+    this.periodPreset.set(`${months}m`);
     const latestValue = this.latestRecordDate() || this.toInputDate(new Date());
     const end = this.parseDate(latestValue);
     const start = new Date(end);
@@ -390,6 +396,12 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     start.setDate(start.getDate() + 1);
     this.dateFrom.set(this.toInputDate(start));
     this.dateTo.set(latestValue);
+  }
+
+  applyPeriodPreset(period: string): void {
+    if (period === '7' || period === '30') this.setPeriod(Number(period));
+    if (period === 'month') this.setCurrentMonth();
+    if (period === '6m') this.setLastMonths(6);
   }
 
   clearFilters(): void {

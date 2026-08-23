@@ -1,0 +1,19 @@
+<section [class.ui-surface]="surface" [class.bg-white]="surface" [class.p-4]="surface">
+  @if (eyebrow || title || description) {
+    <header class="mb-3">
+      @if (eyebrow) {
+        <p class="ui-eyebrow">{{ eyebrow }}</p>
+      }
+      @if (title) {
+        <h3 class="text-sm font-bold text-slate-900">{{ title }}</h3>
+      }
+      @if (description) {
+        <p class="mt-1 text-sm text-slate-500">{{ description }}</p>
+      }
+    </header>
+  }
+
+  <div [class]="gridClass">
+    <ng-content />
+  </div>
+</section>

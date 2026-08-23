@@ -1,0 +1,18 @@
+<article
+  class="ui-metric-card"
+  [class.ui-metric-card--blue]="tone === 'blue'"
+  [class.ui-metric-card--amber]="tone === 'amber'"
+  [class.ui-metric-card--red]="tone === 'red'"
+>
+  <p class="ui-metric-card__label">
+    {{ label }}
+  </p>
+  <p class="ui-metric-card__value">
+    {{ value }}
+  </p>
+  @if (description) {
+    <p class="ui-metric-card__description">
+      {{ description }}
+    </p>
+  }
+</article>

@@ -5,5 +5,4 @@ export const environment = {
   supabasePublishableKey: 'sb_publishable_65j6uqxyCd00-daQcHXjLg_nhHmLZ12',
   configurationAdminEmails: ['darwin.osorio@netwconsulting.com'],
   locationAdminEmails: ['1darwin.osorio@netwconsulting.com'],
-  playfulMascotEnabled: true,
 };

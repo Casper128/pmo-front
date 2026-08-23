@@ -1,12 +1,10 @@
-<div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+<div class="ui-surface">
   <!-- Header -->
   <div class="sticky top-0 z-10 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <p class="text-[11px] font-extrabold text-blue-600 uppercase tracking-widest">
-          Vista Previa de Registros
-        </p>
-        <p class="mt-1 text-sm font-semibold text-slate-700">
+        <p class="ui-eyebrow">Vista previa de registros</p>
+        <p class="mt-1 text-base font-bold text-slate-900">
           {{ recordCount }} registros en {{ groups.length }} día{{ groups.length !== 1 ? 's' : '' }}
           @if (groups.length > 1) {
             <span class="text-slate-400">·</span>
@@ -14,30 +12,34 @@
           }
         </p>
       </div>
-      <div class="grid grid-cols-2 gap-2 sm:flex">
-        <button
-          class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-          [disabled]="sending"
-          (click)="sendAll.emit()"
+      <div
+        class="grid grid-cols-2 gap-2 text-xs font-bold sm:flex"
+        role="status"
+        aria-live="polite"
+      >
+        <span
+          class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-700"
         >
-          @if (sending) {
-            <span
-              class="mr-2 inline-block size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
-            ></span>
-            Enviando...
-          } @else {
-            Registrar
-          }
-        </button>
-        <button
-          class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          [disabled]="sending"
-          (click)="cancelImport.emit()"
+          {{ readyCount }} listos
+        </span>
+        <span
+          class="rounded-full border px-3 py-1.5"
+          [class.border-red-200]="recordsToReview > 0"
+          [class.bg-red-50]="recordsToReview > 0"
+          [class.text-red-700]="recordsToReview > 0"
+          [class.border-slate-200]="recordsToReview === 0"
+          [class.bg-slate-50]="recordsToReview === 0"
+          [class.text-slate-600]="recordsToReview === 0"
         >
-          Cancelar
-        </button>
+          {{ recordsToReview }} por revisar
+        </span>
       </div>
     </div>
+    @if (recordsToReview > 0) {
+      <div class="ui-alert ui-alert-warning mt-3" role="alert">
+        Completa los campos marcados antes de registrar para evitar rechazos del envío.
+      </div>
+    }
   </div>
 
   <!-- Mobile cards -->
@@ -52,13 +54,13 @@
           [style.background]="group.alerta.bg"
         >
           <div>
-            <p class="text-sm font-black text-blue-950">{{ group.fecha | fechaEsp }}</p>
+            <p class="text-sm font-bold text-blue-950">{{ group.fecha | fechaEsp }}</p>
             <p class="text-xs text-slate-500">
               {{ group.records.length }} registro{{ group.records.length !== 1 ? 's' : '' }}
             </p>
           </div>
           <span
-            class="rounded-full border bg-white px-3 py-1 text-xs font-black"
+            class="rounded-full border bg-white px-3 py-1 text-xs font-bold"
             [style.color]="group.alerta.color"
             [style.border-color]="group.alerta.border"
           >
@@ -79,18 +81,18 @@
                   <p class="font-mono text-xs font-bold text-slate-500">
                     {{ item.record.horaIni }} - {{ item.record.horaFin }}
                   </p>
-                  <p class="mt-1 text-sm font-black text-blue-700">{{ item.record.horas }}h</p>
+                  <p class="mt-1 text-sm font-bold text-blue-700">{{ item.record.horas }}h</p>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                   <button
-                    class="rounded-lg bg-blue-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-600"
+                    class="ui-btn ui-btn-secondary min-h-9 px-3 py-2 text-xs"
                     type="button"
                     (click)="editRecord.emit(item.index)"
                   >
                     Editar
                   </button>
                   <button
-                    class="rounded-lg bg-red-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-red-600"
+                    class="ui-btn ui-btn-danger min-h-9 px-3 py-2 text-xs"
                     type="button"
                     (click)="deleteRecord.emit(item.index)"
                   >
@@ -101,7 +103,9 @@
 
               <p class="text-sm text-slate-700">{{ item.record.desc }}</p>
 
-              <div class="grid gap-2 sm:grid-cols-2">
+              <div
+                class="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_10rem_minmax(0,1.3fr)]"
+              >
                 <app-ui-select
                   label="Cliente"
                   [options]="selectOptions(clientes, 'Seleccione un cliente')"
@@ -110,15 +114,25 @@
                 />
 
                 <app-ui-select
+                  label="Tipo hora"
+                  [options]="selectTipoHoraOptions(item.record.tipoHora)"
+                  [ngModel]="item.record.tipoHora"
+                  (ngModelChange)="onTipoHoraChange(item.index, item.record, $event)"
+                />
+
+                <app-ui-select
                   label="Gestión Demanda"
                   [options]="
-                    selectOptions(
+                    solicitudSelectOptions(
                       getSolicitudes(item.index),
-                      loadingDemandByIndex[item.index] ? 'Cargando...' : 'Seleccione una gestión'
+                      loadingDemandByIndex[item.index] ? 'Cargando...' : 'Seleccione una gestión',
+                      item.record
                     )
                   "
+                  [searchThreshold]="0"
+                  searchPlaceholder="Buscar gestión..."
                   [disabled]="!item.record.cliente || loadingDemandByIndex[item.index]"
-                  [ngModel]="item.record.solicitud"
+                  [ngModel]="item.record.gestionId || item.record.solicitud"
                   (ngModelChange)="onSolicitudChange(item.index, item.record, $event)"
                 />
               </div>
@@ -136,26 +150,28 @@
   </div>
 
   <!-- Desktop table -->
-  <div class="hidden overflow-x-hidden xl:block">
-    <table class="ui-responsive-table text-sm">
+  <div class="hidden overflow-x-auto xl:block">
+    <table class="ui-responsive-table min-w-[78rem] text-sm">
       <colgroup>
+        <col class="w-[9%]" />
+        <col class="w-[5%]" />
+        <col class="w-[5%]" />
+        <col class="w-[6%]" />
         <col class="w-[11%]" />
-        <col class="w-[6%]" />
-        <col class="w-[6%]" />
-        <col class="w-[6%]" />
-        <col class="w-[15%]" />
-        <col class="w-[19%]" />
-        <col class="w-[23%]" />
         <col class="w-[14%]" />
+        <col class="w-[19%]" />
+        <col class="w-[20%]" />
+        <col class="w-[11%]" />
       </colgroup>
       <thead>
         <tr
-          class="bg-slate-50 border-b-2 border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wide"
+          class="border-b border-slate-200 bg-slate-100/80 text-xs font-bold uppercase tracking-wide text-slate-500"
         >
           <th class="px-3 py-3 text-left">Fecha</th>
           <th class="px-2 py-3 text-left">Inicio</th>
           <th class="px-2 py-3 text-left">Fin</th>
           <th class="px-2 py-3 text-left">Horas</th>
+          <th class="px-2 py-3 text-left">Tipo hora</th>
           <th class="px-3 py-3 text-left">Cliente</th>
           <th class="px-3 py-3 text-left">Gestión Demanda</th>
           <th class="px-3 py-3 text-left">Descripción</th>
@@ -171,17 +187,17 @@
           <!-- Day header row -->
           <tr>
             <td
-              colspan="8"
-              class="px-4 py-2.5 border-t-2"
+              colspan="9"
+              class="border-t px-4 py-3"
               [style.background]="group.alerta.bg"
               [style.border-top-color]="group.alerta.border"
               [style.border-bottom-color]="group.alerta.border"
             >
               <div class="flex items-center justify-between flex-wrap gap-2">
                 <div class="flex items-center gap-2">
-                  <span class="text-[13px] font-extrabold text-blue-900"
-                    >📅 {{ group.fecha | fechaEsp }}</span
-                  >
+                  <span class="text-[13px] font-extrabold text-blue-900">
+                    {{ group.fecha | fechaEsp }}
+                  </span>
                   <span class="text-xs text-slate-400"
                     >· {{ group.records.length }} registro{{
                       group.records.length !== 1 ? 's' : ''
@@ -194,7 +210,7 @@
                     [style.color]="group.alerta.color"
                     [style.border-color]="group.alerta.border"
                   >
-                    {{ group.alerta.icon }} {{ group.totalHoras.toFixed(1) }}h totales
+                    {{ group.totalHoras.toFixed(1) }}h totales
                   </span>
                   <span class="text-xs font-semibold" [style.color]="group.alerta.color">
                     {{ group.alerta.label }}
@@ -223,6 +239,13 @@
                 {{ item.record.horaFin }}
               </td>
               <td class="px-2 py-2.5 font-bold text-blue-600">{{ item.record.horas }}h</td>
+              <td class="px-2 py-2.5">
+                <app-ui-select
+                  [options]="selectTipoHoraOptions(item.record.tipoHora)"
+                  [ngModel]="item.record.tipoHora"
+                  (ngModelChange)="onTipoHoraChange(item.index, item.record, $event)"
+                />
+              </td>
               <td class="px-3 py-2.5">
                 <app-ui-select
                   [options]="selectOptions(clientes, 'Seleccione un cliente')"
@@ -233,13 +256,16 @@
               <td class="px-3 py-2.5">
                 <app-ui-select
                   [options]="
-                    selectOptions(
+                    solicitudSelectOptions(
                       getSolicitudes(item.index),
-                      loadingDemandByIndex[item.index] ? 'Cargando...' : 'Seleccione una gestión'
+                      loadingDemandByIndex[item.index] ? 'Cargando...' : 'Seleccione una gestión',
+                      item.record
                     )
                   "
+                  [searchThreshold]="0"
+                  searchPlaceholder="Buscar gestión..."
                   [disabled]="!item.record.cliente || loadingDemandByIndex[item.index]"
-                  [ngModel]="item.record.solicitud"
+                  [ngModel]="item.record.gestionId || item.record.solicitud"
                   (ngModelChange)="onSolicitudChange(item.index, item.record, $event)"
                 />
               </td>
@@ -248,7 +274,6 @@
                   class="break-words text-slate-700 text-xs"
                   [appOverflowTooltip]="item.record.desc"
                   [appOverflowTooltipLines]="2"
-                  tabindex="0"
                 >
                   {{ item.record.desc }}
                 </p>
@@ -262,14 +287,14 @@
                 class="sticky right-0 bg-inherit px-3 py-2.5 text-center whitespace-nowrap shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"
               >
                 <button
-                  class="px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors mr-1"
+                  class="ui-btn ui-btn-secondary mr-1 min-h-8 px-3 py-1.5 text-xs"
                   type="button"
                   (click)="editRecord.emit(item.index)"
                 >
                   Editar
                 </button>
                 <button
-                  class="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+                  class="ui-btn ui-btn-danger min-h-8 px-3 py-1.5 text-xs"
                   type="button"
                   (click)="deleteRecord.emit(item.index)"
                 >
@@ -283,7 +308,7 @@
         <!-- Total footer (multi-day) -->
         @if (groups.length > 1) {
           <tr class="bg-blue-50 border-t-2 border-blue-200">
-            <td colspan="8" class="px-4 py-3 text-right">
+            <td colspan="9" class="px-4 py-3 text-right">
               <span class="text-sm text-slate-500">Total general:</span>
               <span class="text-base font-extrabold text-blue-700 ml-2">
                 ⏱ {{ totalGeneral.toFixed(1) }}h en {{ groups.length }} días
@@ -300,8 +325,13 @@
     class="sticky bottom-0 z-10 flex flex-col gap-2 border-t border-slate-100 bg-white px-5 py-4 sm:flex-row"
   >
     <button
-      class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-blue-600 text-white shadow-md hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-      [disabled]="sending"
+      class="ui-btn ui-btn-primary flex-1"
+      [disabled]="sending || recordsToReview > 0"
+      [title]="
+        recordsToReview > 0
+          ? 'Completa los registros por revisar antes de registrar'
+          : 'Registrar todos los tiempos'
+      "
       (click)="sendAll.emit()"
     >
       @if (sending) {
@@ -309,12 +339,14 @@
           class="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"
         ></span>
         Enviando...
+      } @else if (recordsToReview > 0) {
+        Completa {{ recordsToReview }} pendiente{{ recordsToReview !== 1 ? 's' : '' }}
       } @else {
-        Registrar todos
+        Registrar to  dos
       }
     </button>
     <button
-      class="flex-1 py-2.5 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"
+      class="ui-btn ui-btn-secondary flex-1"
       [disabled]="sending"
       (click)="cancelImport.emit()"
     >

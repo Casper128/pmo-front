@@ -1,4 +1,5 @@
 import { Observable } from 'rxjs';
+import { ManagementDemandOption } from '@domain/time-records/models/management-template.model';
 import { TimeRecordRepository } from '@domain/time-records/repositories/time-record.repository';
 
 export class LoadSelectOptionsUseCase {
@@ -14,5 +15,9 @@ export class LoadSelectOptionsUseCase {
 
   solicitudes(cliente: string, proyecto: string): Observable<string[]> {
     return this.repository.getSolicitudes(cliente, proyecto);
+  }
+
+  solicitudOptions(cliente: string, proyecto: string): Observable<ManagementDemandOption[]> {
+    return this.repository.getSolicitudOptions(cliente, proyecto);
   }
 }

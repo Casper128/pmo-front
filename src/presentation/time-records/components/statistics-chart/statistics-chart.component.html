@@ -1,0 +1,144 @@
+@if (configurable) {
+  <div
+    class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2"
+  >
+    <p class="px-1 text-[11px] font-bold text-slate-500">
+      Pasa el cursor sobre la gráfica para ver el detalle completo.
+    </p>
+    <div class="flex flex-wrap gap-1.5" role="group" aria-label="Configurar gráfica y descarga">
+      @if (type === 'bar') {
+        <button
+          class="rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition"
+          type="button"
+          [class.border-blue-300]="effectiveHorizontal()"
+          [class.bg-blue-100]="effectiveHorizontal()"
+          [class.text-blue-800]="effectiveHorizontal()"
+          [class.border-slate-200]="!effectiveHorizontal()"
+          [class.bg-white]="!effectiveHorizontal()"
+          [class.text-slate-600]="!effectiveHorizontal()"
+          (click)="toggleOrientation()"
+        >
+          {{ effectiveHorizontal() ? 'Horizontal' : 'Vertical' }}
+        </button>
+      }
+      @if (!isCircular()) {
+        <button
+          class="rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition"
+          type="button"
+          [class.border-blue-300]="effectiveShowAxisLabels()"
+          [class.bg-blue-100]="effectiveShowAxisLabels()"
+          [class.text-blue-800]="effectiveShowAxisLabels()"
+          [class.border-slate-200]="!effectiveShowAxisLabels()"
+          [class.bg-white]="!effectiveShowAxisLabels()"
+          [class.text-slate-500]="!effectiveShowAxisLabels()"
+          (click)="toggleAxisLabels()"
+        >
+          Nombres
+        </button>
+      }
+      <button
+        class="rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition"
+        type="button"
+        [class.border-blue-300]="showValues"
+        [class.bg-blue-100]="showValues"
+        [class.text-blue-800]="showValues"
+        [class.border-slate-200]="!showValues"
+        [class.bg-white]="!showValues"
+        [class.text-slate-500]="!showValues"
+        (click)="toggleValues()"
+      >
+        Valores
+      </button>
+      @if (type !== 'line') {
+        <button
+          class="rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition"
+          type="button"
+          [class.border-blue-300]="showLegend"
+          [class.bg-blue-100]="showLegend"
+          [class.text-blue-800]="showLegend"
+          [class.border-slate-200]="!showLegend"
+          [class.bg-white]="!showLegend"
+          [class.text-slate-500]="!showLegend"
+          (click)="toggleLegend()"
+        >
+          Leyenda
+        </button>
+      }
+      <button
+        class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-800"
+        type="button"
+        (click)="resetView()"
+      >
+        Restablecer
+      </button>
+    </div>
+  </div>
+}
+<div class="relative w-full min-w-0" [style.height.px]="chartHeight()">
+  <canvas #canvas role="img" [attr.aria-label]="ariaLabel"></canvas>
+</div>
+@if (type === 'line') {
+  <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+    <div class="rounded-lg bg-blue-50 px-2 py-2">
+      <p class="text-[10px] font-bold uppercase text-blue-500">Total</p>
+      <p class="mt-1 text-xs font-bold text-blue-900">{{ format(totalValue()) }} h</p>
+    </div>
+    <div class="rounded-lg bg-blue-50 px-2 py-2">
+      <p class="text-[10px] font-bold uppercase text-blue-500">Promedio</p>
+      <p class="mt-1 text-xs font-bold text-blue-900">{{ format(averageValue()) }} h</p>
+    </div>
+    <div class="rounded-lg bg-blue-50 px-2 py-2">
+      <p class="text-[10px] font-bold uppercase text-blue-500">Pico</p>
+      <p
+        class="mt-1 break-words text-xs font-bold text-blue-900"
+        [appOverflowTooltip]="peakText()"
+        tabindex="0"
+      >
+        {{ peakText() }}
+      </p>
+    </div>
+  </div>
+} @else if (showLegend) {
+  <div class="mt-3 grid gap-1.5 sm:grid-cols-2">
+    @for (item of data; track item.label; let index = $index) {
+      <div class="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2">
+        <span
+          class="size-2.5 shrink-0 rounded-full"
+          [style.background-color]="colorAt(index)"
+        ></span>
+        <span
+          class="min-w-0 flex-1 break-words text-[11px] font-bold leading-snug text-slate-600"
+          [appOverflowTooltip]="item.label"
+          tabindex="0"
+          >{{ item.label }}</span
+        >
+        <span class="shrink-0 text-[11px] font-bold text-slate-900"
+          >{{ format(item.hours) }} h · {{ percentage(item.hours) }}%</span
+        >
+      </div>
+    }
+  </div>
+}
+<div class="mt-3 flex justify-end">
+  <button
+    class="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-50"
+    type="button"
+    (click)="downloadPng()"
+  >
+    <svg
+      class="size-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      aria-hidden="true"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"
+      />
+    </svg>
+    Descargar PNG
+  </button>
+</div>

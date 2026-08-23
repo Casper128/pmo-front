@@ -13,47 +13,7 @@ let searchSequence = 0;
       multi: true,
     },
   ],
-  template: `
-    <label class="block min-w-0" [attr.for]="controlId">
-      @if (label) {
-        <span class="mb-1.5 block text-xs font-bold text-slate-600">{{ label }}</span>
-      }
-      <span
-        class="group relative flex min-h-12 min-w-0 items-center rounded-xl border border-slate-300 bg-white shadow-sm transition hover:border-blue-400 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100"
-      >
-        <svg
-          class="pointer-events-none absolute left-3.5 size-4 fill-none stroke-slate-400"
-          viewBox="0 0 24 24"
-          stroke-width="2"
-          aria-hidden="true"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-4-4" stroke-linecap="round" />
-        </svg>
-        <input
-          class="min-w-0 flex-1 bg-transparent py-2.5 pl-10 pr-10 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
-          type="search"
-          autocomplete="off"
-          [id]="controlId"
-          [value]="value"
-          [placeholder]="placeholder"
-          [disabled]="disabled"
-          (input)="onInput($event)"
-          (blur)="onTouched()"
-        />
-        @if (value) {
-          <button
-            class="absolute right-2 grid size-7 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-            type="button"
-            aria-label="Limpiar búsqueda"
-            (click)="clear()"
-          >
-            ×
-          </button>
-        }
-      </span>
-    </label>
-  `,
+  templateUrl: './ui-search-input.component.html',
 })
 export class UiSearchInputComponent implements ControlValueAccessor {
   @Input() label = '';
@@ -78,6 +38,11 @@ export class UiSearchInputComponent implements ControlValueAccessor {
   onInput(event: Event): void {
     this.value = (event.target as HTMLInputElement).value;
     this.onValueChange(this.value);
+  }
+  onKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !this.value) return;
+    event.preventDefault();
+    this.clear();
   }
   clear(): void {
     this.value = '';

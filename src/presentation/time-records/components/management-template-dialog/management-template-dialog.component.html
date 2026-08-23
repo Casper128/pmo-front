@@ -1,0 +1,58 @@
+@if (template) {
+  <app-ui-modal
+    [open]="true"
+    size="lg"
+    eyebrow="Configuración por gestión"
+    [title]="mode === 'create' ? 'Configurar gestión' : 'Editar configuración'"
+    [description]="template.gestionName"
+    (close)="close.emit()"
+  >
+    <span
+      modalIcon
+      class="grid size-11 shrink-0 place-items-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700"
+    >
+      <svg
+        class="size-5 fill-none stroke-current"
+        viewBox="0 0 24 24"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d="M12 3v18" stroke-linecap="round" />
+        <path d="M5 8h14M5 16h14" stroke-linecap="round" />
+        <circle cx="8" cy="8" r="2" />
+        <circle cx="16" cy="16" r="2" />
+      </svg>
+    </span>
+
+    <div modalBody>
+      <div class="ui-alert ui-alert-info mb-4" role="status">
+        Configura estos valores una vez. Se aplicarán automáticamente en futuros registros de esta
+        gestión.
+      </div>
+
+      <app-management-template-form
+        [template]="template"
+        (templateChange)="templateChange.emit($event)"
+      />
+    </div>
+
+    <div modalFooter class="flex gap-3">
+      <button
+        class="ui-btn ui-btn-primary flex-1"
+        type="button"
+        [disabled]="saving"
+        (click)="save.emit()"
+      >
+        {{ saving ? 'Guardando...' : 'Guardar' }}
+      </button>
+      <button
+        class="ui-btn ui-btn-secondary flex-1"
+        type="button"
+        [disabled]="saving"
+        (click)="close.emit()"
+      >
+        Cancelar
+      </button>
+    </div>
+  </app-ui-modal>
+}

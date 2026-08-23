@@ -61,12 +61,7 @@ Deno.serve(async (request) => {
   });
 
   if (request.method === 'GET') {
-    const [personalResult, optionsResult, settingsResult] = await Promise.all([
-      supabase
-        .from('pmo_user_configurations')
-        .select('field_config')
-        .eq('user_key', userKey)
-        .maybeSingle(),
+    const [optionsResult, settingsResult] = await Promise.all([
       supabase
         .from('pmo_field_options')
         .select('field_key,option_value,option_label,active,sort_order,is_default')
@@ -78,10 +73,9 @@ Deno.serve(async (request) => {
         .eq('id', 'global')
         .maybeSingle(),
     ]);
-    const readError = personalResult.error || optionsResult.error || settingsResult.error;
+    const readError = optionsResult.error || settingsResult.error;
     if (readError) return json({ error: readError.message }, 500);
     return json({
-      fields: personalResult.data?.field_config || null,
       optionRows: optionsResult.data || [],
       workSettings: settingsResult.data || null,
       isAdmin,
@@ -89,28 +83,16 @@ Deno.serve(async (request) => {
     });
   }
 
+  if (!isAdmin) return json({ error: 'Solo el administrador puede modificar la configuración' }, 403);
+
   const payload = await request.json();
   if (!Array.isArray(payload?.fields)) return json({ error: 'Configuración inválida' }, 400);
 
-  const { error: personalSaveError } = await supabase.from('pmo_user_configurations').upsert({
-    user_key: userKey,
-    user_email: email,
+  const { error: saveError } = await supabase.rpc('replace_pmo_configuration', {
     field_config: payload.fields,
-    updated_at: new Date().toISOString(),
+    work_config: payload.workSettings,
   });
-  if (personalSaveError) return json({ error: personalSaveError.message }, 500);
-
-  if (isAdmin && payload?.workSettings) {
-    const { error: settingsSaveError } = await supabase.from('pmo_app_settings').upsert({
-      id: 'global',
-      monday_thursday_hours: payload.workSettings.mondayThursdayHours,
-      friday_hours: payload.workSettings.fridayHours,
-      max_daily_labor_hours: payload.workSettings.maxDailyLaborHours,
-      max_hours_per_record: payload.workSettings.maxHoursPerRecord,
-      updated_at: new Date().toISOString(),
-    });
-    if (settingsSaveError) return json({ error: settingsSaveError.message }, 500);
-  }
+  if (saveError) return json({ error: saveError.message }, 500);
 
   return json({ ok: true, updatedBy: email, isAdmin });
 });

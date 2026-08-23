@@ -43,6 +43,22 @@ export class TimeManagementHttpAdapter implements TimeManagementGateway {
       .pipe(map(() => undefined));
   }
 
+  delete(identifier: string): Observable<void> {
+    return this.http
+      .post<unknown>(
+        `${environment.supabaseUrl}/functions/v1/pmo-management-delete`,
+        { identifier },
+        {
+          headers: {
+            ...this.headers,
+            apikey: environment.supabasePublishableKey,
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+      .pipe(map(() => undefined));
+  }
+
   download(filter: ReportDownloadFilter): Observable<ReportDownloadResponse> {
     return this.http
       .post<unknown>(`${environment.apiBaseUrl}/tiemposConsultores/filtroDownload`, filter, {

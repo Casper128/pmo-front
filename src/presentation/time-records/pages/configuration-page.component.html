@@ -1,19 +1,19 @@
-<main class="min-h-screen bg-slate-50 p-4 sm:p-6">
-  <div class="mx-auto max-w-7xl space-y-5">
+<main class="ui-page">
+  <div class="ui-page-content space-y-5">
     <app-ui-page-header
       eyebrow="Administración"
-      title="Configuración de tiempos"
-      description="Personaliza tus campos avanzados y valores predeterminados. Esta configuración pertenece únicamente a tu usuario."
+      title="Configuración global de tiempos"
+      description="Administra listas, valores predeterminados y reglas operativas usadas por todos los consultores."
     >
-      <div pageHeaderMeta class="mt-4 flex flex-wrap gap-2 text-xs font-black">
-        <span class="rounded-full bg-white/10 px-3 py-1.5"
-          >Origen: {{ parameters.source() === 'supabase' ? 'Supabase' : 'Respaldo local' }}</span
-        >
-        <span class="rounded-full bg-white/10 px-3 py-1.5">{{
-          parameters.configured() ? 'Conexión configurada' : 'Supabase pendiente de configurar'
+      <div pageHeaderMeta class="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-700">
+        <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">{{
+          parameters.source() === 'supabase' ? 'Sincronizado' : 'Respaldo local'
+        }}</span>
+        <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">{{
+          parameters.configured() ? 'Configuración disponible' : 'Sin sincronización externa'
         }}</span>
         @if (parameters.canManage()) {
-          <span class="rounded-full bg-emerald-400/20 px-3 py-1.5 text-emerald-100"
+          <span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-blue-700"
             >Administrador · jornada editable</span
           >
         }
@@ -22,48 +22,50 @@
 
     @if (parameters.loading()) {
       <section
-        class="grid min-h-[28rem] place-items-center rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm"
+        class="ui-surface grid min-h-[28rem] place-items-center p-8 text-center"
+        role="status"
+        aria-live="polite"
       >
         <div>
           <span
             class="mx-auto block size-11 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"
           ></span>
-          <p class="mt-5 text-lg font-black text-slate-900">Cargando tu configuración</p>
-          <p class="mt-2 text-sm text-slate-500">
-            Estamos sincronizando tus opciones personales con Supabase.
-          </p>
+          <p class="mt-5 text-lg font-bold text-slate-900">Cargando tu configuración</p>
+          <p class="mt-2 text-sm text-slate-500">Estamos actualizando los parámetros globales.</p>
         </div>
       </section>
     } @else {
       @if (!parameters.canManage()) {
-        <section class="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
-          <p class="font-black text-blue-950">Tu espacio personal de configuración</p>
+        <section class="ui-alert ui-alert-info">
+          <p class="font-bold text-blue-950">Configuración global de solo lectura</p>
           <p class="mt-1 text-sm text-blue-800">
-            Puedes modificar tus campos avanzados y valores predeterminados. Las reglas de jornada
-            son globales y solo el administrador puede cambiarlas.
+            Solo el administrador puede modificar listas globales. Tus plantillas por gestión viven
+            en la ruta Mis plantillas.
           </p>
         </section>
       }
       @if (message()) {
         <div
-          class="rounded-xl border px-4 py-3 text-sm font-bold"
-          [class.border-emerald-200]="message()!.type === 'success'"
-          [class.bg-emerald-50]="message()!.type === 'success'"
-          [class.text-emerald-800]="message()!.type === 'success'"
+          class="ui-alert"
+          [class.border-blue-200]="message()!.type === 'success'"
+          [class.bg-blue-50]="message()!.type === 'success'"
+          [class.text-blue-800]="message()!.type === 'success'"
           [class.border-red-200]="message()!.type === 'error'"
           [class.bg-red-50]="message()!.type === 'error'"
           [class.text-red-800]="message()!.type === 'error'"
+          [attr.role]="message()!.type === 'error' ? 'alert' : 'status'"
+          aria-live="polite"
         >
           {{ message()!.text }}
         </div>
       }
 
-      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section class="ui-surface p-5">
         <div class="mb-5">
-          <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-blue-600">
             Reglas operativas
           </p>
-          <h2 class="mt-1 text-xl font-black text-slate-900">Jornada y límites</h2>
+          <h2 class="mt-1 text-xl font-bold text-slate-900">Jornada y límites</h2>
           <p class="mt-1 text-sm text-slate-500">
             Estos valores alimentan las validaciones y los indicadores diarios del registro de
             tiempos.
@@ -75,64 +77,59 @@
           </p>
         </div>
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <label class="field-wrap"
-            ><span class="field-label">Horas lunes a jueves</span
-            ><input
-              class="field-input disabled:cursor-not-allowed disabled:bg-slate-100"
-              type="number"
-              min="1"
-              max="24"
-              step="0.5"
-              [disabled]="!parameters.canManage()"
-              [(ngModel)]="draftSettings.mondayThursdayHours"
-          /></label>
-          <label class="field-wrap"
-            ><span class="field-label">Horas viernes</span
-            ><input
-              class="field-input disabled:cursor-not-allowed disabled:bg-slate-100"
-              type="number"
-              min="1"
-              max="24"
-              step="0.5"
-              [disabled]="!parameters.canManage()"
-              [(ngModel)]="draftSettings.fridayHours"
-          /></label>
-          <label class="field-wrap"
-            ><span class="field-label">Máximo computable por día</span
-            ><input
-              class="field-input disabled:cursor-not-allowed disabled:bg-slate-100"
-              type="number"
-              min="1"
-              max="24"
-              step="0.5"
-              [disabled]="!parameters.canManage()"
-              [(ngModel)]="draftSettings.maxDailyLaborHours"
-          /></label>
-          <label class="field-wrap"
-            ><span class="field-label">Máximo por registro</span
-            ><input
-              class="field-input disabled:cursor-not-allowed disabled:bg-slate-100"
-              type="number"
-              min="1"
-              max="24"
-              step="0.5"
-              [disabled]="!parameters.canManage()"
-              [(ngModel)]="draftSettings.maxHoursPerRecord"
-          /></label>
+          <app-ui-field
+            label="Horas lunes a jueves"
+            type="number"
+            valueType="number"
+            min="1"
+            max="24"
+            step="0.5"
+            [disabled]="!parameters.canManage()"
+            [(ngModel)]="draftSettings.mondayThursdayHours"
+          />
+          <app-ui-field
+            label="Horas viernes"
+            type="number"
+            valueType="number"
+            min="1"
+            max="24"
+            step="0.5"
+            [disabled]="!parameters.canManage()"
+            [(ngModel)]="draftSettings.fridayHours"
+          />
+          <app-ui-field
+            label="Máximo computable por día"
+            type="number"
+            valueType="number"
+            min="1"
+            max="24"
+            step="0.5"
+            [disabled]="!parameters.canManage()"
+            [(ngModel)]="draftSettings.maxDailyLaborHours"
+          />
+          <app-ui-field
+            label="Máximo por registro"
+            type="number"
+            valueType="number"
+            min="1"
+            max="24"
+            step="0.5"
+            [disabled]="!parameters.canManage()"
+            [(ngModel)]="draftSettings.maxHoursPerRecord"
+          />
         </div>
       </section>
 
-      <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section class="ui-surface">
         <div class="border-b border-slate-100 p-5">
-          <p class="text-[11px] font-black uppercase tracking-widest text-violet-600">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-blue-600">
             Campos avanzados
           </p>
-          <h2 class="mt-1 text-xl font-black text-slate-900">
-            Mis opciones y valores predeterminados
+          <h2 class="mt-1 text-xl font-bold text-slate-900">
+            Opciones y valores predeterminados globales
           </h2>
           <p class="mt-1 text-sm text-slate-500">
-            Selecciona un campo y sus opciones aparecerán inmediatamente. Solo editas un campo a la
-            vez.
+            Selecciona un campo para revisar sus opciones. Solo el administrador puede modificarlas.
           </p>
         </div>
 
@@ -177,7 +174,7 @@
                 class="grid gap-3 border-b border-slate-100 bg-white p-4 sm:p-5 md:grid-cols-[1fr_minmax(14rem,22rem)] md:items-end"
               >
                 <div>
-                  <p class="text-lg font-black text-slate-900">{{ field.label }}</p>
+                  <p class="text-lg font-bold text-slate-900">{{ field.label }}</p>
                   <p class="mt-1 text-xs font-semibold text-slate-500">
                     {{ field.options.length }} opciones disponibles · los cambios se conservan al
                     cambiar de campo
@@ -186,6 +183,7 @@
                 <app-ui-select
                   label="Valor predeterminado"
                   [options]="defaultOptions(field)"
+                  [disabled]="!parameters.canManage()"
                   [(ngModel)]="field.defaultValue"
                 />
               </div>
@@ -195,42 +193,53 @@
                   <div
                     class="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center"
                   >
-                    <label class="field-wrap"
-                      ><span class="field-label">Valor enviado al API</span
-                      ><input class="field-input" [(ngModel)]="item.value"
-                    /></label>
-                    <label class="field-wrap"
-                      ><span class="field-label">Texto visible</span
-                      ><input class="field-input" [(ngModel)]="item.label"
-                    /></label>
+                    <app-ui-field
+                      label="Valor interno"
+                      [disabled]="!parameters.canManage()"
+                      [(ngModel)]="item.value"
+                    />
+                    <app-ui-field
+                      label="Texto visible"
+                      [disabled]="!parameters.canManage()"
+                      [(ngModel)]="item.label"
+                    />
                     <div class="flex items-center justify-between gap-2 md:justify-end">
                       <label
                         class="flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600"
-                        ><input type="checkbox" [(ngModel)]="item.active" /> Activo</label
+                        ><input
+                          type="checkbox"
+                          [disabled]="!parameters.canManage()"
+                          [(ngModel)]="item.active"
+                        />
+                        Activo</label
                       >
                       <button
                         class="grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-600 disabled:opacity-30"
                         type="button"
-                        [disabled]="index === 0"
+                        [disabled]="!parameters.canManage() || index === 0"
                         (click)="moveOption(field, index, -1)"
                         title="Subir"
+                        [attr.aria-label]="'Subir ' + (item.label || item.value || 'opción')"
                       >
                         ↑
                       </button>
                       <button
                         class="grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-600 disabled:opacity-30"
                         type="button"
-                        [disabled]="index === field.options.length - 1"
+                        [disabled]="!parameters.canManage() || index === field.options.length - 1"
                         (click)="moveOption(field, index, 1)"
                         title="Bajar"
+                        [attr.aria-label]="'Bajar ' + (item.label || item.value || 'opción')"
                       >
                         ↓
                       </button>
                       <button
-                        class="grid size-10 place-items-center rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
+                        class="grid size-10 place-items-center rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-30"
                         type="button"
+                        [disabled]="!parameters.canManage()"
                         (click)="removeOption(field, index)"
                         title="Eliminar"
+                        [attr.aria-label]="'Eliminar ' + (item.label || item.value || 'opción')"
                       >
                         ×
                       </button>
@@ -240,8 +249,9 @@
               </div>
               <div class="border-t border-slate-100 bg-slate-50 p-4">
                 <button
-                  class="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50"
+                  class="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-40"
                   type="button"
+                  [disabled]="!parameters.canManage()"
                   (click)="addOption(field)"
                 >
                   + Agregar opción
@@ -253,22 +263,24 @@
       </section>
 
       <div
-        class="sticky bottom-3 z-10 flex flex-wrap justify-end gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur"
+        class="ui-surface sticky bottom-3 z-10 flex flex-wrap justify-end gap-3 bg-white/95 p-4 backdrop-blur"
+        [class.hidden]="!parameters.canManage()"
       >
         <button
-          class="rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600 hover:bg-slate-50"
+          class="ui-btn ui-btn-secondary"
           type="button"
+          [disabled]="!parameters.canManage()"
           (click)="restoreDefaults()"
         >
           Restaurar originales
         </button>
         <button
-          class="rounded-xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:bg-slate-400"
+          class="ui-btn ui-btn-primary px-6"
           type="button"
-          [disabled]="parameters.saving()"
+          [disabled]="!parameters.canManage() || parameters.saving()"
           (click)="save()"
         >
-          {{ parameters.saving() ? 'Guardando...' : 'Guardar mi configuración' }}
+          {{ parameters.saving() ? 'Guardando...' : 'Guardar configuración global' }}
         </button>
       </div>
     }

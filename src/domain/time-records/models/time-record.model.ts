@@ -6,24 +6,10 @@ export interface TimeRecord {
   desc: string;
   observacion: string;
   cliente: string;
-  ricef: string;
   proyecto: string;
   solicitud: string;
-  tipoActividad: string;
-  causa: string;
-  complejidad: string;
-  impacto: string;
-  equipo: string;
-  modoActuacion: string;
-  lenguaje: string;
+  gestionId: string;
   tipoHora: string;
-  funcional: string;
-  prefijo: string;
-  objetoRicef: string;
-  unity: string;
-  fechaEstimada: string;
-  fechaReal: string;
-  categoria: string;
 }
 
 export const TIME_RECORD_DEFAULTS: Omit<
@@ -31,24 +17,10 @@ export const TIME_RECORD_DEFAULTS: Omit<
   'fecha' | 'horaIni' | 'horaFin' | 'horas' | 'desc' | 'observacion'
 > = {
   cliente: '',
-  ricef: '',
   proyecto: '',
   solicitud: '',
-  tipoActividad: 'ActividadDesarrollo',
-  causa: 'Nueva Funcionalidad',
-  complejidad: 'Media',
-  impacto: 'Media',
-  equipo: 'Comercial',
-  modoActuacion: 'Basado-Datos-Integraciones',
-  lenguaje: 'ABAP',
+  gestionId: '',
   tipoHora: 'Laboral',
-  funcional: '',
-  prefijo: 'CH',
-  objetoRicef: '',
-  unity: '',
-  fechaEstimada: '',
-  fechaReal: '',
-  categoria: 'Operacion',
 };
 
 export interface DayGroup {
@@ -85,8 +57,6 @@ export const REQUIRED_FIELDS: { key: keyof TimeRecord; label: string }[] = [
   { key: 'fecha', label: 'Fecha' },
   { key: 'horaIni', label: 'Hora inicio' },
   { key: 'horaFin', label: 'Hora fin' },
-  { key: 'tipoActividad', label: 'Tipo actividad' },
-  { key: 'funcional', label: 'Funcional' },
   { key: 'cliente', label: 'Cliente' },
   { key: 'solicitud', label: 'Gestión Demanda' },
   { key: 'desc', label: 'Descripción' },

@@ -7,7 +7,9 @@ import {
   TimeRecordApiBody,
   TimeRecordRegistrationResponse,
 } from '@domain/time-records/models/time-record-api.model';
+import { ManagementDemandOption } from '@domain/time-records/models/management-template.model';
 import { environment } from '@env/environment';
+import { TimeRecordOptionsMapper } from '../mappers/time-record-options.mapper';
 
 type CollectionResponse =
   | unknown[]
@@ -15,6 +17,8 @@ type CollectionResponse =
 
 @Injectable()
 export class TimeRecordHttpAdapter implements TimeRecordRepository {
+  private readonly mapper = new TimeRecordOptionsMapper();
+
   constructor(
     private http: HttpClient,
     private auth: AuthGateway,
@@ -41,8 +45,8 @@ export class TimeRecordHttpAdapter implements TimeRecordRepository {
       )
       .pipe(
         map((d) => {
-          const lista = Array.isArray(d) ? d : d.clientes || d.data || [];
-          return lista.map((c) => this.optionValue(c, ['cliente', 'nombre', 'id'])).filter(Boolean);
+          const lista = this.mapper.collection(d, 'clientes');
+          return lista.map((c) => this.mapper.optionValue(c, ['cliente', 'nombre', 'id'])).filter(Boolean);
         }),
         catchError(() => of([])),
       );
@@ -57,9 +61,9 @@ export class TimeRecordHttpAdapter implements TimeRecordRepository {
       )
       .pipe(
         map((d) => {
-          const lista = Array.isArray(d) ? d : d.proyectos || d.data || [];
+          const lista = this.mapper.collection(d, 'proyectos');
           return lista
-            .map((p) => this.optionValue(p, ['proyecto', 'nombre', 'id']))
+            .map((p) => this.mapper.optionValue(p, ['proyecto', 'nombre', 'id']))
             .filter(Boolean);
         }),
         catchError(() => of([])),
@@ -67,6 +71,12 @@ export class TimeRecordHttpAdapter implements TimeRecordRepository {
   }
 
   getSolicitudes(cliente: string, proyecto: string): Observable<string[]> {
+    return this.getSolicitudOptions(cliente, proyecto).pipe(
+      map((options) => options.map((s) => s.requestValue || s.name)),
+    );
+  }
+
+  getSolicitudOptions(cliente: string, proyecto: string): Observable<ManagementDemandOption[]> {
     return this.http
       .post<CollectionResponse>(
         `${environment.apiBaseUrl}/tiemposConsultores/solicitudes?cliente=${encodeURIComponent(cliente)}&proyecto=${encodeURIComponent(proyecto)}`,
@@ -75,22 +85,10 @@ export class TimeRecordHttpAdapter implements TimeRecordRepository {
       )
       .pipe(
         map((d) => {
-          const lista = Array.isArray(d) ? d : d.solicitudes || d.data || [];
-          return lista
-            .map((s) => this.optionValue(s, ['solicitud', 'gestion', 'numero', 'id']))
-            .filter(Boolean);
+          const lista = this.mapper.collection(d, 'solicitudes');
+          return lista.map((s) => this.mapper.demandOption(s)).filter((s) => s.id && s.name);
         }),
         catchError(() => of([])),
       );
-  }
-
-  private optionValue(value: unknown, keys: string[]): string {
-    if (typeof value === 'string') return value;
-    if (!value || typeof value !== 'object') return '';
-    const record = value as Record<string, unknown>;
-    const candidate = keys
-      .map((key) => record[key])
-      .find((item) => typeof item === 'string' || typeof item === 'number');
-    return candidate === undefined ? '' : String(candidate);
   }
 }

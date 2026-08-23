@@ -1,44 +1,33 @@
-<div class="min-h-full bg-slate-50 p-4 sm:p-6">
-  <div class="mx-auto max-w-7xl space-y-5">
+<div class="ui-page">
+  <div class="ui-page-content space-y-5">
     <app-ui-page-header
       eyebrow="Trazabilidad"
-      title="Logs de envío"
+      title="Historial de envíos"
       description="Consulta envíos correctos y fallidos sin almacenar respuestas completas, contraseñas ni tokens."
     >
       <div
         pageHeaderAside
-        class="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-right"
+        class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-right"
       >
-        <p class="text-[10px] font-black uppercase tracking-widest text-blue-200">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-blue-700">
           Retención automática
         </p>
-        <p class="mt-1 text-xl font-black">{{ retentionDays() }} días</p>
+        <p class="mt-1 text-xl font-bold text-slate-900">{{ retentionDays() }} días</p>
       </div>
     </app-ui-page-header>
 
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section class="ui-surface p-5">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p class="text-[11px] font-black uppercase tracking-widest text-blue-600">Periodo</p>
-          <h2 class="mt-1 text-lg font-black text-slate-900">Consulta del historial</h2>
+          <p class="text-[11px] font-bold uppercase tracking-widest text-blue-600">Periodo</p>
+          <h2 class="mt-1 text-lg font-bold text-slate-900">Consulta del historial</h2>
         </div>
-        <div class="flex flex-wrap gap-2">
-          @for (item of periodOptions; track item.key) {
-            <button
-              class="rounded-xl border px-3 py-2 text-xs font-black transition"
-              type="button"
-              [class.border-blue-500]="period() === item.key"
-              [class.bg-blue-600]="period() === item.key"
-              [class.text-white]="period() === item.key"
-              [class.border-slate-200]="period() !== item.key"
-              [class.bg-white]="period() !== item.key"
-              [class.text-slate-600]="period() !== item.key"
-              (click)="setPeriod(item.key)"
-            >
-              {{ item.label }}
-            </button>
-          }
-        </div>
+        <app-ui-segmented-control
+          label="Periodo rápido"
+          [options]="periodSegmentOptions"
+          [value]="period()"
+          (valueChange)="applyPeriodSegment($event)"
+        />
       </div>
       <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <app-ui-date-input
@@ -75,16 +64,11 @@
         </div>
       </div>
       <div class="mt-4 flex flex-wrap gap-2">
-        <button
-          class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700 disabled:bg-slate-400"
-          type="button"
-          [disabled]="loading()"
-          (click)="load()"
-        >
+        <button class="ui-btn ui-btn-primary" type="button" [disabled]="loading()" (click)="load()">
           {{ loading() ? 'Consultando...' : 'Aplicar fechas' }}
         </button>
         <button
-          class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:text-slate-300"
+          class="ui-btn ui-btn-secondary disabled:text-slate-300"
           type="button"
           [disabled]="filteredLogs().length === 0"
           (click)="copyVisibleLogs()"
@@ -95,11 +79,13 @@
     </section>
 
     @if (error()) {
-      <section
-        class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700"
-      >
-        {{ error() }}
-      </section>
+      <app-ui-state-message
+        title="No pudimos consultar el historial"
+        [description]="error()"
+        actionLabel="Reintentar consulta"
+        tone="error"
+        (action)="load()"
+      />
     }
 
     <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -112,7 +98,7 @@
         label="Correctos"
         [value]="successfulCount()"
         description="Confirmados por el servicio"
-        tone="emerald"
+        tone="blue"
       />
       <app-ui-metric-card
         label="Con error"
@@ -128,10 +114,10 @@
       />
     </section>
 
-    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section class="ui-surface">
       <div class="border-b border-slate-100 p-5">
-        <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">Detalle</p>
-        <h2 class="mt-1 text-lg font-black text-slate-900">Eventos almacenados en Supabase</h2>
+        <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Detalle</p>
+        <h2 class="mt-1 text-lg font-bold text-slate-900">Historial de envíos</h2>
       </div>
       @if (loading()) {
         <div class="grid min-h-64 place-items-center">
@@ -139,14 +125,14 @@
             <span
               class="mx-auto block size-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"
             ></span>
-            <p class="mt-3 text-sm font-bold text-slate-500">Consultando logs...</p>
+            <p class="mt-3 text-sm font-bold text-slate-500">Consultando historial...</p>
           </div>
         </div>
       } @else {
         <div class="ui-table-wrap max-h-[38rem]">
           <table class="ui-responsive-table ui-responsive-table--stack text-left text-sm">
             <thead
-              class="sticky top-0 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500"
+              class="sticky top-0 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500"
             >
               <tr>
                 <th class="px-4 py-3">Estado</th>
@@ -161,9 +147,9 @@
                 <tr class="align-top hover:bg-slate-50">
                   <td data-label="Estado" class="px-4 py-3">
                     <span
-                      class="rounded-full px-2.5 py-1 text-xs font-black"
-                      [class.bg-emerald-50]="log.successful"
-                      [class.text-emerald-700]="log.successful"
+                      class="rounded-full px-2.5 py-1 text-xs font-bold"
+                      [class.bg-blue-50]="log.successful"
+                      [class.text-blue-700]="log.successful"
                       [class.bg-red-50]="!log.successful"
                       [class.text-red-700]="!log.successful"
                       >{{ log.successful ? 'OK' : 'ERROR' }}</span
@@ -183,7 +169,7 @@
                   </td>
                   <td
                     data-label="Identificador"
-                    class="max-w-72 px-4 py-3 font-black text-slate-900"
+                    class="max-w-72 px-4 py-3 font-bold text-slate-900"
                   >
                     <p
                       [appOverflowTooltip]="log.reference"
@@ -205,8 +191,14 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td class="px-4 py-14 text-center font-bold text-slate-400" colspan="5">
-                    No hay logs para los filtros seleccionados.
+                  <td class="px-4 py-8" colspan="5">
+                    <app-ui-state-message
+                      [title]="emptyStateTitle()"
+                      [description]="emptyStateDescription()"
+                      actionLabel="Recargar historial"
+                      tone="warning"
+                      (action)="load()"
+                    />
                   </td>
                 </tr>
               }

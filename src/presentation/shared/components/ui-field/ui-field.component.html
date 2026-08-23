@@ -1,0 +1,62 @@
+<label class="field-wrap" [attr.for]="readonly ? null : controlId">
+  @if (label) {
+    <span class="field-label">{{ label }}</span>
+  }
+
+  @if (readonly) {
+    <span
+      class="ui-field-readonly"
+      [class.ui-field-readonly--emphasis]="tone === 'emphasis'"
+      [class.ui-field-readonly--muted]="tone === 'muted'"
+      [class.text-slate-400]="!value"
+    >
+      {{ displayValue }}
+    </span>
+  } @else if (isTextarea) {
+    <textarea
+      class="field-input resize-y"
+      [class.font-mono]="monospace"
+      [id]="controlId"
+      [rows]="rows"
+      [placeholder]="placeholder"
+      [required]="required"
+      [disabled]="disabled"
+      [attr.aria-invalid]="error ? 'true' : null"
+      [attr.aria-describedby]="showDescription ? descriptionId : null"
+      [value]="value"
+      (input)="onInput($event)"
+      (blur)="markTouched()"
+    ></textarea>
+  } @else {
+    <input
+      class="field-input"
+      [class.font-mono]="monospace"
+      [id]="controlId"
+      [type]="type"
+      [attr.name]="name || null"
+      [placeholder]="placeholder"
+      [required]="required"
+      [disabled]="disabled"
+      [attr.min]="min"
+      [attr.max]="max"
+      [attr.step]="step"
+      [attr.autocomplete]="autocomplete || null"
+      [attr.aria-invalid]="error ? 'true' : null"
+      [attr.aria-describedby]="showDescription ? descriptionId : null"
+      [value]="value"
+      (input)="onInput($event)"
+      (blur)="markTouched()"
+    />
+  }
+
+  @if (showDescription) {
+    <span
+      [id]="descriptionId"
+      class="mt-1.5 block text-xs font-semibold"
+      [class.text-red-600]="error"
+      [class.text-slate-400]="!error"
+    >
+      {{ error || hint }}
+    </span>
+  }
+</label>

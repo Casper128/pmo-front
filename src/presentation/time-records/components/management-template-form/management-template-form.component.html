@@ -1,0 +1,45 @@
+@if (template) {
+  <div class="rounded-xl border border-slate-200 bg-white p-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <p class="text-sm font-bold text-slate-900">Campos de la plantilla</p>
+      <span class="text-xs font-bold text-blue-700">
+        {{ requiredCompleted }} de {{ requiredTotal }} obligatorios
+      </span>
+    </div>
+
+    <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      @for (field of visibleTemplateFields; track field.key) {
+        <ng-container *ngTemplateOutlet="fieldControl; context: { $implicit: field }"></ng-container>
+      }
+    </div>
+  </div>
+
+  <ng-template #fieldControl let-field>
+    @if (field.type === 'select') {
+      <app-ui-select
+        [label]="field.label"
+        [options]="templateOptions(field.key)"
+        [disabled]="readonly"
+        [error]="isRequiredMissing(field.key) ? 'Campo obligatorio' : ''"
+        [ngModel]="templateValue(field.key)"
+        (ngModelChange)="onTemplateValueChange(field.key, $event)"
+      />
+    } @else if (field.type === 'date') {
+      <app-ui-date-input
+        [label]="field.label"
+        [disabled]="readonly"
+        [ngModel]="templateValue(field.key)"
+        (ngModelChange)="onTemplateValueChange(field.key, $event)"
+      />
+    } @else {
+      <app-ui-field
+        [label]="field.label"
+        [required]="field.required === true"
+        [readonly]="readonly"
+        [error]="isRequiredMissing(field.key) ? 'Campo obligatorio' : ''"
+        [ngModel]="templateValue(field.key)"
+        (ngModelChange)="onTemplateValueChange(field.key, $event)"
+      />
+    }
+  </ng-template>
+}

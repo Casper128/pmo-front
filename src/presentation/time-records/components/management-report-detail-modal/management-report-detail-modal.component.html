@@ -1,0 +1,41 @@
+@if (report) {
+<app-ui-modal [open]="true" size="xl" eyebrow="Visualización" title="Ver registro" [description]="title(report)"
+  (close)="close.emit()">
+  <span modalIcon
+    class="grid size-11 shrink-0 place-items-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700">
+    <svg class="size-5 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  </span>
+
+  <div modalBody class="space-y-6">
+    <app-ui-form-section eyebrow="Campos principales" [columns]="1">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      @for (field of primaryBackendFields(report); track field.key) {
+        <app-ui-field
+          [label]="field.label"
+          [readonly]="true"
+          [ngModel]="field.value"
+          [tone]="field.key === 'tipoHora' || field.key === 'tiempoRealHoras' ? 'emphasis' : 'default'"
+        />
+      }
+      </div>
+    </app-ui-form-section>
+
+    <app-ui-form-section eyebrow="Campos avanzados" [columns]="1">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      @for (field of advancedBackendFields(report); track field.key) {
+        <app-ui-field [label]="field.label" [readonly]="true" [ngModel]="field.value" />
+      }
+      </div>
+    </app-ui-form-section>
+  </div>
+
+  <div modalFooter class="flex gap-3">
+    <button class="ui-btn ui-btn-secondary flex-1" type="button" (click)="close.emit()">
+      Cerrar
+    </button>
+  </div>
+</app-ui-modal>
+}

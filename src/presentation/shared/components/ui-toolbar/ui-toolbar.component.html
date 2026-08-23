@@ -1,0 +1,52 @@
+<nav
+  class="ui-toolbar ui-topbar sticky top-0 z-20"
+  aria-label="Barra de comandos"
+  (keydown)="onKeydown($event)"
+>
+  <div class="min-w-0 flex-1">
+    <p class="truncate text-sm font-bold tracking-tight text-slate-950">{{ title }}</p>
+    @if (subtitle) {
+      <p class="truncate text-xs font-semibold text-slate-500">{{ subtitle }}</p>
+    }
+  </div>
+
+  <div class="ui-toolbar-menu hidden xl:flex" aria-label="Comandos principales">
+    @for (item of commands; track item.route) {
+      <a class="ui-toolbar-menu__item" [routerLink]="item.route" routerLinkActive="is-active">
+        {{ item.label }}
+      </a>
+    }
+  </div>
+
+  <div class="relative">
+    <button
+      class="ui-user-button"
+      type="button"
+      aria-haspopup="menu"
+      [attr.aria-expanded]="menuOpen()"
+      (click)="toggleMenu($event)"
+    >
+      <span class="ui-user-button__avatar">{{ initials }}</span>
+      @if (userName) {
+        <span class="hidden max-w-40 truncate sm:inline">{{ userName }}</span>
+      }
+    </button>
+
+    @if (menuOpen()) {
+      <div class="ui-menu-surface absolute right-0 top-11 z-[250] min-w-56 p-2" role="menu">
+        <div class="px-3 py-2">
+          <p class="text-sm font-bold text-slate-900">{{ userName || 'Usuario PMO' }}</p>
+          <p class="text-xs font-semibold text-slate-500">Sesión activa</p>
+        </div>
+        <button
+          class="ui-menu-action ui-menu-action--danger"
+          type="button"
+          role="menuitem"
+          (click)="emitLogout()"
+        >
+          Salir
+        </button>
+      </div>
+    }
+  </div>
+</nav>

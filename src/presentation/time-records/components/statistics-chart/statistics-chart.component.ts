@@ -13,7 +13,6 @@ import {
   BarElement,
   CategoryScale,
   Chart,
-  ChartConfiguration,
   ChartType,
   DoughnutController,
   Legend,
@@ -21,18 +20,12 @@ import {
   LineController,
   LineElement,
   PieController,
-  Plugin,
   PointElement,
   Tooltip,
-  TooltipItem,
 } from 'chart.js';
 import { OverflowTooltipDirective } from '@presentation/shared/directives/overflow-tooltip.directive';
-
-export interface StatisticsChartItem {
-  label: string;
-  hours: number;
-  count?: number;
-}
+import { StatisticsChartConfigFactory } from './statistics-chart-config.factory';
+import { StatisticsChartItem } from './statistics-chart.model';
 
 Chart.register(
   ArcElement,
@@ -53,161 +46,8 @@ Chart.register(
   selector: 'app-statistics-chart',
   standalone: true,
   imports: [OverflowTooltipDirective],
-  styles: [
-    `
-      :host {
-        display: block;
-        min-width: 0;
-        max-width: 100%;
-      }
-    `,
-  ],
-  template: `
-    @if (configurable) {
-      <div
-        class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2"
-      >
-        <p class="px-1 text-[11px] font-bold text-slate-500">
-          Pasa el cursor sobre la gráfica para ver el detalle completo.
-        </p>
-        <div class="flex flex-wrap gap-1.5" role="group" aria-label="Configurar gráfica y descarga">
-          @if (type === 'bar') {
-            <button
-              class="rounded-lg border px-2.5 py-1.5 text-[11px] font-black transition"
-              type="button"
-              [class.border-blue-300]="effectiveHorizontal()"
-              [class.bg-blue-100]="effectiveHorizontal()"
-              [class.text-blue-800]="effectiveHorizontal()"
-              [class.border-slate-200]="!effectiveHorizontal()"
-              [class.bg-white]="!effectiveHorizontal()"
-              [class.text-slate-600]="!effectiveHorizontal()"
-              (click)="toggleOrientation()"
-            >
-              {{ effectiveHorizontal() ? 'Horizontal' : 'Vertical' }}
-            </button>
-          }
-          @if (!isCircular()) {
-            <button
-              class="rounded-lg border px-2.5 py-1.5 text-[11px] font-black transition"
-              type="button"
-              [class.border-blue-300]="effectiveShowAxisLabels()"
-              [class.bg-blue-100]="effectiveShowAxisLabels()"
-              [class.text-blue-800]="effectiveShowAxisLabels()"
-              [class.border-slate-200]="!effectiveShowAxisLabels()"
-              [class.bg-white]="!effectiveShowAxisLabels()"
-              [class.text-slate-500]="!effectiveShowAxisLabels()"
-              (click)="toggleAxisLabels()"
-            >
-              Nombres
-            </button>
-          }
-          <button
-            class="rounded-lg border px-2.5 py-1.5 text-[11px] font-black transition"
-            type="button"
-            [class.border-blue-300]="showValues"
-            [class.bg-blue-100]="showValues"
-            [class.text-blue-800]="showValues"
-            [class.border-slate-200]="!showValues"
-            [class.bg-white]="!showValues"
-            [class.text-slate-500]="!showValues"
-            (click)="toggleValues()"
-          >
-            Valores
-          </button>
-          @if (type !== 'line') {
-            <button
-              class="rounded-lg border px-2.5 py-1.5 text-[11px] font-black transition"
-              type="button"
-              [class.border-blue-300]="showLegend"
-              [class.bg-blue-100]="showLegend"
-              [class.text-blue-800]="showLegend"
-              [class.border-slate-200]="!showLegend"
-              [class.bg-white]="!showLegend"
-              [class.text-slate-500]="!showLegend"
-              (click)="toggleLegend()"
-            >
-              Leyenda
-            </button>
-          }
-          <button
-            class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-black text-slate-500 transition hover:border-slate-300 hover:text-slate-800"
-            type="button"
-            (click)="resetView()"
-          >
-            Restablecer
-          </button>
-        </div>
-      </div>
-    }
-    <div class="relative w-full min-w-0" [style.height.px]="chartHeight()">
-      <canvas #canvas role="img" [attr.aria-label]="ariaLabel"></canvas>
-    </div>
-    @if (type === 'line') {
-      <div class="mt-3 grid grid-cols-3 gap-2 text-center">
-        <div class="rounded-lg bg-blue-50 px-2 py-2">
-          <p class="text-[10px] font-black uppercase text-blue-500">Total</p>
-          <p class="mt-1 text-xs font-black text-blue-900">{{ format(totalValue()) }} h</p>
-        </div>
-        <div class="rounded-lg bg-emerald-50 px-2 py-2">
-          <p class="text-[10px] font-black uppercase text-emerald-500">Promedio</p>
-          <p class="mt-1 text-xs font-black text-emerald-900">{{ format(averageValue()) }} h</p>
-        </div>
-        <div class="rounded-lg bg-violet-50 px-2 py-2">
-          <p class="text-[10px] font-black uppercase text-violet-500">Pico</p>
-          <p
-            class="mt-1 break-words text-xs font-black text-violet-900"
-            [appOverflowTooltip]="peakText()"
-            tabindex="0"
-          >
-            {{ peakText() }}
-          </p>
-        </div>
-      </div>
-    } @else if (showLegend) {
-      <div class="mt-3 grid gap-1.5 sm:grid-cols-2">
-        @for (item of data; track item.label; let index = $index) {
-          <div class="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2">
-            <span
-              class="size-2.5 shrink-0 rounded-full"
-              [style.background-color]="colorAt(index)"
-            ></span>
-            <span
-              class="min-w-0 flex-1 break-words text-[11px] font-bold leading-snug text-slate-600"
-              [appOverflowTooltip]="item.label"
-              tabindex="0"
-              >{{ item.label }}</span
-            >
-            <span class="shrink-0 text-[11px] font-black text-slate-900"
-              >{{ format(item.hours) }} h · {{ percentage(item.hours) }}%</span
-            >
-          </div>
-        }
-      </div>
-    }
-    <div class="mt-3 flex justify-end">
-      <button
-        class="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-black text-blue-700 transition hover:bg-blue-50"
-        type="button"
-        (click)="downloadPng()"
-      >
-        <svg
-          class="size-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          aria-hidden="true"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"
-          />
-        </svg>
-        Descargar PNG
-      </button>
-    </div>
-  `,
+  styleUrl: './statistics-chart.component.css',
+  templateUrl: './statistics-chart.component.html',
 })
 export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input({ required: true }) data: StatisticsChartItem[] = [];
@@ -218,6 +58,7 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
   @ViewChild('canvas') private canvas?: ElementRef<HTMLCanvasElement>;
 
   private chart?: Chart;
+  private readonly configFactory = new StatisticsChartConfigFactory();
   private horizontalOverride: boolean | null = null;
   private axisLabelsOverride: boolean | null = null;
   showValues = true;
@@ -486,174 +327,18 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
     if (!this.canvas) return;
     this.chart?.destroy();
 
-    const isCircular = this.type === 'doughnut' || this.type === 'pie';
-    const isLine = this.type === 'line';
-    const isHorizontal = this.effectiveHorizontal();
-    const showAxisLabels = this.effectiveShowAxisLabels();
-    const xTicks = isHorizontal
-      ? { color: '#64748b', callback: (value: unknown) => `${value} h` }
-      : this.type === 'bar'
-        ? {
-            color: '#475569',
-            display: showAxisLabels,
-            autoSkip: false,
-            maxRotation: 0,
-            minRotation: 0,
-            font: { size: 12, weight: 'bold' as const },
-            callback: (value: unknown) =>
-              this.wrapLabel(String(this.data[Number(value)]?.label || ''), 14),
-          }
-        : { color: '#64748b', maxRotation: 0, minRotation: 0 };
-    const yTicks = isHorizontal
-      ? {
-          color: '#475569',
-          display: showAxisLabels,
-          font: { size: 12, weight: 'bold' as const },
-          callback: (value: unknown) => {
-            const label = String(this.data[Number(value)]?.label || '');
-            return this.wrapLabel(label, 18);
-          },
-        }
-      : { color: '#475569', callback: (value: unknown) => `${value} h` };
-    const visibleLabels: Plugin = {
-      id: 'visible-statistics-labels',
-      afterDatasetsDraw: (chart) => {
-        if (!this.showValues) return;
-        const context = chart.ctx;
-        const meta = chart.getDatasetMeta(0);
-        const compact = chart.width < 520;
-        context.save();
-        context.font = `700 ${compact ? 11 : 12}px sans-serif`;
-        meta.data.forEach((element, index) => {
-          const item = this.data[index];
-          if (!item || !item.hours) return;
-          const position = element.tooltipPosition(false);
-          if (position.x === null || position.y === null) return;
-          const reports = item.count ? ` · ${item.count} reg.` : '';
-          const text = isCircular
-            ? compact
-              ? `${this.percentage(item.hours)}%`
-              : `${this.format(item.hours)} h · ${this.percentage(item.hours)}%`
-            : compact
-              ? `${this.format(item.hours)} h`
-              : `${this.format(item.hours)} h${reports}`;
-
-          if (isCircular) {
-            context.textAlign = 'center';
-            context.textBaseline = 'middle';
-            context.lineWidth = 3;
-            context.strokeStyle = 'rgba(15, 23, 42, .65)';
-            context.fillStyle = '#ffffff';
-            context.strokeText(text, position.x, position.y);
-            context.fillText(text, position.x, position.y);
-          } else if (isHorizontal) {
-            context.textAlign = 'left';
-            context.textBaseline = 'middle';
-            context.fillStyle = '#1e3a8a';
-            context.fillText(text, position.x + 5, position.y, compact ? 54 : 92);
-          } else {
-            context.textAlign = 'center';
-            context.textBaseline = 'bottom';
-            context.fillStyle = '#1e3a8a';
-            context.fillText(text, position.x, position.y - 7);
-          }
-        });
-        context.restore();
-      },
-    };
-    const config: ChartConfiguration<ChartType, number[], string> = {
+    const config = this.configFactory.build({
+      data: this.data,
       type: this.type,
-      data: {
-        labels: this.data.map((item) => item.label),
-        datasets: [
-          {
-            data: this.data.map((item) => item.hours),
-            backgroundColor: isCircular
-              ? this.data.map((_, index) => this.colorAt(index))
-              : isLine
-                ? '#2563eb22'
-                : this.data.map((_, index) => this.colorAt(index)),
-            borderColor: isCircular
-              ? '#ffffff'
-              : isLine
-                ? '#2563eb'
-                : this.data.map((_, index) => this.colorAt(index)),
-            borderWidth: isCircular ? 3 : 2,
-            borderRadius: this.type === 'bar' ? 7 : 0,
-            fill: isLine,
-            tension: isLine ? 0.35 : 0,
-            pointBackgroundColor: '#2563eb',
-            pointRadius: isLine ? 4 : 0,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        devicePixelRatio: 3,
-        layout: {
-          padding: {
-            top: isCircular ? 4 : 24,
-            right: isHorizontal ? 102 : 10,
-            left: 4,
-            bottom: 4,
-          },
-        },
-        indexAxis: this.type === 'bar' && isHorizontal ? 'y' : 'x',
-        ...(this.type === 'doughnut' ? { cutout: '62%' } : {}),
-        plugins: {
-          legend: {
-            display: isCircular && this.showLegend,
-            position: 'bottom',
-            labels: {
-              boxWidth: 11,
-              boxHeight: 11,
-              usePointStyle: true,
-              padding: 16,
-              color: '#475569',
-              font: { size: 13, weight: 'bold' as const },
-            },
-          },
-          tooltip: {
-            backgroundColor: '#0f172a',
-            titleColor: '#ffffff',
-            bodyColor: '#e2e8f0',
-            padding: 12,
-            cornerRadius: 10,
-            displayColors: true,
-            callbacks: {
-              title: (items) => {
-                const index = items[0]?.dataIndex;
-                return index === undefined ? '' : this.data[index]?.label || '';
-              },
-              label: (context: TooltipItem<ChartType>) => {
-                const index = context.dataIndex;
-                const item = this.data[index];
-                const total = this.data.reduce((sum, value) => sum + value.hours, 0);
-                const percentage = total ? Math.round((item.hours / total) * 100) : 0;
-                const count = item.count ? ` · ${item.count} registros` : '';
-                return `${this.format(item.hours)} h · ${percentage}% del total${count}`;
-              },
-            },
-          },
-        },
-        scales: isCircular
-          ? undefined
-          : {
-              x: {
-                beginAtZero: true,
-                grid: { color: '#e2e8f0' },
-                ticks: xTicks,
-              },
-              y: {
-                beginAtZero: true,
-                grid: { display: !isHorizontal, color: '#e2e8f0' },
-                ticks: yTicks,
-              },
-            },
-      },
-      plugins: [visibleLabels],
-    };
+      horizontal: this.effectiveHorizontal(),
+      showAxisLabels: this.effectiveShowAxisLabels(),
+      showLegend: this.showLegend,
+      showValues: this.showValues,
+      colorAt: (index) => this.colorAt(index),
+      format: (value) => this.format(value),
+      percentage: (value) => this.percentage(value),
+      wrapLabel: (label, maxLength) => this.wrapLabel(label, maxLength),
+    });
     this.chart = new Chart(this.canvas.nativeElement, config);
   }
 

@@ -6,6 +6,7 @@ export interface TimeRecordApiBody {
   tipoActividad: string;
   HoraInicio: string;
   HoraFin: string;
+  horaFin: string;
   fechaInicio: string;
   causa: string;
   complejidad: string;
@@ -23,6 +24,7 @@ export interface TimeRecordApiBody {
   categoria: string;
   tiempoRealHoras: string;
   fechaEstimadaPruebas: string | null;
+  fechaEstimadarealPruebas: string;
   fechaEstimadaRealPruebas: string | null;
 }
 

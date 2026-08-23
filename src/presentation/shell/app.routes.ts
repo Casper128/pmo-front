@@ -41,6 +41,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'registros/plantillas',
+    loadComponent: () =>
+      import('@presentation/time-records/pages/management-templates-page.component').then(
+        (m) => m.ManagementTemplatesPageComponent,
+      ),
+  },
+  {
     path: 'administracion/ubicaciones',
     canActivate: [locationAdminGuard],
     loadComponent: () =>

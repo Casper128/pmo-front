@@ -1,0 +1,143 @@
+<div class="block w-full min-w-0">
+  @if (label) {
+    <label class="mb-1.5 block text-xs font-bold text-slate-600" [attr.for]="controlId">
+      {{ label }}
+    </label>
+  }
+  <button
+    #trigger
+    class="ui-control group flex w-full min-w-0 items-center gap-3 py-2 pl-3.5 pr-2.5 text-left"
+    type="button"
+    [id]="controlId"
+    [disabled]="isDisabled"
+    [attr.aria-expanded]="open"
+    [attr.aria-haspopup]="'dialog'"
+    [attr.aria-controls]="calendarId"
+    [attr.aria-invalid]="error ? true : null"
+    [attr.aria-describedby]="descriptionId"
+    [class.ui-control--error]="error"
+    [class.ui-control--open]="open && !error"
+    (click)="toggle()"
+    (keydown)="onTriggerKeydown($event)"
+    (blur)="onTouched()"
+  >
+    <span class="min-w-0 flex-1" [class.text-slate-400]="!value" [class.text-slate-800]="value">
+      {{ displayValue }}
+    </span>
+    <span
+      class="grid size-7 shrink-0 place-items-center rounded-lg transition"
+      [class.bg-blue-100]="open"
+      [class.text-blue-700]="open"
+      [class.bg-blue-50]="!open"
+      [class.text-blue-700]="!open"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 24 24" class="size-4 fill-none stroke-current" stroke-width="2">
+        <path
+          d="M7 3v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </span>
+  </button>
+
+  @if (open) {
+    <section
+      #calendar
+      class="ui-menu-surface fixed z-[200] overflow-hidden p-4"
+      role="dialog"
+      aria-modal="false"
+      [id]="calendarId"
+      [attr.aria-label]="'Calendario ' + monthLabel"
+      [style.top.px]="popoverTop"
+      [style.left.px]="popoverLeft"
+      [style.width.px]="popoverWidth"
+    >
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <button
+          class="ui-icon-btn"
+          type="button"
+          aria-label="Mes anterior"
+          (click)="changeMonth(-1)"
+        >
+          <svg viewBox="0 0 20 20" class="size-4 fill-none stroke-current" stroke-width="2">
+            <path d="m12 5-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <div class="text-center">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-blue-600">
+            Seleccionar fecha
+          </p>
+          <p class="mt-0.5 text-sm font-bold capitalize text-slate-900">{{ monthLabel }}</p>
+        </div>
+        <button
+          class="ui-icon-btn"
+          type="button"
+          aria-label="Mes siguiente"
+          (click)="changeMonth(1)"
+        >
+          <svg viewBox="0 0 20 20" class="size-4 fill-none stroke-current" stroke-width="2">
+            <path d="m8 5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="mb-1 grid grid-cols-7 text-center text-[10px] font-bold uppercase text-slate-400">
+        @for (weekday of weekdays; track weekday) {
+          <span class="py-1.5">{{ weekday }}</span>
+        }
+      </div>
+      <div class="grid grid-cols-7 gap-1">
+        @for (day of calendarDays; track day.value) {
+          <button
+            class="grid aspect-square min-h-9 place-items-center rounded-xl text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-25"
+            type="button"
+            [disabled]="day.disabled"
+            [attr.aria-label]="formatAccessible(day.value)"
+            [attr.aria-pressed]="day.value === value"
+            [class.bg-blue-600]="day.value === value"
+            [class.text-white]="day.value === value"
+            [class.ring-2]="day.today && day.value !== value"
+            [class.ring-blue-200]="day.today && day.value !== value"
+            [class.text-blue-700]="day.today && day.value !== value"
+            [class.text-slate-800]="day.currentMonth && !day.today && day.value !== value"
+            [class.text-slate-300]="!day.currentMonth && day.value !== value"
+            [class.hover:bg-blue-50]="day.value !== value && !day.disabled"
+            (click)="selectDay(day)"
+          >
+            {{ day.day }}
+          </button>
+        }
+      </div>
+
+      <div class="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+        <button
+          class="ui-btn ui-btn-secondary min-h-9 px-3 py-2 text-xs disabled:opacity-40"
+          type="button"
+          [disabled]="!isAllowed(todayValue)"
+          (click)="selectValue(todayValue)"
+        >
+          Hoy
+        </button>
+        <button
+          class="ui-btn ui-btn-primary min-h-9 px-3 py-2 text-xs"
+          type="button"
+          (click)="selectValue('')"
+        >
+          Limpiar
+        </button>
+      </div>
+    </section>
+  }
+
+  @if (error || hint) {
+    <span
+      class="mt-1.5 block text-xs font-semibold"
+      [id]="descriptionId"
+      [class.text-red-600]="error"
+      [class.text-slate-400]="!error"
+      >{{ error || hint }}</span
+    >
+  }
+</div>
