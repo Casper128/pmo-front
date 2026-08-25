@@ -29,6 +29,7 @@
             [defaultSolicitudOptions]="solicitudOptions()"
             [defaultCliente]="defaultCliente()"
             [defaultGestionId]="defaultGestionId()"
+            [existingRecords]="records()"
             [loadingClientes]="loadingClients()"
             [loadingGestiones]="loadingDemand()"
             (clienteChange)="onDefaultClienteChange($event)"
@@ -892,7 +893,9 @@
             Este reporte ya fue enviado. Sin clave técnica autorizada, solo se enviará una solicitud
             al auditor para que esa persona revise y ejecute la eliminación.
           </p>
-          <div class="rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-bold text-red-800">
+          <div
+            class="rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-bold text-red-800"
+          >
             {{ managementName(report) }}
           </div>
           <app-ui-field
@@ -1098,7 +1101,9 @@
                 [class.text-red-600]="dialog.context !== 'audit'"
                 [class.text-blue-700]="dialog.context === 'audit'"
               >
-                {{ dialog.context === 'audit' ? 'Solicitud a auditoría' : 'Validación de registros' }}
+                {{
+                  dialog.context === 'audit' ? 'Solicitud a auditoría' : 'Validación de registros'
+                }}
               </p>
               <h2 id="send-alert-title" class="mt-1 text-lg font-bold text-slate-950">
                 {{ dialog.title }}

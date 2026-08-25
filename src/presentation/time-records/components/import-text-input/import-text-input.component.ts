@@ -54,6 +54,7 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
   @Input() defaultSolicitudOptions: ManagementDemandOption[] = [];
   @Input() defaultCliente = '';
   @Input() defaultGestionId = '';
+  @Input() existingRecords: TimeRecord[] = [];
   @Input() loadingClientes = false;
   @Input() loadingGestiones = false;
   @Output() recordsChange = new EventEmitter<TimeRecord[]>();
@@ -65,18 +66,18 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
   draftMessage = '';
 
   ngOnInit(): void {
-    this.emitRecords(false);
+    this.syncEmptyRowsWithExistingRecords();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['defaultCliente'] && this.defaultCliente && !this.draft.cliente) {
       this.draft.cliente = this.defaultCliente;
       this.persistDraft();
-      this.emitRecords(false);
     }
     if (changes['defaultGestionId'] && this.defaultGestionId && !this.draft.gestionId) {
       this.onGestionChange(this.defaultGestionId, false);
     }
+    if (changes['existingRecords']) this.syncEmptyRowsWithExistingRecords();
   }
 
   onClienteChange(cliente: string): void {
@@ -85,7 +86,6 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
     this.draft.solicitud = '';
     this.persistDraft();
     this.clienteChange.emit(cliente);
-    this.emitRecords();
   }
 
   onGestionChange(gestionId: string, notify = true): void {
@@ -94,7 +94,6 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
     this.draft.solicitud = option?.requestValue || option?.name || gestionId;
     this.persistDraft();
     if (notify) this.gestionChange.emit(gestionId);
-    this.emitRecords();
   }
 
   addRow(): void {
@@ -107,7 +106,6 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
     });
     this.persistDraft();
     this.draftMessage = '';
-    this.emitRecords();
   }
 
   removeRow(index: number): void {
@@ -115,25 +113,25 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
     if (!this.draft.rows.length) this.addRow();
     this.persistDraft();
     this.draftMessage = '';
-    this.emitRecords();
   }
 
   onDraftChange(): void {
     this.persistDraft();
     this.draftMessage = '';
-    this.emitRecords();
   }
 
   createDraftList(): void {
-    const records = this.toRecords();
-    if (!records.length) {
+    const draftRecords = this.toRecords();
+    if (!draftRecords.length) {
       this.draftMessage =
         'Completa al menos una fila con fecha, cliente, gestión, horas válidas y descripción.';
-      this.recordsChange.emit([]);
       return;
     }
-    this.draftMessage = `${records.length} registro(s) listos para revisar y enviar.`;
+    const records = [...this.existingRecords, ...draftRecords];
     this.recordsChange.emit(records);
+    this.resetRowsAfterCreate(draftRecords.at(-1)!);
+    this.draftMessage = `${draftRecords.length} registro(s) agregado(s) al borrador.`;
+    this.persistDraft();
   }
 
   clear(): void {
@@ -197,11 +195,6 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
 
   private persistDraft(): void {
     localStorage.setItem(this.storageKey, JSON.stringify(this.draft));
-  }
-
-  private emitRecords(allowEmpty = true): void {
-    const records = this.toRecords();
-    if (records.length || allowEmpty) this.recordsChange.emit(records);
   }
 
   private toRecords(): TimeRecord[] {
@@ -268,6 +261,12 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
   private suggestedTimesForNewRow(): Pick<ManualDraftRow, 'horaIni' | 'horaFin'> {
     const lastEnd = this.draft.rows.at(-1)?.horaFin;
     const suggestedStart = this.isTimeValue(lastEnd) ? lastEnd : '08:00';
+    return this.suggestedTimesFromStart(suggestedStart);
+  }
+
+  private suggestedTimesFromStart(
+    suggestedStart: string,
+  ): Pick<ManualDraftRow, 'horaIni' | 'horaFin'> {
     const currentTime = this.currentTimeInputValue();
     const suggestedEnd =
       this.diffMinutes(suggestedStart, currentTime) > 0
@@ -277,6 +276,49 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
       horaIni: suggestedStart,
       horaFin: suggestedEnd,
     };
+  }
+
+  private syncEmptyRowsWithExistingRecords(): void {
+    if (!this.existingRecords.length) return;
+    if (this.draft.rows.some((row) => this.rowHasInput(row))) return;
+    const latestRecord = this.latestRecord(this.existingRecords);
+    if (!latestRecord?.horaFin) return;
+    this.draft.rows = [this.emptyRowFromStart(latestRecord.horaFin)];
+    this.persistDraft();
+  }
+
+  private resetRowsAfterCreate(lastRecord: TimeRecord): void {
+    this.draft.rows = [this.emptyRowFromStart(lastRecord.horaFin)];
+  }
+
+  private emptyRowFromStart(start: string): ManualDraftRow {
+    const suggestedTimes = this.suggestedTimesFromStart(this.isTimeValue(start) ? start : '08:00');
+    return {
+      horaIni: suggestedTimes.horaIni,
+      horaFin: suggestedTimes.horaFin,
+      desc: '',
+      observacion: '',
+    };
+  }
+
+  private latestRecord(records: TimeRecord[]): TimeRecord | undefined {
+    return [...records]
+      .sort((a, b) => {
+        const dateComparison = String(a.fecha || '').localeCompare(String(b.fecha || ''));
+        if (dateComparison !== 0) return dateComparison;
+        const startComparison = this.minutesOf(a.horaIni) - this.minutesOf(b.horaIni);
+        if (startComparison !== 0) return startComparison;
+        return this.minutesOf(a.horaFin) - this.minutesOf(b.horaFin);
+      })
+      .at(-1);
+  }
+
+  private minutesOf(value: string): number {
+    const [hour, minute] = String(value || '')
+      .split(':')
+      .map(Number);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return 0;
+    return hour * 60 + minute;
   }
 
   private currentTimeInputValue(): string {
