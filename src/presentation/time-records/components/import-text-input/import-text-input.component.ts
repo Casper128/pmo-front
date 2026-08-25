@@ -97,10 +97,10 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
   }
 
   addRow(): void {
-    const last = this.draft.rows.at(-1);
+    const suggestedTimes = this.suggestedTimesForNewRow();
     this.draft.rows.push({
-      horaIni: last?.horaFin || '08:00',
-      horaFin: this.nextHour(last?.horaFin || '08:00'),
+      horaIni: suggestedTimes.horaIni,
+      horaFin: suggestedTimes.horaFin,
       desc: '',
       observacion: '',
     });
@@ -246,6 +246,29 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const year = today.getFullYear();
     return `${year}-${month}-${day}`;
+  }
+
+  private suggestedTimesForNewRow(): Pick<ManualDraftRow, 'horaIni' | 'horaFin'> {
+    const lastEnd = this.draft.rows.at(-1)?.horaFin;
+    const suggestedStart = this.isTimeValue(lastEnd) ? lastEnd : '08:00';
+    const currentTime = this.currentTimeInputValue();
+    const suggestedEnd =
+      this.diffMinutes(suggestedStart, currentTime) > 0
+        ? currentTime
+        : this.nextHour(suggestedStart);
+    return {
+      horaIni: suggestedStart,
+      horaFin: suggestedEnd,
+    };
+  }
+
+  private currentTimeInputValue(): string {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
+
+  private isTimeValue(value: string | undefined): value is string {
+    return /^\d{2}:\d{2}$/.test(value || '');
   }
 
   private nextHour(value: string): string {
