@@ -48,9 +48,7 @@
     <section class="rounded-2xl border border-slate-200">
       <div class="border-b border-slate-100 px-3 py-3">
         <div>
-          <p class="text-[11px] font-bold uppercase tracking-widest text-slate-500">
-            Actividades
-          </p>
+          <p class="text-[11px] font-bold uppercase tracking-widest text-slate-500">Actividades</p>
           <p class="mt-1 text-xs font-semibold text-slate-500">
             Cada fila se convertirá en un registro para revisar antes del envío.
           </p>
@@ -121,15 +119,22 @@
       </div>
     </section>
 
-    <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
-      <button
-        class="ui-btn ui-btn-primary"
-        type="button"
-        (click)="addRow()"
-      >
+    @if (draftMessage) {
+      <div class="ui-alert ui-alert-info" role="status" aria-live="polite">
+        {{ draftMessage }}
+      </div>
+    }
+
+    <div class="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+      <button class="ui-btn ui-btn-secondary" type="button" (click)="addRow()">
         + Agregar fila
       </button>
-      <button class="ui-btn ui-btn-secondary" type="button" (click)="clear()">Limpiar borrador</button>
+      <button class="ui-btn ui-btn-primary" type="button" (click)="createDraftList()">
+        Crear borrador
+      </button>
+      <button class="ui-btn ui-btn-secondary" type="button" (click)="clear()">
+        Limpiar borrador
+      </button>
     </div>
   </div>
 </div>

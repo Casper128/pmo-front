@@ -62,6 +62,7 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
 
   private readonly storageKey = 'pmo_manual_time_draft';
   draft: ManualDraft = this.loadDraft();
+  draftMessage = '';
 
   ngOnInit(): void {
     this.emitRecords(false);
@@ -105,6 +106,7 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
       observacion: '',
     });
     this.persistDraft();
+    this.draftMessage = '';
     this.emitRecords();
   }
 
@@ -112,16 +114,31 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
     this.draft.rows.splice(index, 1);
     if (!this.draft.rows.length) this.addRow();
     this.persistDraft();
+    this.draftMessage = '';
     this.emitRecords();
   }
 
   onDraftChange(): void {
     this.persistDraft();
+    this.draftMessage = '';
     this.emitRecords();
+  }
+
+  createDraftList(): void {
+    const records = this.toRecords();
+    if (!records.length) {
+      this.draftMessage =
+        'Completa al menos una fila con fecha, cliente, gestión, horas válidas y descripción.';
+      this.recordsChange.emit([]);
+      return;
+    }
+    this.draftMessage = `${records.length} registro(s) listos para revisar y enviar.`;
+    this.recordsChange.emit(records);
   }
 
   clear(): void {
     this.draft = this.emptyDraft();
+    this.draftMessage = '';
     this.persistDraft();
     this.recordsChange.emit([]);
   }
