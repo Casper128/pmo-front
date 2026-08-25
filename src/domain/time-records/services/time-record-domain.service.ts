@@ -36,6 +36,7 @@ export interface TimeRecordParameters {
   workSettings(): {
     mondayThursdayHours: number;
     fridayHours: number;
+    dailyHours: Record<number, number>;
     maxDailyLaborHours: number;
     maxHoursPerRecord: number;
   };

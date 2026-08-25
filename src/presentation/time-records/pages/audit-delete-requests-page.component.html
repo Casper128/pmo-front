@@ -1,0 +1,151 @@
+<section class="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6">
+  <app-ui-page-header
+    eyebrow="Auditoría"
+    title="Solicitudes de eliminación"
+    description="Revisa los reportes enviados a auditoría y ejecuta el borrado solo cuando corresponda."
+  >
+    <div pageHeaderAside class="flex flex-wrap items-center gap-2">
+      <span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+        {{ pendingRequests().length }} pendientes
+      </span>
+      <button class="ui-btn" type="button" (click)="load()" [disabled]="loading() || !canReview()">
+        @if (loading()) {
+          <span class="size-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700"></span>
+        }
+        Actualizar
+      </button>
+    </div>
+  </app-ui-page-header>
+
+  @if (!canReview()) {
+    <app-ui-state-message
+      title="Sin acceso de auditoría"
+      description="Solo el auditor configurado o un administrador puede revisar estas solicitudes."
+      tone="warning"
+    />
+  } @else {
+    @if (error()) {
+      <div class="ui-alert ui-alert-error">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="ui-alert ui-alert-success">{{ success() }}</div>
+    }
+
+    <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <header class="border-b border-slate-200 px-5 py-4">
+        <p class="text-xs font-extrabold uppercase tracking-[0.12em] text-blue-700">
+          Bandeja de revisión
+        </p>
+        <h2 class="mt-1 text-xl font-extrabold text-slate-950">Eliminaciones pendientes</h2>
+        <p class="mt-1 text-sm font-medium leading-6 text-slate-500">
+          La solicitud no elimina el reporte. El borrado real se ejecuta cuando auditoría aprueba.
+        </p>
+      </header>
+
+      @if (loading()) {
+        <div class="grid min-h-52 place-items-center p-6">
+          <div class="text-center">
+            <span
+              class="mx-auto block size-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"
+            ></span>
+            <p class="mt-3 text-sm font-bold text-slate-600">Cargando solicitudes...</p>
+          </div>
+        </div>
+      } @else if (!pendingRequests().length) {
+        <div class="p-5">
+          <app-ui-state-message
+            title="No hay solicitudes pendientes"
+            description="Cuando un consultor pida eliminar un reporte enviado, aparecerá aquí para revisión."
+            tone="info"
+          />
+        </div>
+      } @else {
+        <div class="divide-y divide-slate-100">
+          @for (request of pendingRequests(); track request.id) {
+            <article class="grid gap-4 px-5 py-4 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="min-w-0 truncate text-base font-extrabold text-slate-950">
+                    {{ titleFor(request) }}
+                  </h3>
+                  <span
+                    class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-extrabold text-amber-700"
+                  >
+                    Pendiente
+                  </span>
+                </div>
+                <p class="mt-1 text-sm font-semibold text-slate-500">
+                  {{ request.identifier }}
+                </p>
+                <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+                  <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <dt class="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-400">
+                      Solicitante
+                    </dt>
+                    <dd class="mt-1 truncate font-bold text-slate-800">
+                      {{ requesterFor(request) }}
+                    </dd>
+                  </div>
+                  <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <dt class="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-400">
+                      Cliente
+                    </dt>
+                    <dd class="mt-1 truncate font-bold text-slate-800">
+                      {{ request.report.cliente || 'N/A' }}
+                    </dd>
+                  </div>
+                  <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <dt class="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-400">
+                      Fecha
+                    </dt>
+                    <dd class="mt-1 font-bold text-slate-800">
+                      {{ request.report.fechaInicio || request.requestedAt | date: 'yyyy-MM-dd' }}
+                    </dd>
+                  </div>
+                  <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <dt class="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-400">
+                      Horas
+                    </dt>
+                    <dd class="mt-1 font-bold text-blue-700">{{ hoursFor(request) }}</dd>
+                  </div>
+                </dl>
+                <div class="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <p class="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-400">
+                    Descripción
+                  </p>
+                  <p class="mt-1 text-sm font-semibold leading-6 text-slate-700">
+                    {{ descriptionFor(request) }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2 lg:w-48 lg:flex-col">
+                <button
+                  class="ui-btn ui-btn-danger w-full"
+                  type="button"
+                  (click)="approve(request)"
+                  [disabled]="!!actionId()"
+                >
+                  @if (actionId() === request.id) {
+                    <span
+                      class="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                    ></span>
+                  }
+                  Eliminar y aprobar
+                </button>
+                <button
+                  class="ui-btn w-full"
+                  type="button"
+                  (click)="reject(request)"
+                  [disabled]="!!actionId()"
+                >
+                  Rechazar
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+</section>

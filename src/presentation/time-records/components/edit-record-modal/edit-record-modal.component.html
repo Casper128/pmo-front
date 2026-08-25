@@ -47,6 +47,7 @@
           label="Tipo hora"
           [options]="selectOptions(tiposHora, undefined, draft.tipoHora)"
           [(ngModel)]="draft.tipoHora"
+          (ngModelChange)="onEditablePayloadFieldChange()"
         />
         <app-ui-date-input label="Fecha" [(ngModel)]="draft.fecha" (ngModelChange)="onFechaChange()" />
         <app-ui-time-input label="Hora inicio" [(ngModel)]="draft.horaIni" (ngModelChange)="calcHoras()" />
@@ -64,14 +65,54 @@
       }
 
       <app-ui-form-section eyebrow="Notas" [columns]="2">
-        <app-ui-field label="Descripción" type="textarea" [rows]="2" [(ngModel)]="draft.desc" />
+        <app-ui-field
+          label="Descripción"
+          type="textarea"
+          [rows]="2"
+          [(ngModel)]="draft.desc"
+          (ngModelChange)="onEditablePayloadFieldChange()"
+        />
         <app-ui-field
           label="Observación"
           type="textarea"
           [rows]="2"
           [(ngModel)]="draft.observacion"
+          (ngModelChange)="onEditablePayloadFieldChange()"
         />
       </app-ui-form-section>
+
+      <details class="ui-surface border-slate-200 bg-white" open>
+        <summary
+          class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-left"
+        >
+          <span>
+            <span class="ui-eyebrow text-slate-400">Solo lectura</span>
+            <span class="mt-1 block text-sm font-bold text-slate-900">
+              Campos avanzados que se enviarán
+            </span>
+          </span>
+          <span class="text-xs font-bold text-blue-700">Revisar</span>
+        </summary>
+
+        <div class="border-t border-slate-100 px-4 py-4">
+          @if (payloadPreviewLoading) {
+            <p class="text-sm font-bold text-slate-500">Consultando configuración...</p>
+          } @else if (payloadPreviewMessage) {
+            <div class="ui-alert ui-alert-warning">{{ payloadPreviewMessage }}</div>
+          } @else {
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              @for (field of payloadPreviewFields; track field.label) {
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <p class="text-[11px] font-bold text-slate-500">{{ field.label }}</p>
+                  <p class="mt-1 break-words text-sm font-bold text-slate-900">
+                    {{ field.value }}
+                  </p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </details>
     </div>
 
     <div modalFooter class="flex gap-3">

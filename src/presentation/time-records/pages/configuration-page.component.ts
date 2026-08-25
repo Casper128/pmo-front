@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import {
   AdvancedFieldConfiguration,
   AdvancedFieldKey,
+  DeletionSettings,
   WorkSettings,
 } from '@domain/configuration/app-parameters.model';
 import { AppParametersFacade } from '@application/configuration/app-parameters.facade';
@@ -27,10 +28,33 @@ export class ConfigurationPageComponent implements OnInit {
   draftSettings: WorkSettings = {
     mondayThursdayHours: 9,
     fridayHours: 8,
+    dailyHours: {
+      0: 0,
+      1: 9,
+      2: 9,
+      3: 9,
+      4: 9,
+      5: 8,
+      6: 0,
+    },
     maxDailyLaborHours: 10,
     maxHoursPerRecord: 16,
   };
+  draftDeletionSettings: DeletionSettings = {
+    auditorEmail: '',
+    technicalDeleteEmails: [],
+  };
+  technicalEmailDraft = '';
   message = signal<{ type: 'success' | 'error'; text: string } | null>(null);
+  readonly weekdaySettings = [
+    { index: 1, short: 'Lun', label: 'Lunes' },
+    { index: 2, short: 'Mar', label: 'Martes' },
+    { index: 3, short: 'Mié', label: 'Miércoles' },
+    { index: 4, short: 'Jue', label: 'Jueves' },
+    { index: 5, short: 'Vie', label: 'Viernes' },
+    { index: 6, short: 'Sáb', label: 'Sábado' },
+    { index: 0, short: 'Dom', label: 'Domingo' },
+  ];
 
   async ngOnInit(): Promise<void> {
     this.syncDraft();
@@ -104,7 +128,11 @@ export class ConfigurationPageComponent implements OnInit {
       return;
     }
     try {
-      await this.parameters.save(this.draftFields, this.draftSettings);
+      await this.parameters.save(
+        this.draftFields,
+        this.draftSettings,
+        this.draftDeletionSettings,
+      );
       this.syncDraft();
       this.message.set({
         type: 'success',
@@ -154,6 +182,33 @@ export class ConfigurationPageComponent implements OnInit {
     if (!this.draftFields.some((field) => field.key === this.selectedFieldKey)) {
       this.selectedFieldKey = this.draftFields[0]?.key || 'tipoActividad';
     }
-    this.draftSettings = { ...this.parameters.workSettings() };
+    this.draftSettings = {
+      ...this.parameters.workSettings(),
+      dailyHours: { ...this.parameters.workSettings().dailyHours },
+    };
+    this.draftDeletionSettings = {
+      auditorEmail: this.parameters.deletionSettings().auditorEmail,
+      technicalDeleteEmails: [...this.parameters.deletionSettings().technicalDeleteEmails],
+    };
+    this.technicalEmailDraft = '';
+  }
+
+  addTechnicalEmail(): void {
+    const email = this.technicalEmailDraft.trim().toLowerCase();
+    if (!email || this.draftDeletionSettings.technicalDeleteEmails.includes(email)) return;
+    this.draftDeletionSettings = {
+      ...this.draftDeletionSettings,
+      technicalDeleteEmails: [...this.draftDeletionSettings.technicalDeleteEmails, email],
+    };
+    this.technicalEmailDraft = '';
+  }
+
+  removeTechnicalEmail(email: string): void {
+    this.draftDeletionSettings = {
+      ...this.draftDeletionSettings,
+      technicalDeleteEmails: this.draftDeletionSettings.technicalDeleteEmails.filter(
+        (item) => item !== email,
+      ),
+    };
   }
 }

@@ -7,27 +7,28 @@ import {
   Output,
   signal,
 } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { NgIcon } from '@ng-icons/core';
+import { lucideMoon, lucideSun } from '@ng-icons/lucide';
 
-export interface UiToolbarCommand {
-  label: string;
-  route: string;
-}
+export type UiToolbarTheme = 'light' | 'dark';
 
 @Component({
   selector: 'app-ui-toolbar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [NgIcon],
   templateUrl: './ui-toolbar.component.html',
 })
 export class UiToolbarComponent {
   @Input() title = '';
   @Input() subtitle = '';
-  @Input() commands: readonly UiToolbarCommand[] = [];
   @Input() initials = '';
   @Input() userName = '';
+  @Input() theme: UiToolbarTheme = 'light';
   @Output() logout = new EventEmitter<void>();
+  @Output() themeChange = new EventEmitter<UiToolbarTheme>();
 
+  readonly lightThemeIcon = lucideSun;
+  readonly darkThemeIcon = lucideMoon;
   menuOpen = signal(false);
 
   constructor(private readonly host: ElementRef<HTMLElement>) {}
@@ -51,5 +52,9 @@ export class UiToolbarComponent {
   emitLogout(): void {
     this.menuOpen.set(false);
     this.logout.emit();
+  }
+
+  selectTheme(theme: UiToolbarTheme): void {
+    this.themeChange.emit(theme);
   }
 }

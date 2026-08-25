@@ -10,12 +10,29 @@
     }
   </div>
 
-  <div class="ui-toolbar-menu hidden xl:flex" aria-label="Comandos principales">
-    @for (item of commands; track item.route) {
-      <a class="ui-toolbar-menu__item" [routerLink]="item.route" routerLinkActive="is-active">
-        {{ item.label }}
-      </a>
-    }
+  <div class="ui-theme-switch" aria-label="Tema de la aplicación">
+    <button
+      class="ui-theme-switch__item"
+      type="button"
+      aria-label="Tema claro"
+      [class.is-active]="theme === 'light'"
+      [attr.aria-pressed]="theme === 'light'"
+      title="Tema claro"
+      (click)="selectTheme('light')"
+    >
+      <ng-icon [svg]="lightThemeIcon" size="17" strokeWidth="2.2" aria-hidden="true" />
+    </button>
+    <button
+      class="ui-theme-switch__item"
+      type="button"
+      aria-label="Tema oscuro"
+      [class.is-active]="theme === 'dark'"
+      [attr.aria-pressed]="theme === 'dark'"
+      title="Tema oscuro"
+      (click)="selectTheme('dark')"
+    >
+      <ng-icon [svg]="darkThemeIcon" size="17" strokeWidth="2.2" aria-hidden="true" />
+    </button>
   </div>
 
   <div class="relative">

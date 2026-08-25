@@ -17,6 +17,22 @@ export interface StatisticsChartConfigInput {
   format: (value: number) => string;
   percentage: (value: number) => number;
   wrapLabel: (label: string, maxLength: number) => string[];
+  theme: StatisticsChartTheme;
+}
+
+export interface StatisticsChartTheme {
+  axis: string;
+  axisStrong: string;
+  grid: string;
+  line: string;
+  lineFill: string;
+  label: string;
+  circularLabelStroke: string;
+  circularLabelText: string;
+  tooltipBackground: string;
+  tooltipTitle: string;
+  tooltipBody: string;
+  circularBorder: string;
 }
 
 export class StatisticsChartConfigFactory {
@@ -24,10 +40,10 @@ export class StatisticsChartConfigFactory {
     const isCircular = input.type === 'doughnut' || input.type === 'pie';
     const isLine = input.type === 'line';
     const xTicks = input.horizontal
-      ? { color: '#64748b', callback: (value: unknown) => `${value} h` }
+      ? { color: input.theme.axis, callback: (value: unknown) => `${value} h` }
       : input.type === 'bar'
         ? {
-            color: '#475569',
+            color: input.theme.axisStrong,
             display: input.showAxisLabels,
             autoSkip: false,
             maxRotation: 0,
@@ -36,10 +52,10 @@ export class StatisticsChartConfigFactory {
             callback: (value: unknown) =>
               input.wrapLabel(String(input.data[Number(value)]?.label || ''), 14),
           }
-        : { color: '#64748b', maxRotation: 0, minRotation: 0 };
+        : { color: input.theme.axis, maxRotation: 0, minRotation: 0 };
     const yTicks = input.horizontal
       ? {
-          color: '#475569',
+          color: input.theme.axisStrong,
           display: input.showAxisLabels,
           font: { size: 12, weight: 'bold' as const },
           callback: (value: unknown) => {
@@ -47,7 +63,7 @@ export class StatisticsChartConfigFactory {
             return input.wrapLabel(label, 18);
           },
         }
-      : { color: '#475569', callback: (value: unknown) => `${value} h` };
+      : { color: input.theme.axisStrong, callback: (value: unknown) => `${value} h` };
 
     return {
       type: input.type,
@@ -59,18 +75,18 @@ export class StatisticsChartConfigFactory {
             backgroundColor: isCircular
               ? input.data.map((_, index) => input.colorAt(index))
               : isLine
-                ? '#2563eb22'
+                ? input.theme.lineFill
                 : input.data.map((_, index) => input.colorAt(index)),
             borderColor: isCircular
-              ? '#ffffff'
+              ? input.theme.circularBorder
               : isLine
-                ? '#2563eb'
+                ? input.theme.line
                 : input.data.map((_, index) => input.colorAt(index)),
             borderWidth: isCircular ? 3 : 2,
             borderRadius: input.type === 'bar' ? 7 : 0,
             fill: isLine,
             tension: isLine ? 0.35 : 0,
-            pointBackgroundColor: '#2563eb',
+            pointBackgroundColor: input.theme.line,
             pointRadius: isLine ? 4 : 0,
           },
         ],
@@ -98,14 +114,14 @@ export class StatisticsChartConfigFactory {
               boxHeight: 11,
               usePointStyle: true,
               padding: 16,
-              color: '#475569',
+              color: input.theme.axisStrong,
               font: { size: 13, weight: 'bold' as const },
             },
           },
           tooltip: {
-            backgroundColor: '#0f172a',
-            titleColor: '#ffffff',
-            bodyColor: '#e2e8f0',
+            backgroundColor: input.theme.tooltipBackground,
+            titleColor: input.theme.tooltipTitle,
+            bodyColor: input.theme.tooltipBody,
             padding: 12,
             cornerRadius: 10,
             displayColors: true,
@@ -129,12 +145,12 @@ export class StatisticsChartConfigFactory {
           : {
               x: {
                 beginAtZero: true,
-                grid: { color: '#e2e8f0' },
+                grid: { color: input.theme.grid },
                 ticks: xTicks,
               },
               y: {
                 beginAtZero: true,
-                grid: { display: !input.horizontal, color: '#e2e8f0' },
+                grid: { display: !input.horizontal, color: input.theme.grid },
                 ticks: yTicks,
               },
             },
@@ -172,19 +188,19 @@ export class StatisticsChartConfigFactory {
             context.textAlign = 'center';
             context.textBaseline = 'middle';
             context.lineWidth = 3;
-            context.strokeStyle = 'rgba(15, 23, 42, .65)';
-            context.fillStyle = '#ffffff';
+            context.strokeStyle = input.theme.circularLabelStroke;
+            context.fillStyle = input.theme.circularLabelText;
             context.strokeText(text, position.x, position.y);
             context.fillText(text, position.x, position.y);
           } else if (input.horizontal) {
             context.textAlign = 'left';
             context.textBaseline = 'middle';
-            context.fillStyle = '#1e3a8a';
+            context.fillStyle = input.theme.label;
             context.fillText(text, position.x + 5, position.y, compact ? 54 : 92);
           } else {
             context.textAlign = 'center';
             context.textBaseline = 'bottom';
-            context.fillStyle = '#1e3a8a';
+            context.fillStyle = input.theme.label;
             context.fillText(text, position.x, position.y - 7);
           }
         });

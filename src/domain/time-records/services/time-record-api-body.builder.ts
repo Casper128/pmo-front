@@ -42,7 +42,7 @@ export class TimeRecordApiBodyBuilder {
       complejidad:
         this.templateValue(reg, 'complejidad') || this.parameters.defaultFor('complejidad'),
       impacto: this.templateValue(reg, 'impacto') || this.parameters.defaultFor('impacto'),
-      equipo: this.templateValue(reg, 'equipo') || this.parameters.defaultFor('equipo'),
+      equipo: this.teamValue(reg),
       modoActuacion:
         this.templateValue(reg, 'modoActuacion') || this.parameters.defaultFor('modoActuacion'),
       lenguaje: this.templateValue(reg, 'lenguaje') || this.parameters.defaultFor('lenguaje'),
@@ -50,7 +50,7 @@ export class TimeRecordApiBodyBuilder {
       funcional: this.templateValue(reg, 'funcional'),
       prefijo: this.templateValue(reg, 'prefijo') || this.parameters.defaultFor('prefijo'),
       objetoRicef: this.templateValue(reg, 'objetoRicef'),
-      unity: this.templateValue(reg, 'unity'),
+      unity: this.sapModuleFromTeam(this.teamValue(reg)),
       descripcionActividad: reg.desc,
       observacion: reg.observacion || reg.desc,
       categoria: this.templateValue(reg, 'categoria') || this.parameters.defaultFor('categoria'),
@@ -91,6 +91,28 @@ export class TimeRecordApiBodyBuilder {
 
   private templateValue(reg: AdvancedTemplateValues, key: AdvancedTemplateFieldKey): string {
     return String(reg[key] || '').trim();
+  }
+
+  private teamValue(reg: AdvancedTemplateValues): string {
+    return this.templateValue(reg, 'equipo') || this.parameters.defaultFor('equipo');
+  }
+
+  private sapModuleFromTeam(team: string): string {
+    const normalized = team
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+    const modulesByTeam: Record<string, string> = {
+      financiero: 'FI',
+      comercial: 'SD',
+      logistico: 'LO',
+      planeaciondemanda: 'PP',
+      analitica: 'BW',
+      portales: 'FIORI',
+      infraestructura: 'BASIS',
+    };
+    return modulesByTeam[normalized] || '';
   }
 
   private legacyDisplayTime(hour: string, minute: string): string {

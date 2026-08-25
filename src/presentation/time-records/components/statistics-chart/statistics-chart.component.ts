@@ -24,7 +24,10 @@ import {
   Tooltip,
 } from 'chart.js';
 import { OverflowTooltipDirective } from '@presentation/shared/directives/overflow-tooltip.directive';
-import { StatisticsChartConfigFactory } from './statistics-chart-config.factory';
+import {
+  StatisticsChartConfigFactory,
+  StatisticsChartTheme,
+} from './statistics-chart-config.factory';
 import { StatisticsChartItem } from './statistics-chart.model';
 
 Chart.register(
@@ -59,6 +62,7 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
 
   private chart?: Chart;
   private readonly configFactory = new StatisticsChartConfigFactory();
+  private themeObserver?: MutationObserver;
   private horizontalOverride: boolean | null = null;
   private axisLabelsOverride: boolean | null = null;
   showValues = true;
@@ -76,11 +80,17 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
 
   ngAfterViewInit(): void {
     this.render();
+    this.themeObserver = new MutationObserver(() => this.render());
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
   }
   ngOnChanges(): void {
     this.render();
   }
   ngOnDestroy(): void {
+    this.themeObserver?.disconnect();
     this.chart?.destroy();
   }
 
@@ -338,8 +348,42 @@ export class StatisticsChartComponent implements AfterViewInit, OnChanges, OnDes
       format: (value) => this.format(value),
       percentage: (value) => this.percentage(value),
       wrapLabel: (label, maxLength) => this.wrapLabel(label, maxLength),
+      theme: this.currentTheme(),
     });
     this.chart = new Chart(this.canvas.nativeElement, config);
+  }
+
+  private currentTheme(): StatisticsChartTheme {
+    const isDark = document.documentElement.dataset['theme'] === 'dark';
+    return isDark
+      ? {
+          axis: '#a1a1a6',
+          axisStrong: '#c7c7cc',
+          grid: 'rgba(229, 231, 235, .24)',
+          line: '#8fc7ff',
+          lineFill: 'rgba(143, 199, 255, .18)',
+          label: '#b9dcff',
+          circularLabelStroke: 'rgba(10, 10, 12, .72)',
+          circularLabelText: '#f5f5f7',
+          tooltipBackground: '#f5f5f7',
+          tooltipTitle: '#111827',
+          tooltipBody: '#374151',
+          circularBorder: '#1c1c1e',
+        }
+      : {
+          axis: '#64748b',
+          axisStrong: '#475569',
+          grid: '#e2e8f0',
+          line: '#2563eb',
+          lineFill: '#2563eb22',
+          label: '#1e3a8a',
+          circularLabelStroke: 'rgba(15, 23, 42, .65)',
+          circularLabelText: '#ffffff',
+          tooltipBackground: '#0f172a',
+          tooltipTitle: '#ffffff',
+          tooltipBody: '#e2e8f0',
+          circularBorder: '#ffffff',
+        };
   }
 
   private wrapLabel(label: string, maxLength: number): string[] {

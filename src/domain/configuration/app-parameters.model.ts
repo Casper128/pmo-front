@@ -28,6 +28,12 @@ export interface AdvancedFieldConfiguration {
 export interface WorkSettings {
   mondayThursdayHours: number;
   fridayHours: number;
+  dailyHours: Record<number, number>;
   maxDailyLaborHours: number;
   maxHoursPerRecord: number;
+}
+
+export interface DeletionSettings {
+  auditorEmail: string;
+  technicalDeleteEmails: string[];
 }

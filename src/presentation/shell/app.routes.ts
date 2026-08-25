@@ -48,6 +48,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'auditoria/eliminaciones',
+    loadComponent: () =>
+      import('@presentation/time-records/pages/audit-delete-requests-page.component').then(
+        (m) => m.AuditDeleteRequestsPageComponent,
+      ),
+  },
+  {
     path: 'administracion/ubicaciones',
     canActivate: [locationAdminGuard],
     loadComponent: () =>

@@ -3,6 +3,7 @@ import {
   ElementRef,
   HostListener,
   Input,
+  SimpleChanges,
   ViewChild,
   forwardRef,
   inject,
@@ -42,6 +43,7 @@ export class UiSelectComponent implements ControlValueAccessor {
   @Input() hint = '';
   @Input() error = '';
   @Input() disabled = false;
+  @Input() loading = false;
   @Input() searchThreshold = 8;
   @Input() searchPlaceholder = 'Buscar opción...';
 
@@ -62,11 +64,16 @@ export class UiSelectComponent implements ControlValueAccessor {
   onTouched: () => void = () => undefined;
 
   get isDisabled(): boolean {
-    return this.disabled || this.formDisabled;
+    return this.disabled || this.formDisabled || this.loading;
   }
 
   get selectedLabel(): string {
     return this.options.find((option) => option.value === this.value)?.label ?? '';
+  }
+
+  get triggerText(): string {
+    if (this.loading && !this.selectedLabel) return 'Cargando...';
+    return this.selectedLabel || this.placeholder;
   }
 
   get filteredOptions(): readonly UiSelectOption[] {
@@ -103,6 +110,11 @@ export class UiSelectComponent implements ControlValueAccessor {
     if (disabled) this.close();
   }
 
+  ngOnChanges(_: SimpleChanges): void {
+    if (this.loading) this.close();
+    if (this.open) this.schedulePosition();
+  }
+
   toggle(): void {
     if (this.isDisabled) return;
     this.open ? this.close() : this.openDropdown();
@@ -120,6 +132,7 @@ export class UiSelectComponent implements ControlValueAccessor {
   onSearch(event: Event): void {
     this.query = (event.target as HTMLInputElement).value;
     this.activeIndex = 0;
+    this.schedulePosition();
   }
 
   onTriggerKeydown(event: KeyboardEvent): void {
@@ -182,10 +195,19 @@ export class UiSelectComponent implements ControlValueAccessor {
       0,
       this.options.findIndex((option) => option.value === this.value),
     );
-    setTimeout(() => {
-      this.positionPopover();
+    this.schedulePosition(() => {
       this.searchInput?.nativeElement.focus();
-    }, 0);
+    });
+  }
+
+  private schedulePosition(afterPosition?: () => void): void {
+    requestAnimationFrame(() => {
+      this.positionPopover();
+      requestAnimationFrame(() => {
+        this.positionPopover();
+        afterPosition?.();
+      });
+    });
   }
 
   private positionPopover(estimatedHeight = 344): void {
@@ -193,7 +215,7 @@ export class UiSelectComponent implements ControlValueAccessor {
     const popover = this.popover?.nativeElement;
     if (!trigger) return;
 
-    const margin = 8;
+    const margin = 6;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     this.popoverWidth = Math.min(Math.max(trigger.width, 280), viewportWidth - margin * 2);

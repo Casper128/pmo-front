@@ -1,5 +1,5 @@
 <main class="ui-page">
-  <div class="ui-page-content space-y-5">
+  <div class="ui-page-content space-y-3">
     <app-ui-page-header
       eyebrow="Preferencias"
       title="Mis plantillas por gestión"
@@ -26,7 +26,9 @@
     }
 
     <section class="ui-surface">
-      <div class="grid gap-3 border-b border-slate-100 p-4 lg:grid-cols-[minmax(0,1fr)_14rem_auto_16rem]">
+      <div
+        class="grid gap-3 border-b border-slate-100 p-4 lg:grid-cols-[minmax(0,1fr)_14rem_auto_16rem]"
+      >
         <app-ui-search-input
           label="Buscar gestión"
           placeholder="Nombre, ID, proyecto, funcional..."
@@ -85,9 +87,9 @@
         />
       </div>
 
-      <div class="grid min-h-[34rem] lg:grid-cols-[24rem_minmax(0,1fr)]">
+      <div class="grid min-h-[26rem] lg:grid-cols-[24rem_minmax(0,1fr)]">
         <aside
-          class="max-h-[42rem] overflow-y-auto border-b border-slate-100 bg-slate-50 p-3 lg:border-b-0 lg:border-r"
+          class="max-h-[36rem] overflow-y-auto border-b border-slate-100 bg-slate-50 p-3 lg:border-b-0 lg:border-r"
         >
           @if (loading()) {
             <div class="grid min-h-56 place-items-center text-center">
@@ -158,13 +160,24 @@
                   </p>
                 }
               </div>
-              <button
-                class="ui-btn ui-btn-secondary min-h-10 px-3 py-2 text-xs"
-                type="button"
-                (click)="clearTemplateEdit()"
-              >
-                Cerrar
-              </button>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  class="ui-btn ui-btn-danger min-h-10 px-3 py-2 text-xs"
+                  type="button"
+                  [disabled]="saving() || deleting()"
+                  (click)="requestDeleteTemplate()"
+                >
+                  Eliminar
+                </button>
+                <button
+                  class="ui-btn ui-btn-secondary min-h-10 px-3 py-2 text-xs"
+                  type="button"
+                  [disabled]="deleting()"
+                  (click)="clearTemplateEdit()"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
 
             <div
@@ -217,7 +230,7 @@
             </div>
           </article>
         } @else {
-          <div class="grid min-h-[28rem] place-items-center p-6 text-center">
+          <div class="grid min-h-[20rem] place-items-center p-6 text-center">
             <app-ui-state-message
               title="Selecciona una gestión"
               description="Usa la búsqueda y los filtros para encontrar la plantilla que quieres ajustar. La edición se habilita al elegir una tarjeta."
@@ -228,3 +241,74 @@
     </section>
   </div>
 </main>
+
+@if (selectedTemplate(); as template) {
+  <app-ui-modal
+    [open]="deleteDialogOpen()"
+    size="sm"
+    variant="destructive"
+    eyebrow="Acción irreversible"
+    title="Eliminar plantilla"
+    [description]="template.gestionName"
+    (close)="closeDeleteDialog()"
+  >
+    <span
+      modalIcon
+      class="grid size-11 shrink-0 place-items-center rounded-xl border border-red-200 bg-red-50 text-red-700"
+    >
+      <svg
+        class="size-5 fill-none stroke-current"
+        viewBox="0 0 24 24"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d="M4 7h16" stroke-linecap="round" />
+        <path d="M10 11v6M14 11v6" stroke-linecap="round" />
+        <path
+          d="M6 7l1 13h10l1-13M9 7V4h6v3"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </span>
+
+    <div modalBody class="space-y-3">
+      <p class="text-sm font-semibold text-slate-700">
+        Esta plantilla dejará de usarse para completar campos avanzados de esta gestión.
+      </p>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Cliente</p>
+        <p class="mt-1 text-sm font-bold text-slate-900">
+          {{ template.client || 'Sin cliente asociado' }}
+        </p>
+        <p class="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+          ID de gestión
+        </p>
+        <p class="mt-1 text-sm font-bold text-slate-900">{{ template.gestionId }}</p>
+      </div>
+      <p class="text-xs font-semibold text-slate-500">
+        Al registrar o editar nuevamente esta gestión, podrás crear una plantilla nueva con el
+        cliente solo como dato informativo y de filtro.
+      </p>
+    </div>
+
+    <div modalFooter class="flex flex-col gap-3 sm:flex-row">
+      <button
+        class="ui-btn ui-btn-danger flex-1"
+        type="button"
+        [disabled]="deleting()"
+        (click)="deleteSelectedTemplate()"
+      >
+        {{ deleting() ? 'Eliminando...' : 'Eliminar plantilla' }}
+      </button>
+      <button
+        class="ui-btn ui-btn-secondary flex-1"
+        type="button"
+        [disabled]="deleting()"
+        (click)="closeDeleteDialog()"
+      >
+        Cancelar
+      </button>
+    </div>
+  </app-ui-modal>
+}

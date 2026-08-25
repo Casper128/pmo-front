@@ -15,6 +15,9 @@ verify_jwt = false
 [functions.pmo-management-delete]
 verify_jwt = false
 
+[functions.pmo-management-delete-request]
+verify_jwt = false
+
 [functions.pmo-management-templates]
 verify_jwt = false
 

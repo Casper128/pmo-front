@@ -14,6 +14,8 @@ import { SendLogGateway } from '@application/time-records/ports/send-log.gateway
 import { SupabaseSendLogAdapter } from '@infrastructure/time-records/adapters/supabase-send-log.adapter';
 import { ManagementTemplateGateway } from '@application/time-records/ports/management-template.gateway';
 import { ManagementTemplateAdapter } from '@infrastructure/time-records/adapters/management-template.adapter';
+import { ManagementDeleteRequestGateway } from '@application/time-records/ports/management-delete-request.gateway';
+import { ManagementDeleteRequestAdapter } from '@infrastructure/time-records/adapters/management-delete-request.adapter';
 
 export const TIME_RECORDS_PROVIDERS: Provider[] = [
   {
@@ -31,6 +33,10 @@ export const TIME_RECORDS_PROVIDERS: Provider[] = [
   {
     provide: ManagementTemplateGateway,
     useClass: ManagementTemplateAdapter,
+  },
+  {
+    provide: ManagementDeleteRequestGateway,
+    useClass: ManagementDeleteRequestAdapter,
   },
   {
     provide: TimeRecordDomainService,

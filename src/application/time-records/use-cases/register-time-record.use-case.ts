@@ -11,6 +11,9 @@ import { ManagementTemplateGateway } from '../ports/management-template.gateway'
 import {
   AdvancedTemplateFieldKey,
   AdvancedTemplateValues,
+  ManagementAdvancedTemplate,
+  REQUIRED_ADVANCED_TEMPLATE_FIELDS,
+  isMissingAdvancedTemplateValue,
 } from '@domain/time-records/models/management-template.model';
 
 export class RegisterTimeRecordUseCase {
@@ -24,7 +27,8 @@ export class RegisterTimeRecordUseCase {
 
   execute(record: TimeRecord): Observable<TimeRecordRegistrationResponse> {
     return this.templates.get(record.gestionId || record.solicitud).pipe(
-      map((template) => this.applyTemplate(record, template?.values || {})),
+      map((template) => this.validTemplateOrFail(record, template)),
+      map((template) => this.applyTemplate(record, template.values)),
       map((preparedRecord) => this.bodyBuilder.build(preparedRecord)),
       switchMap((body) =>
         from(this.location.capture({ highAccuracy: true, maximumAgeMs: 0, timeoutMs: 15000 })).pipe(
@@ -75,5 +79,32 @@ export class RegisterTimeRecordUseCase {
         successful,
       )
       .pipe(catchError(() => of(undefined)));
+  }
+
+  private validTemplateOrFail(
+    record: TimeRecord,
+    template: ManagementAdvancedTemplate | null,
+  ): ManagementAdvancedTemplate {
+    if (!template) {
+      throw new Error(
+        `La gestión "${record.solicitud || record.gestionId}" no tiene plantilla de campos avanzados configurada.`,
+      );
+    }
+
+    if (template.completed !== true) {
+      throw new Error(`La plantilla de "${template.gestionName}" todavía está pendiente.`);
+    }
+
+    const missing = REQUIRED_ADVANCED_TEMPLATE_FIELDS.filter((field) =>
+      isMissingAdvancedTemplateValue(template.values[field.key]),
+    ).map((field) => field.label);
+
+    if (missing.length) {
+      throw new Error(
+        `La plantilla de "${template.gestionName}" está incompleta. Faltan: ${missing.join(', ')}.`,
+      );
+    }
+
+    return template;
   }
 }

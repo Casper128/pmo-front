@@ -1,6 +1,7 @@
 import {
   AdvancedFieldConfiguration,
   AdvancedFieldKey,
+  DeletionSettings,
   ParameterOption,
   WorkSettings,
 } from '@domain/configuration/app-parameters.model';
@@ -8,6 +9,7 @@ import {
 export abstract class AppParametersFacade {
   abstract readonly fields: () => AdvancedFieldConfiguration[];
   abstract readonly workSettings: () => WorkSettings;
+  abstract readonly deletionSettings: () => DeletionSettings;
   abstract readonly loading: () => boolean;
   abstract readonly saving: () => boolean;
   abstract readonly error: () => string;
@@ -19,6 +21,11 @@ export abstract class AppParametersFacade {
   abstract valuesFor(key: AdvancedFieldKey): string[];
   abstract defaultFor(key: AdvancedFieldKey): string;
   abstract defaults(): Record<AdvancedFieldKey, string>;
-  abstract save(fields: AdvancedFieldConfiguration[], workSettings: WorkSettings): Promise<void>;
+  abstract canUseTechnicalDelete(email?: string): boolean;
+  abstract save(
+    fields: AdvancedFieldConfiguration[],
+    workSettings: WorkSettings,
+    deletionSettings: DeletionSettings,
+  ): Promise<void>;
   abstract resetLocal(): void;
 }

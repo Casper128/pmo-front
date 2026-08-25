@@ -1,6 +1,16 @@
 import { Component, OnDestroy, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NgIcon } from '@ng-icons/core';
+import {
+  lucideBarChart3,
+  lucideClipboardCheck,
+  lucideClipboardList,
+  lucideLayoutTemplate,
+  lucideSendHorizontal,
+  lucideSettings,
+  lucideShieldCheck,
+} from '@ng-icons/lucide';
 import { AuthGateway } from '@application/auth/auth.gateway';
 import { AppParametersFacade } from '@application/configuration/app-parameters.facade';
 import { LocationGateway, UserAuditGateway } from '@application/audit/audit.gateways';
@@ -10,6 +20,20 @@ import { environment } from '@env/environment';
 import { UiToolbarComponent } from '@presentation/shared/components/ui-toolbar/ui-toolbar.component';
 import { UiFieldComponent } from '@presentation/shared/components/ui-field/ui-field.component';
 
+type AppTheme = 'light' | 'dark';
+type NavItem = {
+  label: string;
+  route: string;
+  icon: string;
+  adminOnly?: boolean;
+  auditOnly?: boolean;
+};
+type NavSection = {
+  label: string;
+  adminOnly: boolean;
+  items: NavItem[];
+};
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -18,6 +42,7 @@ import { UiFieldComponent } from '@presentation/shared/components/ui-field/ui-fi
     RouterLink,
     RouterLinkActive,
     RouterOutlet,
+    NgIcon,
     OverflowTooltipDirective,
     UiToolbarComponent,
     UiFieldComponent,
@@ -36,30 +61,36 @@ export class AppComponent implements OnDestroy {
   loginError = signal('');
   restoringSession = signal(true);
   sidebarCollapsed = signal(localStorage.getItem('pmo_sidebar_collapsed') !== 'false');
-  readonly navSections = [
+  theme = signal<AppTheme>(this.storedTheme());
+  readonly navSections: NavSection[] = [
     {
       label: 'Trabajo',
       adminOnly: false,
       items: [
-        { label: 'Reportar', route: '/registros/importar' },
-        { label: 'Consolidado', route: '/registros/consolidado' },
-        { label: 'Reportes', route: '/registros/reportes' },
+        { label: 'Reportar', route: '/registros/importar', icon: lucideSendHorizontal },
+        { label: 'Consolidado', route: '/registros/consolidado', icon: lucideClipboardCheck },
+        { label: 'Reportes', route: '/registros/reportes', icon: lucideClipboardList },
       ],
     },
     {
       label: 'Análisis',
       adminOnly: false,
-      items: [{ label: 'Datos', route: '/registros/estadisticas' }],
+      items: [{ label: 'Datos', route: '/registros/estadisticas', icon: lucideBarChart3 }],
     },
     {
       label: 'Preferencias',
       adminOnly: false,
-      items: [{ label: 'Plantillas', route: '/registros/plantillas' }],
+      items: [
+        { label: 'Plantillas', route: '/registros/plantillas', icon: lucideLayoutTemplate },
+      ],
     },
     {
       label: 'Administración',
-      adminOnly: true,
-      items: [{ label: 'Configuración', route: '/configuracion' }],
+      adminOnly: false,
+      items: [
+        { label: 'Auditoría', route: '/auditoria/eliminaciones', icon: lucideShieldCheck, auditOnly: true },
+        { label: 'Configuración', route: '/configuracion', icon: lucideSettings, adminOnly: true },
+      ],
     },
   ];
   readonly mobileNavItems = [
@@ -69,12 +100,9 @@ export class AppComponent implements OnDestroy {
     { label: 'Ajustes', route: '/registros/plantillas' },
   ];
   readonly mobileAdminItem = { label: 'Admin', route: '/configuracion' };
-  readonly menuBarItems = [
-    { label: 'Reportar', route: '/registros/importar' },
-    { label: 'Reportes', route: '/registros/reportes' },
-    { label: 'Datos', route: '/registros/estadisticas' },
-  ];
+  readonly mobileAuditItem = { label: 'Auditoría', route: '/auditoria/eliminaciones' };
   private refreshId: number | null = null;
+  private readonly themeSync = effect(() => this.applyTheme(this.theme()));
   private readonly locationRouteProtection = effect(() => {
     const email = String(this.auth.user()?.email || '')
       .trim()
@@ -137,6 +165,11 @@ export class AppComponent implements OnDestroy {
     });
   }
 
+  setTheme(theme: AppTheme): void {
+    this.theme.set(theme);
+    sessionStorage.setItem('pmo_theme', theme);
+  }
+
   initials(): string {
     const name = this.auth.user()?.name || this.auth.user()?.email || 'PMO';
     return name
@@ -150,6 +183,26 @@ export class AppComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearRefreshInterval();
+  }
+
+  visibleNavItems(section: NavSection): NavItem[] {
+    if (section.adminOnly && !this.parameters.canManage()) return [];
+    return section.items.filter((item) => this.canShowNavItem(item));
+  }
+
+  canReviewDeleteRequests(): boolean {
+    const user = this.auth.user();
+    const identities = [user?.email, user?.username].map((value) => this.normalizeEmail(value));
+    const auditor = this.normalizeEmail(this.parameters.deletionSettings().auditorEmail);
+    const role = this.normalizeEmail(user?.role);
+    return (
+      this.parameters.canManage() ||
+      this.parameters.canUseTechnicalDelete(user?.email) ||
+      this.parameters.canUseTechnicalDelete(user?.username) ||
+      (!!auditor && identities.includes(auditor)) ||
+      role === 'admin' ||
+      role.includes('auditor')
+    );
   }
 
   private scheduleRefresh() {
@@ -178,5 +231,26 @@ export class AppComponent implements OnDestroy {
       timeoutMs: 10000,
     });
     await firstValueFrom(this.audit.recordLogin(location).pipe(catchError(() => of(undefined))));
+  }
+
+  private storedTheme(): AppTheme {
+    return sessionStorage.getItem('pmo_theme') === 'dark' ? 'dark' : 'light';
+  }
+
+  private applyTheme(theme: AppTheme): void {
+    document.documentElement.dataset['theme'] = theme;
+    document.documentElement.style.colorScheme = theme;
+  }
+
+  private canShowNavItem(item: NavItem): boolean {
+    if (item.adminOnly && !this.parameters.canManage()) return false;
+    if (item.auditOnly && !this.canReviewDeleteRequests()) return false;
+    return true;
+  }
+
+  private normalizeEmail(value: unknown): string {
+    return String(value || '')
+      .trim()
+      .toLowerCase();
   }
 }

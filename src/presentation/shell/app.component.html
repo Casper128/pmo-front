@@ -1,4 +1,4 @@
-<main class="min-h-screen bg-[#f5f5f7] text-slate-900">
+<main class="h-dvh overflow-hidden bg-[var(--ui-bg)] text-slate-900">
   @if (restoringSession()) {
     <section class="grid min-h-screen place-items-center px-4">
       <div class="ui-glass rounded-2xl px-6 py-5 text-center">
@@ -9,7 +9,7 @@
       </div>
     </section>
   } @else if (!auth.isLoggedIn()) {
-    <section class="grid min-h-screen place-items-center bg-[#f5f5f7] px-4 py-8">
+    <section class="grid min-h-screen place-items-center bg-[var(--ui-bg)] px-4 py-8">
       <div
         class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
       >
@@ -63,9 +63,9 @@
       </div>
     </section>
   } @else {
-    <div class="flex h-screen overflow-hidden">
+    <div class="flex h-full overflow-hidden">
       <aside
-        class="ui-sidebar sticky top-0 hidden h-screen shrink-0 overflow-hidden p-3 transition-[width] duration-200 lg:flex lg:flex-col"
+        class="ui-sidebar sticky top-0 hidden h-dvh shrink-0 overflow-hidden p-3 transition-[width] duration-200 lg:flex lg:flex-col"
         [class.w-72]="!sidebarCollapsed()"
         [class.w-20]="sidebarCollapsed()"
         [class.ui-sidebar--collapsed]="sidebarCollapsed()"
@@ -88,7 +88,7 @@
           aria-label="Navegación principal"
         >
           @for (section of navSections; track section.label) {
-            @if (!section.adminOnly || parameters.canManage()) {
+            @if (visibleNavItems(section).length) {
               <section>
                 <p
                   class="mb-1 px-3 text-[11px] font-semibold text-slate-400"
@@ -97,7 +97,7 @@
                   {{ section.label }}
                 </p>
                 <div class="space-y-1">
-                  @for (item of section.items; track item.route) {
+                  @for (item of visibleNavItems(section); track item.route) {
                     <a
                       class="ui-nav-link"
                       [class.justify-center]="sidebarCollapsed()"
@@ -105,9 +105,9 @@
                       routerLinkActive="is-active"
                       [title]="item.label"
                     >
-                      <span class="ui-nav-link__mark" aria-hidden="true">{{
-                        item.label.charAt(0)
-                      }}</span>
+                      <span class="ui-nav-link__mark" aria-hidden="true">
+                        <ng-icon [svg]="item.icon" size="18" strokeWidth="2.2" />
+                      </span>
                       <span class="truncate" [class.sr-only]="sidebarCollapsed()">{{
                         item.label
                       }}</span>
@@ -140,14 +140,15 @@
       </aside>
 
       <div
-        class="flex h-screen min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-16 lg:pb-0"
+        class="flex h-full min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain pb-16 lg:pb-0"
       >
         <app-ui-toolbar
           title="Gestión de tiempos"
           subtitle="Reportes y avances"
-          [commands]="menuBarItems"
           [initials]="initials()"
           [userName]="auth.user()?.name || ''"
+          [theme]="theme()"
+          (themeChange)="setTheme($event)"
           (logout)="logout()"
         />
 
@@ -174,6 +175,15 @@
             routerLinkActive="bg-blue-50 text-blue-700"
           >
             {{ mobileAdminItem.label }}
+          </a>
+        }
+        @if (canReviewDeleteRequests()) {
+          <a
+            class="rounded-xl px-2 py-2 text-center transition hover:bg-slate-100"
+            [routerLink]="mobileAuditItem.route"
+            routerLinkActive="bg-blue-50 text-blue-700"
+          >
+            {{ mobileAuditItem.label }}
           </a>
         }
       </nav>

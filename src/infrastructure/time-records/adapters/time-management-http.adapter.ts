@@ -3,7 +3,11 @@ import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '@env/environment';
 import { AuthGateway } from '@application/auth/auth.gateway';
-import { TimeManagementGateway } from '@application/time-records/ports/time-management.gateway';
+import {
+  DeleteRequestBody,
+  TechnicalDeleteBody,
+  TimeManagementGateway,
+} from '@application/time-records/ports/time-management.gateway';
 import {
   ManagementReport,
   ReportDownloadFilter,
@@ -48,6 +52,38 @@ export class TimeManagementHttpAdapter implements TimeManagementGateway {
       .post<unknown>(
         `${environment.supabaseUrl}/functions/v1/pmo-management-delete`,
         { identifier },
+        {
+          headers: {
+            ...this.headers,
+            apikey: environment.supabasePublishableKey,
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+      .pipe(map(() => undefined));
+  }
+
+  requestDelete(body: DeleteRequestBody): Observable<void> {
+    return this.http
+      .post<unknown>(
+        `${environment.supabaseUrl}/functions/v1/pmo-management-delete-request`,
+        body,
+        {
+          headers: {
+            ...this.headers,
+            apikey: environment.supabasePublishableKey,
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+      .pipe(map(() => undefined));
+  }
+
+  technicalDelete(body: TechnicalDeleteBody): Observable<void> {
+    return this.http
+      .post<unknown>(
+        `${environment.supabaseUrl}/functions/v1/pmo-management-delete-technical`,
+        body,
         {
           headers: {
             ...this.headers,

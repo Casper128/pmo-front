@@ -1,0 +1,110 @@
+:host {
+  display: block;
+}
+
+.preview-row-header,
+.preview-record-row__top {
+  display: grid;
+  grid-template-columns:
+    minmax(5.75rem, 0.72fr)
+    minmax(7.5rem, 0.95fr)
+    minmax(4.5rem, 0.55fr)
+    minmax(6rem, 0.8fr)
+    minmax(7rem, 0.9fr)
+    minmax(12rem, 1.6fr)
+    minmax(9.5rem, auto);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.preview-record-row {
+  background: var(--ui-surface);
+  padding: 0.875rem 0.75rem;
+}
+
+.preview-record-row:hover {
+  background: rgb(0 113 227 / 0.035);
+}
+
+.preview-record-row--error {
+  border-left: 4px solid rgb(248 113 113);
+  background: rgb(254 242 242);
+}
+
+.preview-record-row__top {
+  min-width: 0;
+}
+
+.preview-record-row__top > * {
+  min-width: 0;
+}
+
+.preview-record-row__description {
+  margin-top: 0.75rem;
+  border-radius: 0.875rem;
+  background: var(--ui-surface-soft);
+  padding: 0.625rem 0.75rem;
+}
+
+.record-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.record-actions .ui-btn {
+  min-width: 4.75rem;
+  border-radius: 0.75rem;
+}
+
+.preview-chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  border: 1px solid rgb(191 219 254);
+  border-radius: 999px;
+  background: rgb(239 246 255);
+  color: rgb(29 78 216);
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1rem;
+  padding: 0.25rem 0.625rem;
+}
+
+.preview-readonly-field {
+  min-width: 0;
+  border: 1px solid var(--ui-line);
+  border-radius: 0.875rem;
+  background: var(--ui-surface-soft);
+  padding: 0.625rem 0.75rem;
+}
+
+.preview-readonly-field span {
+  display: block;
+  color: var(--ui-muted);
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+.preview-readonly-field strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--ui-text);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+:host-context([data-theme='dark']) .preview-chip {
+  border-color: rgb(143 199 255 / 0.28);
+  background: rgb(10 132 255 / 0.14);
+  color: #b9dcff;
+}
+
+:host-context([data-theme='dark']) .preview-record-row:hover {
+  background: rgb(143 199 255 / 0.08);
+}
+
+:host-context([data-theme='dark']) .preview-record-row--error {
+  background: rgb(127 29 29 / 0.22);
+}

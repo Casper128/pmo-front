@@ -23,7 +23,18 @@
     @if (currentView() === 'import') {
       <div class="grid gap-4">
         <aside class="space-y-4 xl xl:top-4 xl:self-start">
-          <app-import-text-input (process)="onProcess($event)" />
+          <app-import-text-input
+            [clientes]="clientes()"
+            [tipoHoraOptions]="tipoHoraOptions()"
+            [defaultSolicitudOptions]="solicitudOptions()"
+            [defaultCliente]="defaultCliente()"
+            [defaultGestionId]="defaultGestionId()"
+            [loadingClientes]="loadingClients()"
+            [loadingGestiones]="loadingDemand()"
+            (clienteChange)="onDefaultClienteChange($event)"
+            (gestionChange)="onDefaultGestionChange($event)"
+            (recordsChange)="onDraftRecordsChange($event)"
+          />
         </aside>
 
         <main class="min-w-0">
@@ -32,14 +43,8 @@
               [groups]="groups()"
               [totalGeneral]="totalGeneral()"
               [sending]="sending()"
-              [clientes]="clientes()"
-              [tipoHoraOptions]="tipoHoraOptions()"
-              [defaultSolicitudes]="solicitudes()"
-              [defaultSolicitudOptions]="solicitudOptions()"
               (editRecord)="onEdit($event)"
               (deleteRecord)="onDelete($event)"
-              (updateRecord)="onUpdateRecord($event.index, $event.record)"
-              (managementSelected)="onManagementSelected($event)"
               (sendAll)="onSendAll()"
               (cancelImport)="onCancelImport()"
             />
@@ -874,18 +879,34 @@
         variant="destructive"
         size="sm"
         eyebrow="Confirmación"
-        title="Eliminar reporte"
+        [title]="
+          managementTechnicalKey && parameters.canUseTechnicalDelete(auth.user()?.email)
+            ? 'Eliminar reporte'
+            : 'Solicitar eliminación'
+        "
         [description]="report.identificador || managementName(report)"
         (close)="closeManagementDelete()"
       >
         <div modalBody class="space-y-3">
           <p class="text-sm font-semibold leading-6 text-slate-600">
-            Esta acción eliminará el registro seleccionado. Confirma solo si el reporte es
-            incorrecto y no debe permanecer en la gestión.
+            Este reporte ya fue enviado. Sin clave técnica autorizada, solo se enviará una solicitud
+            al auditor para que esa persona revise y ejecute la eliminación.
           </p>
           <div class="rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-bold text-red-800">
             {{ managementName(report) }}
           </div>
+          <app-ui-field
+            label="Clave técnica opcional"
+            type="password"
+            autocomplete="off"
+            [(ngModel)]="managementTechnicalKey"
+            hint="Déjala vacía para enviar la solicitud a auditoría."
+          />
+          @if (managementTechnicalKey && !parameters.canUseTechnicalDelete(auth.user()?.email)) {
+            <p class="text-xs font-bold text-amber-700">
+              Tu correo no está en la lista técnica; se enviará solicitud a auditoría.
+            </p>
+          }
         </div>
 
         <div modalFooter class="flex flex-col gap-3 sm:flex-row">
@@ -899,9 +920,17 @@
               <span
                 class="size-4 animate-spin rounded-full border-2 border-red-300 border-t-red-700"
               ></span>
-              Eliminando...
+              {{
+                managementTechnicalKey && parameters.canUseTechnicalDelete(auth.user()?.email)
+                  ? 'Eliminando...'
+                  : 'Enviando solicitud...'
+              }}
             } @else {
-              Eliminar reporte
+              {{
+                managementTechnicalKey && parameters.canUseTechnicalDelete(auth.user()?.email)
+                  ? 'Eliminar reporte'
+                  : 'Enviar a auditoría'
+              }}
             }
           </button>
           <button
@@ -1043,18 +1072,33 @@
         (click)="closeAlertDialog()"
       >
         <section
-          class="w-full max-w-lg overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm"
+          class="w-full max-w-lg overflow-hidden rounded-2xl border bg-white shadow-sm"
+          [class.border-red-200]="dialog.context !== 'audit'"
+          [class.border-blue-200]="dialog.context === 'audit'"
           (click)="$event.stopPropagation()"
         >
-          <div class="flex items-start gap-4 border-b border-red-100 bg-red-50 px-5 py-5">
+          <div
+            class="flex items-start gap-4 border-b px-5 py-5"
+            [class.border-red-100]="dialog.context !== 'audit'"
+            [class.bg-red-50]="dialog.context !== 'audit'"
+            [class.border-blue-100]="dialog.context === 'audit'"
+            [class.bg-blue-50]="dialog.context === 'audit'"
+          >
             <span
-              class="grid size-11 shrink-0 place-items-center rounded-full bg-red-600 text-xl font-bold text-white"
+              class="grid size-11 shrink-0 place-items-center rounded-full text-xl font-bold text-white"
+              [class.bg-red-600]="dialog.context !== 'audit'"
+              [class.bg-blue-600]="dialog.context === 'audit'"
               aria-hidden="true"
-              >!</span
             >
+              {{ dialog.context === 'audit' ? 'i' : '!' }}
+            </span>
             <div class="min-w-0 flex-1">
-              <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-red-600">
-                Validación de registros
+              <p
+                class="text-[11px] font-bold uppercase tracking-[0.2em]"
+                [class.text-red-600]="dialog.context !== 'audit'"
+                [class.text-blue-700]="dialog.context === 'audit'"
+              >
+                {{ dialog.context === 'audit' ? 'Solicitud a auditoría' : 'Validación de registros' }}
               </p>
               <h2 id="send-alert-title" class="mt-1 text-lg font-bold text-slate-950">
                 {{ dialog.title }}
@@ -1073,21 +1117,36 @@
             <p class="break-words text-sm font-semibold leading-6 text-slate-700">
               {{ dialog.text }}
             </p>
-            <div
-              class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-900"
-            >
-              La operación fue detenida para proteger la información. Corrige los datos indicados y
-              vuelve a intentarlo.
-            </div>
+            @if (dialog.context !== 'audit') {
+              <div
+                class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-900"
+              >
+                La operación fue detenida para proteger la información. Corrige los datos indicados
+                y vuelve a intentarlo.
+              </div>
+            } @else {
+              <div
+                class="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-bold leading-5 text-blue-900"
+              >
+                El reporte no fue eliminado. La eliminación la debe ejecutar auditoría cuando la
+                solicitud quede registrada correctamente.
+              </div>
+            }
           </div>
           <div class="border-t border-slate-100 px-5 py-4">
             <button
-              class="w-full rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-200"
+              class="w-full rounded-xl px-4 py-3 text-sm font-bold text-white transition focus:outline-none focus:ring-4"
+              [class.bg-red-600]="dialog.context !== 'audit'"
+              [class.hover:bg-red-700]="dialog.context !== 'audit'"
+              [class.focus:ring-red-200]="dialog.context !== 'audit'"
+              [class.bg-blue-600]="dialog.context === 'audit'"
+              [class.hover:bg-blue-700]="dialog.context === 'audit'"
+              [class.focus:ring-blue-200]="dialog.context === 'audit'"
               type="button"
               autofocus
               (click)="closeAlertDialog()"
             >
-              Entendido, revisar registros
+              {{ dialog.context === 'audit' ? 'Entendido' : 'Entendido, revisar registros' }}
             </button>
           </div>
         </section>

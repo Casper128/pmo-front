@@ -25,7 +25,7 @@ export class ManagementTemplateAdapter extends ManagementTemplateGateway {
 
   list(): Observable<ManagementAdvancedTemplate[]> {
     return this.remoteGet().pipe(
-      map((payload) => this.mapper.many(payload.templates || [])),
+      map((payload) => this.mergeLocalControlData(this.mapper.many(payload.templates || []))),
       tap((templates) => this.persistLocal(templates)),
       catchError(() => of(this.loadLocal())),
     );
@@ -35,7 +35,7 @@ export class ManagementTemplateAdapter extends ManagementTemplateGateway {
     const id = String(gestionId || '').trim();
     if (!id) return of(null);
     return this.remoteGet(id).pipe(
-      map((payload) => this.mapper.one(payload.template || null)),
+      map((payload) => this.mergeOneWithLocal(this.mapper.one(payload.template || null))),
       catchError(() => of(this.loadLocal().find((item) => item.gestionId === id) || null)),
     );
   }
@@ -44,7 +44,9 @@ export class ManagementTemplateAdapter extends ManagementTemplateGateway {
     const sanitized = this.mapper.one(template);
     if (!sanitized) throw new Error('La plantilla de gestión no es válida.');
     return this.remotePost('POST', sanitized).pipe(
-      map((payload) => this.mapper.one(payload.template || sanitized) || sanitized),
+      map((payload) =>
+        this.mergeTemplateControlData(this.mapper.one(payload.template || sanitized), sanitized),
+      ),
       tap((saved) => this.upsertLocal(saved)),
       catchError((error) => {
         if (error?.status === 403) return throwError(() => error);
@@ -124,6 +126,36 @@ export class ManagementTemplateAdapter extends ManagementTemplateGateway {
   private upsertLocal(template: ManagementAdvancedTemplate): void {
     const templates = this.loadLocal().filter((item) => item.gestionId !== template.gestionId);
     this.persistLocal([...templates, template]);
+  }
+
+  private mergeLocalControlData(
+    templates: ManagementAdvancedTemplate[],
+  ): ManagementAdvancedTemplate[] {
+    const local = new Map(this.loadLocal().map((item) => [item.gestionId, item]));
+    return templates.map((template) =>
+      this.mergeTemplateControlData(template, local.get(template.gestionId)),
+    );
+  }
+
+  private mergeOneWithLocal(
+    template: ManagementAdvancedTemplate | null,
+  ): ManagementAdvancedTemplate | null {
+    if (!template) return null;
+    const local = this.loadLocal().find((item) => item.gestionId === template.gestionId);
+    return this.mergeTemplateControlData(template, local);
+  }
+
+  private mergeTemplateControlData(
+    template: ManagementAdvancedTemplate | null,
+    fallback: ManagementAdvancedTemplate | undefined | null,
+  ): ManagementAdvancedTemplate {
+    const base = template || fallback;
+    if (!base) throw new Error('La plantilla de gestión no es válida.');
+    return {
+      ...base,
+      client: base.client || fallback?.client,
+      project: base.project || fallback?.project,
+    };
   }
 
   private removeLocal(gestionId: string): void {

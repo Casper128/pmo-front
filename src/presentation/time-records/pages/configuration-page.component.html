@@ -1,5 +1,5 @@
 <main class="ui-page">
-  <div class="ui-page-content space-y-5">
+  <div class="ui-page-content space-y-4">
     <app-ui-page-header
       eyebrow="Administración"
       title="Configuración global de tiempos"
@@ -60,15 +60,15 @@
         </div>
       }
 
-      <section class="ui-surface p-5">
+      <section class="ui-surface p-6">
         <div class="mb-5">
           <p class="text-[11px] font-bold uppercase tracking-widest text-blue-600">
             Reglas operativas
           </p>
-          <h2 class="mt-1 text-xl font-bold text-slate-900">Jornada y límites</h2>
+          <h2 class="mt-1 text-xl font-bold text-slate-900">Jornada, límites y auditoría</h2>
           <p class="mt-1 text-sm text-slate-500">
-            Estos valores alimentan las validaciones y los indicadores diarios del registro de
-            tiempos.
+            Estos valores alimentan las validaciones, los indicadores diarios y el flujo de borrado
+            de reportes enviados.
             {{
               parameters.canManage()
                 ? 'Como administrador puedes modificarlos.'
@@ -76,47 +76,142 @@
             }}
           </p>
         </div>
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <app-ui-field
-            label="Horas lunes a jueves"
-            type="number"
-            valueType="number"
-            min="1"
-            max="24"
-            step="0.5"
-            [disabled]="!parameters.canManage()"
-            [(ngModel)]="draftSettings.mondayThursdayHours"
-          />
-          <app-ui-field
-            label="Horas viernes"
-            type="number"
-            valueType="number"
-            min="1"
-            max="24"
-            step="0.5"
-            [disabled]="!parameters.canManage()"
-            [(ngModel)]="draftSettings.fridayHours"
-          />
-          <app-ui-field
-            label="Máximo computable por día"
-            type="number"
-            valueType="number"
-            min="1"
-            max="24"
-            step="0.5"
-            [disabled]="!parameters.canManage()"
-            [(ngModel)]="draftSettings.maxDailyLaborHours"
-          />
-          <app-ui-field
-            label="Máximo por registro"
-            type="number"
-            valueType="number"
-            min="1"
-            max="24"
-            step="0.5"
-            [disabled]="!parameters.canManage()"
-            [(ngModel)]="draftSettings.maxHoursPerRecord"
-          />
+
+        <div class="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(22rem,0.9fr)]">
+          <div class="self-start rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+            <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="text-sm font-bold text-slate-900">Horas esperadas por día</p>
+                <p class="mt-1 text-xs font-semibold text-slate-500">
+                  Define la jornada de cada día para que los pendientes y alertas se ajusten al
+                  calendario real.
+                </p>
+              </div>
+              <span
+                class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-500"
+              >
+                0 h permite día no laborable
+              </span>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+              <div class="grid gap-1.5 sm:grid-cols-2 2xl:grid-cols-1">
+                @for (day of weekdaySettings; track day.index) {
+                  <label
+                    class="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-2.5 ring-1 ring-slate-100 transition focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-300"
+                  >
+                    <span class="flex min-w-0 items-center gap-3">
+                      <span
+                        class="w-10 shrink-0 text-[11px] font-bold uppercase tracking-widest text-blue-600"
+                      >
+                        {{ day.short }}
+                      </span>
+                      <span class="truncate text-sm font-bold text-slate-700">
+                        {{ day.label }}
+                      </span>
+                    </span>
+                    <input
+                      class="field-input h-11 w-16 px-2 text-center text-base font-bold"
+                      type="number"
+                      min="0"
+                      max="24"
+                      step="0.5"
+                      [disabled]="!parameters.canManage()"
+                      [(ngModel)]="draftSettings.dailyHours[day.index]"
+                      [attr.aria-label]="'Horas esperadas para ' + day.label"
+                    />
+                  </label>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="grid gap-4">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <p class="text-sm font-bold text-slate-900">Límites de captura</p>
+              <p class="mt-1 text-xs font-semibold text-slate-500">
+                Controlan el máximo computable diario y el tamaño permitido de cada registro.
+              </p>
+              <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <app-ui-field
+                  label="Máximo computable por día"
+                  type="number"
+                  valueType="number"
+                  min="1"
+                  max="24"
+                  step="0.5"
+                  [disabled]="!parameters.canManage()"
+                  [(ngModel)]="draftSettings.maxDailyLaborHours"
+                />
+                <app-ui-field
+                  label="Máximo por registro"
+                  type="number"
+                  valueType="number"
+                  min="1"
+                  max="24"
+                  step="0.5"
+                  [disabled]="!parameters.canManage()"
+                  [(ngModel)]="draftSettings.maxHoursPerRecord"
+                />
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <p class="text-sm font-bold text-slate-900">Auditoría y acceso técnico</p>
+              <p class="mt-1 text-xs font-semibold text-slate-500">
+                Los reportes enviados pasan por auditoría, salvo usuarios autorizados con clave
+                técnica.
+              </p>
+
+              <app-ui-field
+                class="mt-4 block"
+                label="Correo auditor"
+                type="email"
+                [disabled]="!parameters.canManage()"
+                [(ngModel)]="draftDeletionSettings.auditorEmail"
+              />
+
+              <div class="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+                <app-ui-field
+                  label="Correo con borrado técnico"
+                  type="email"
+                  [disabled]="!parameters.canManage()"
+                  [(ngModel)]="technicalEmailDraft"
+                />
+                <button
+                  class="ui-btn ui-btn-secondary self-end"
+                  type="button"
+                  [disabled]="!parameters.canManage() || !technicalEmailDraft.trim()"
+                  (click)="addTechnicalEmail()"
+                >
+                  Agregar
+                </button>
+              </div>
+
+              <div class="mt-4 flex flex-wrap gap-2">
+                @for (email of draftDeletionSettings.technicalDeleteEmails; track email) {
+                  <span
+                    class="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700"
+                  >
+                    {{ email }}
+                    <button
+                      class="text-red-600 disabled:opacity-30"
+                      type="button"
+                      [disabled]="!parameters.canManage()"
+                      (click)="removeTechnicalEmail(email)"
+                      [attr.aria-label]="'Quitar ' + email"
+                    >
+                      ×
+                    </button>
+                  </span>
+                } @empty {
+                  <span class="text-xs font-bold text-slate-400">
+                    No hay usuarios técnicos autorizados.
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

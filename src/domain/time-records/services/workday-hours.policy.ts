@@ -9,9 +9,15 @@ export class WorkdayHoursPolicy {
   constructor(private readonly parameters: TimeRecordParameters) {}
 
   alert(total: number, fecha: string): HorasAlert {
-    const esViernes = new Date(fecha + 'T12:00:00').getDay() === 5;
+    const day = new Date(fecha + 'T12:00:00').getDay();
     const settings = this.parameters.workSettings();
-    const meta = esViernes ? settings.fridayHours : settings.mondayThursdayHours;
+    const meta =
+      settings.dailyHours?.[day] ??
+      (day === 0 || day === 6
+        ? 0
+        : day === 5
+          ? settings.fridayHours
+          : settings.mondayThursdayHours);
     if (total > meta)
       return {
         color: '#DC2626',

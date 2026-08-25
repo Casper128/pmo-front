@@ -5,6 +5,7 @@ import { environment } from '@env/environment';
 import {
   AdvancedFieldConfiguration,
   AdvancedFieldKey,
+  DeletionSettings,
   ParameterOption,
   WorkSettings,
 } from '@domain/configuration/app-parameters.model';
@@ -21,6 +22,8 @@ interface SupabaseOptionRow {
 interface SupabaseSettingsRow {
   monday_thursday_hours: number | string;
   friday_hours: number | string;
+  daily_hours?: Record<number, number>;
+  dailyHours?: Record<number, number>;
   max_daily_labor_hours: number | string;
   max_hours_per_record: number | string;
 }
@@ -30,6 +33,7 @@ interface ConfigurationPayload {
   fields?: AdvancedFieldConfiguration[];
   optionRows?: SupabaseOptionRow[];
   workSettings?: SupabaseSettingsRow;
+  deletionSettings?: Partial<DeletionSettings>;
 }
 
 const option = (value: string, sortOrder: number, label = value): ParameterOption => ({
@@ -159,8 +163,22 @@ export const DEFAULT_ADVANCED_FIELDS: AdvancedFieldConfiguration[] = [
 export const DEFAULT_WORK_SETTINGS: WorkSettings = {
   mondayThursdayHours: 9,
   fridayHours: 8,
+  dailyHours: {
+    0: 0,
+    1: 9,
+    2: 9,
+    3: 9,
+    4: 9,
+    5: 8,
+    6: 0,
+  },
   maxDailyLaborHours: 10,
   maxHoursPerRecord: 16,
+};
+
+export const DEFAULT_DELETION_SETTINGS: DeletionSettings = {
+  auditorEmail: 'darwin.osorio@netwconsulting.com',
+  technicalDeleteEmails: [],
 };
 
 @Injectable()
@@ -171,6 +189,7 @@ export class AppParametersService extends AppParametersFacade {
 
   fields = signal<AdvancedFieldConfiguration[]>(this.cloneFields(DEFAULT_ADVANCED_FIELDS));
   workSettings = signal<WorkSettings>({ ...DEFAULT_WORK_SETTINGS });
+  deletionSettings = signal<DeletionSettings>({ ...DEFAULT_DELETION_SETTINGS });
   loading = signal(false);
   saving = signal(false);
   error = signal('');
@@ -195,6 +214,7 @@ export class AppParametersService extends AppParametersFacade {
     this.serverAdminAccess.set(false);
     this.fields.set(this.cloneFields(DEFAULT_ADVANCED_FIELDS));
     this.workSettings.set({ ...DEFAULT_WORK_SETTINGS });
+    this.deletionSettings.set({ ...DEFAULT_DELETION_SETTINGS });
     this.loadLocal();
     if (!this.configured() || !this.auth.token) return;
     this.activeLoads += 1;
@@ -221,13 +241,15 @@ export class AppParametersService extends AppParametersFacade {
       }
       const settings = payload?.workSettings;
       if (settings) {
-        this.workSettings.set({
+        this.workSettings.set(this.sanitizeSettings({
           mondayThursdayHours: Number(settings.monday_thursday_hours),
           fridayHours: Number(settings.friday_hours),
+          dailyHours: settings.dailyHours || settings.daily_hours || DEFAULT_WORK_SETTINGS.dailyHours,
           maxDailyLaborHours: Number(settings.max_daily_labor_hours),
           maxHoursPerRecord: Number(settings.max_hours_per_record),
-        });
+        }));
       }
+      this.deletionSettings.set(this.sanitizeDeletionSettings(payload?.deletionSettings));
       this.source.set('supabase');
       this.persistLocal();
     } catch (error) {
@@ -261,7 +283,18 @@ export class AppParametersService extends AppParametersFacade {
     ) as Record<AdvancedFieldKey, string>;
   }
 
-  async save(fields: AdvancedFieldConfiguration[], workSettings: WorkSettings): Promise<void> {
+  canUseTechnicalDelete(email = this.auth.user()?.email): boolean {
+    const normalized = this.normalize(email);
+    return this.deletionSettings().technicalDeleteEmails.some(
+      (item) => this.normalize(item) === normalized,
+    );
+  }
+
+  async save(
+    fields: AdvancedFieldConfiguration[],
+    workSettings: WorkSettings,
+    deletionSettings: DeletionSettings,
+  ): Promise<void> {
     if (!this.canManage())
       throw new Error('Solo el administrador puede guardar la configuración global.');
     this.saving.set(true);
@@ -269,6 +302,7 @@ export class AppParametersService extends AppParametersFacade {
     try {
       const normalizedFields = this.sanitizeFields(fields);
       const normalizedSettings = this.sanitizeSettings(workSettings);
+      const normalizedDeletionSettings = this.sanitizeDeletionSettings(deletionSettings);
       if (this.configured()) {
         const token = this.auth.token;
         if (!token) throw new Error('La sesión PMO no está disponible.');
@@ -284,6 +318,7 @@ export class AppParametersService extends AppParametersFacade {
             body: JSON.stringify({
               fields: normalizedFields,
               workSettings: normalizedSettings,
+              deletionSettings: normalizedDeletionSettings,
             }),
           },
         );
@@ -294,6 +329,7 @@ export class AppParametersService extends AppParametersFacade {
       }
       this.fields.set(normalizedFields);
       this.workSettings.set(normalizedSettings);
+      this.deletionSettings.set(normalizedDeletionSettings);
       this.persistLocal();
     } finally {
       this.saving.set(false);
@@ -304,6 +340,7 @@ export class AppParametersService extends AppParametersFacade {
     if (!this.canManage()) return;
     this.fields.set(this.cloneFields(DEFAULT_ADVANCED_FIELDS));
     this.workSettings.set({ ...DEFAULT_WORK_SETTINGS });
+    this.deletionSettings.set({ ...DEFAULT_DELETION_SETTINGS });
     this.persistLocal();
   }
 
@@ -350,19 +387,55 @@ export class AppParametersService extends AppParametersFacade {
   }
 
   private sanitizeSettings(value: WorkSettings): WorkSettings {
-    const number = (current: number, fallback: number) =>
+    const nonNegativeNumber = (current: unknown, fallback: number) =>
+      Number.isFinite(Number(current)) && Number(current) >= 0 ? Number(current) : fallback;
+    const positiveNumber = (current: unknown, fallback: number) =>
       Number.isFinite(Number(current)) && Number(current) > 0 ? Number(current) : fallback;
+    const legacyMondayThursday = positiveNumber(
+      value.mondayThursdayHours,
+      DEFAULT_WORK_SETTINGS.mondayThursdayHours,
+    );
+    const legacyFriday = positiveNumber(value.fridayHours, DEFAULT_WORK_SETTINGS.fridayHours);
+    const sourceDaily = value.dailyHours || {};
+    const dailyHours = Object.fromEntries(
+      [0, 1, 2, 3, 4, 5, 6].map((day) => [
+        day,
+        nonNegativeNumber(
+          sourceDaily[day],
+          day === 0 || day === 6 ? 0 : day === 5 ? legacyFriday : legacyMondayThursday,
+        ),
+      ]),
+    ) as Record<number, number>;
     return {
-      mondayThursdayHours: number(
-        value.mondayThursdayHours,
-        DEFAULT_WORK_SETTINGS.mondayThursdayHours,
-      ),
-      fridayHours: number(value.fridayHours, DEFAULT_WORK_SETTINGS.fridayHours),
-      maxDailyLaborHours: number(
+      mondayThursdayHours: dailyHours[1],
+      fridayHours: dailyHours[5],
+      dailyHours,
+      maxDailyLaborHours: positiveNumber(
         value.maxDailyLaborHours,
         DEFAULT_WORK_SETTINGS.maxDailyLaborHours,
       ),
-      maxHoursPerRecord: number(value.maxHoursPerRecord, DEFAULT_WORK_SETTINGS.maxHoursPerRecord),
+      maxHoursPerRecord: positiveNumber(
+        value.maxHoursPerRecord,
+        DEFAULT_WORK_SETTINGS.maxHoursPerRecord,
+      ),
+    };
+  }
+
+  private sanitizeDeletionSettings(
+    value: Partial<DeletionSettings> | null | undefined,
+  ): DeletionSettings {
+    const technicalDeleteEmails = Array.from(
+      new Set(
+        (Array.isArray(value?.technicalDeleteEmails) ? value?.technicalDeleteEmails : [])
+          .map((item) => String(item || '').trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+    return {
+      auditorEmail: String(value?.auditorEmail || DEFAULT_DELETION_SETTINGS.auditorEmail)
+        .trim()
+        .toLowerCase(),
+      technicalDeleteEmails,
     };
   }
 
@@ -371,6 +444,8 @@ export class AppParametersService extends AppParametersFacade {
       const stored = JSON.parse(localStorage.getItem(this.storageKey()) || 'null');
       if (stored?.fields) this.fields.set(this.sanitizeFields(stored.fields));
       if (stored?.workSettings) this.workSettings.set(this.sanitizeSettings(stored.workSettings));
+      if (stored?.deletionSettings)
+        this.deletionSettings.set(this.sanitizeDeletionSettings(stored.deletionSettings));
     } catch {
       localStorage.removeItem(this.storageKey());
     }
@@ -379,7 +454,11 @@ export class AppParametersService extends AppParametersFacade {
   private persistLocal(): void {
     localStorage.setItem(
       this.storageKey(),
-      JSON.stringify({ fields: this.fields(), workSettings: this.workSettings() }),
+      JSON.stringify({
+        fields: this.fields(),
+        workSettings: this.workSettings(),
+        deletionSettings: this.deletionSettings(),
+      }),
     );
   }
 

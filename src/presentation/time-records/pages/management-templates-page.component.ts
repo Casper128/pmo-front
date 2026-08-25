@@ -14,6 +14,7 @@ import {
   UiSelectComponent,
   UiSelectOption,
 } from '@presentation/shared/components/ui-select/ui-select.component';
+import { UiModalComponent } from '@presentation/shared/components/ui-modal/ui-modal.component';
 import { UiStateMessageComponent } from '@presentation/shared/components/ui-state-message/ui-state-message.component';
 import { ManagementTemplateFormComponent } from '../components/management-template-form/management-template-form.component';
 
@@ -29,6 +30,7 @@ type TemplateSort = 'recent' | 'name' | 'id';
     UiPageHeaderComponent,
     UiSearchInputComponent,
     UiSelectComponent,
+    UiModalComponent,
     UiStateMessageComponent,
     ManagementTemplateFormComponent,
   ],
@@ -39,6 +41,8 @@ export class ManagementTemplatesPageComponent implements OnInit {
 
   loading = signal(false);
   saving = signal(false);
+  deleting = signal(false);
+  deleteDialogOpen = signal(false);
   message = signal<{ type: 'success' | 'error'; text: string } | null>(null);
   templateList = signal<ManagementAdvancedTemplate[]>([]);
   selectedTemplate = signal<ManagementAdvancedTemplate | null>(null);
@@ -128,6 +132,7 @@ export class ManagementTemplatesPageComponent implements OnInit {
 
   clearTemplateEdit(): void {
     this.selectedTemplate.set(null);
+    this.deleteDialogOpen.set(false);
   }
 
   onSelectedTemplateChange(template: ManagementAdvancedTemplate): void {
@@ -161,6 +166,44 @@ export class ManagementTemplatesPageComponent implements OnInit {
         this.message.set({
           type: 'error',
           text: error?.message || 'No fue posible guardar la plantilla.',
+        });
+      },
+    });
+  }
+
+  requestDeleteTemplate(): void {
+    if (!this.selectedTemplate()) return;
+    this.message.set(null);
+    this.deleteDialogOpen.set(true);
+  }
+
+  closeDeleteDialog(): void {
+    if (this.deleting()) return;
+    this.deleteDialogOpen.set(false);
+  }
+
+  deleteSelectedTemplate(): void {
+    const template = this.selectedTemplate();
+    if (!template) return;
+    this.deleting.set(true);
+    this.templates.remove(template.gestionId).subscribe({
+      next: () => {
+        this.deleting.set(false);
+        this.deleteDialogOpen.set(false);
+        this.templateList.update((items) =>
+          items.filter((item) => item.gestionId !== template.gestionId),
+        );
+        this.selectedTemplate.set(null);
+        this.message.set({
+          type: 'success',
+          text: 'Plantilla eliminada. Puedes crearla de nuevo con el cliente actualizado.',
+        });
+      },
+      error: (error) => {
+        this.deleting.set(false);
+        this.message.set({
+          type: 'error',
+          text: error?.message || 'No fue posible eliminar la plantilla.',
         });
       },
     });

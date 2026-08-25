@@ -102,6 +102,7 @@ interface ExcelDailySummary {
 interface AlertDialog {
   title: string;
   text: string;
+  context?: 'validation' | 'audit';
 }
 
 type ReportPeriodPreset = 'day' | '1m' | '3m' | '6m' | 'custom';
@@ -134,15 +135,16 @@ type SendPhase = 'idle' | 'sending' | 'saving-logs' | 'completed' | 'log-error' 
   templateUrl: './multiple-import-page.component.html',
 })
 export class MultipleImportPageComponent implements OnInit {
+  private readonly pendingRecordsStorageKey = 'pmo_pending_time_records';
   private domain = inject(TimeRecordDomainService);
   private sendAll = inject(SendAllRecordsUseCase);
   private options = inject(LoadSelectOptionsUseCase);
   private management = inject(TimeManagementGateway);
   private sendLogGateway = inject(SendLogGateway);
-  private auth = inject(AuthGateway);
+  auth = inject(AuthGateway);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private parameters = inject(AppParametersFacade);
+  parameters = inject(AppParametersFacade);
   private templates = inject(ManagementTemplateGateway);
 
   currentView = signal<'import' | 'download' | 'management'>('import');
@@ -189,6 +191,7 @@ export class MultipleImportPageComponent implements OnInit {
   defaultProyecto = signal('');
   defaultSolicitud = signal('');
   defaultGestionId = signal('');
+  loadingClients = signal(false);
   loadingDemand = signal(false);
   configuredManagementIds = signal<Set<string>>(new Set());
   configuredManagementTemplates = signal<Map<string, ManagementAdvancedTemplate>>(new Map());
@@ -342,6 +345,7 @@ export class MultipleImportPageComponent implements OnInit {
   managementDetailReport = signal<ManagementReport | null>(null);
   managementDeleteReport = signal<ManagementReport | null>(null);
   managementDeleteSaving = signal(false);
+  managementTechnicalKey = '';
 
   managementDateError = computed(() => {
     const start = this.managementFechaIni();
@@ -430,6 +434,7 @@ export class MultipleImportPageComponent implements OnInit {
     const view = this.route.snapshot.data['view'];
     if (view === 'import' || view === 'download' || view === 'management')
       this.currentView.set(view);
+    this.restorePendingRecords();
     this.loadDefaultSelection();
     this.loadManagementTemplates();
     if (view === 'download' && !this.reportFechaIni && !this.reportFechaFin) {
@@ -438,30 +443,31 @@ export class MultipleImportPageComponent implements OnInit {
     if (view === 'management') this.loadManagementReports();
   }
 
-  onProcess(rawText: string) {
-    const importErrors = this.domain.validateImportText(rawText);
-    if (importErrors.length > 0) {
-      const detail = importErrors.slice(0, 4).join('; ');
-      const suffix = importErrors.length > 4 ? `; y ${importErrors.length - 4} mas` : '';
-      this.showAlert(`Corrige el formato antes de procesar: ${detail}${suffix}`, 'error');
+  onDraftRecordsChange(records: TimeRecord[]) {
+    const prepared = this.sortedRecords(records.map((record) => this.applyDefaults(record)));
+    if (prepared.length === 0) {
+      this.records.set([]);
+      this.persistPendingRecords();
+      this.groups.set([]);
+      this.totalGeneral.set(0);
+      this.showPreview.set(false);
+      this.resetSendTracking();
       return;
     }
-
-    const parsed = this.domain.parseText(rawText).map((record) => this.applyDefaults(record));
-    if (parsed.length === 0) {
-      this.showAlert('No se encontraron registros válidos. Verifica el formato.', 'error');
-      return;
-    }
-    this.records.set(parsed);
+    this.records.set(prepared);
+    this.persistPendingRecords();
     this.refreshGroups();
-    this.syncReportDatesFromRecords(parsed);
+    this.syncReportDatesFromRecords(prepared);
     this.resetSendTracking();
     this.showPreview.set(true);
-    this.showAlert(`✓ Se encontraron ${parsed.length} registros`, 'success');
   }
 
   refreshGroups() {
-    const recs = this.records();
+    const recs = this.sortedRecords(this.records());
+    if (JSON.stringify(recs) !== JSON.stringify(this.records())) {
+      this.records.set(recs);
+      this.persistPendingRecords();
+    }
     this.groups.set(this.domain.groupByDate(recs));
     this.totalGeneral.set(
       recs.reduce(
@@ -502,24 +508,17 @@ export class MultipleImportPageComponent implements OnInit {
       return;
     }
     recs[idx] = updated;
-    this.records.set(recs);
+    this.records.set(this.sortedRecords(recs));
+    this.persistPendingRecords();
     this.refreshGroups();
     this.modalVisible.set(false);
     this.showAlert('✓ Registro actualizado', 'success');
   }
 
-  onUpdateRecord(index: number, updated: TimeRecord) {
-    const recs = [...this.records()];
-    recs[index] = {
-      ...updated,
-    };
-    this.records.set(recs);
-    this.refreshGroups();
-  }
-
   onDelete(index: number) {
     const recs = this.records().filter((_, i) => i !== index);
-    this.records.set(recs);
+    this.records.set(this.sortedRecords(recs));
+    this.persistPendingRecords();
     if (recs.length === 0) {
       this.showPreview.set(false);
       this.showAlert('No hay registros', 'error');
@@ -653,6 +652,7 @@ export class MultipleImportPageComponent implements OnInit {
 
   onCancelImport() {
     this.records.set([]);
+    this.persistPendingRecords();
     this.groups.set([]);
     this.totalGeneral.set(0);
     this.showPreview.set(false);
@@ -694,10 +694,6 @@ export class MultipleImportPageComponent implements OnInit {
     this.defaultGestionId.set(gestionId);
     this.defaultSolicitud.set(option?.requestValue || option?.name || gestionId);
     if (option) this.ensureManagementTemplate(option);
-  }
-
-  onManagementSelected(option: ManagementDemandOption): void {
-    this.ensureManagementTemplate(option);
   }
 
   openTemplateEdit(template: ManagementAdvancedTemplate): void {
@@ -860,40 +856,65 @@ export class MultipleImportPageComponent implements OnInit {
 
   openManagementDelete(report: ManagementReport): void {
     if (!report.identificador || this.managementDeleteSaving()) return;
+    this.managementTechnicalKey = '';
     this.managementDeleteReport.set(report);
   }
 
   closeManagementDelete(): void {
     if (this.managementDeleteSaving()) return;
     this.managementDeleteReport.set(null);
+    this.managementTechnicalKey = '';
   }
 
   confirmManagementDelete(): void {
     const report = this.managementDeleteReport();
     const identifier = String(report?.identificador || '').trim();
-    if (!identifier || this.managementDeleteSaving()) return;
+    if (!report || !identifier || this.managementDeleteSaving()) return;
+    const technicalKey = this.managementTechnicalKey.trim();
+    const requesterEmail = this.auth.user()?.email || '';
+    const usesTechnicalDelete =
+      !!technicalKey && this.parameters.canUseTechnicalDelete(requesterEmail);
     this.managementDeleteSaving.set(true);
-    this.management.delete(identifier).subscribe({
+    const request$ =
+      usesTechnicalDelete
+        ? this.management.technicalDelete({ identifier, technicalKey, requesterEmail })
+        : this.management.requestDelete({
+            identifier,
+            auditorEmail: this.parameters.deletionSettings().auditorEmail,
+            report,
+          });
+
+    request$.subscribe({
       next: () => {
         this.managementDeleteSaving.set(false);
-        this.managementReports.update((rows) =>
-          rows.filter((item) => String(item.identificador || '') !== identifier),
-        );
+        if (usesTechnicalDelete) {
+          this.managementReports.update((rows) =>
+            rows.filter((item) => String(item.identificador || '') !== identifier),
+          );
+          this.loadManagementReports();
+        }
         this.managementDeleteReport.set(null);
-        this.loadManagementReports();
-        this.showAlert('Reporte eliminado correctamente', 'success');
+        this.managementTechnicalKey = '';
+        this.showAlert(
+          usesTechnicalDelete
+            ? 'Reporte eliminado correctamente'
+            : 'Solicitud de eliminación enviada a auditoría',
+          'success',
+        );
       },
       error: (error) => {
         this.managementDeleteSaving.set(false);
-        this.showAlert(
-          this.managementDeleteErrorMessage(error),
-          'error',
-        );
+        const message = this.managementDeleteErrorMessage(error, usesTechnicalDelete);
+        if (usesTechnicalDelete) {
+          this.showAlert(message, 'error', 'No se pudo eliminar');
+        } else {
+          this.showAuditAlert(message);
+        }
       },
     });
   }
 
-  private managementDeleteErrorMessage(error: unknown): string {
+  private managementDeleteErrorMessage(error: unknown, technicalDelete: boolean): string {
     const response = error as { error?: unknown; status?: number };
     const body = response?.error as { error?: unknown; message?: unknown } | string | undefined;
     const backendMessage =
@@ -906,15 +927,23 @@ export class MultipleImportPageComponent implements OnInit {
             : '';
 
     if (backendMessage && !/failed to fetch/i.test(backendMessage)) {
-      return `No se pudo eliminar el reporte: ${backendMessage}`;
+      return technicalDelete
+        ? `No se pudo eliminar el reporte: ${backendMessage}`
+        : `No se pudo enviar la solicitud a auditoría: ${backendMessage}`;
     }
     if (response?.status === 0) {
-      return 'No se pudo contactar el servicio de eliminación. Verifica que la función de borrado esté desplegada y vuelve a intentarlo.';
+      return technicalDelete
+        ? 'No se pudo contactar el servicio de eliminación técnica. Verifica que la función esté desplegada y vuelve a intentarlo.'
+        : 'No se pudo contactar el servicio de solicitudes a auditoría. Verifica que la función esté desplegada y vuelve a intentarlo.';
     }
     if (/failed to fetch/i.test(backendMessage)) {
-      return 'No se pudo contactar el backend PMO desde el servicio de eliminación. Revisa el despliegue y las variables de la función.';
+      return technicalDelete
+        ? 'No se pudo contactar el backend PMO desde el servicio de eliminación técnica. Revisa el despliegue y las variables de la función.'
+        : 'No se pudo contactar el servicio de auditoría. Revisa el despliegue y las variables de la función.';
     }
-    return 'No se pudo eliminar el reporte. Intenta nuevamente.';
+    return technicalDelete
+      ? 'No se pudo eliminar el reporte. Intenta nuevamente.'
+      : 'No se pudo enviar la solicitud a auditoría. Intenta nuevamente.';
   }
 
   closeManagementEdit() {
@@ -1324,10 +1353,15 @@ export class MultipleImportPageComponent implements OnInit {
   showAlert(text: string, type: 'success' | 'error', title = 'No se puede continuar') {
     this.alert.set({ text, type });
     if (type === 'error') {
-      this.alertDialog.set({ title, text });
+      this.alertDialog.set({ title, text, context: 'validation' });
       return;
     }
     setTimeout(() => this.alert.set(null), 5000);
+  }
+
+  showAuditAlert(text: string, title = 'No se pudo enviar a auditoría') {
+    this.alert.set({ text, type: 'error' });
+    this.alertDialog.set({ title, text, context: 'audit' });
   }
 
   closeAlertDialog() {
@@ -1381,6 +1415,7 @@ export class MultipleImportPageComponent implements OnInit {
     this.sendErrorCount.set(result.errores);
     if (result.errores === 0) {
       this.records.set([]);
+      this.persistPendingRecords();
       this.groups.set([]);
       this.totalGeneral.set(0);
       this.showPreview.set(false);
@@ -1388,6 +1423,7 @@ export class MultipleImportPageComponent implements OnInit {
       this.records.set(
         this.records().filter((_, index) => !result.enviadosIndices.includes(index)),
       );
+      this.persistPendingRecords();
       this.refreshGroups();
       this.showPreview.set(this.records().length > 0);
     }
@@ -1406,12 +1442,54 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   private loadDefaultSelection() {
+    this.loadingClients.set(true);
     this.options.clientes().subscribe((clientes) => {
       this.clientes.set(clientes);
+      this.loadingClients.set(false);
       const cliente = clientes[0] ?? '';
       if (!cliente) return;
       this.onDefaultClienteChange(cliente);
     });
+  }
+
+  private restorePendingRecords(): void {
+    try {
+      const stored = localStorage.getItem(this.pendingRecordsStorageKey);
+      const parsed = stored ? (JSON.parse(stored) as TimeRecord[]) : [];
+      if (!Array.isArray(parsed) || !parsed.length) return;
+      this.records.set(this.sortedRecords(parsed));
+      this.refreshGroups();
+      this.syncReportDatesFromRecords(parsed);
+      this.showPreview.set(true);
+      this.showAlert(`Se restauraron ${parsed.length} registros pendientes.`, 'success');
+    } catch {
+      localStorage.removeItem(this.pendingRecordsStorageKey);
+    }
+  }
+
+  private persistPendingRecords(): void {
+    const records = this.records();
+    if (!records.length) {
+      localStorage.removeItem(this.pendingRecordsStorageKey);
+      return;
+    }
+    localStorage.setItem(this.pendingRecordsStorageKey, JSON.stringify(records));
+  }
+
+  private sortedRecords(records: TimeRecord[]): TimeRecord[] {
+    return [...records].sort((a, b) => {
+      const dateComparison = String(a.fecha || '').localeCompare(String(b.fecha || ''));
+      if (dateComparison !== 0) return dateComparison;
+      const startComparison = this.minutesOf(a.horaIni) - this.minutesOf(b.horaIni);
+      if (startComparison !== 0) return startComparison;
+      return this.minutesOf(a.horaFin) - this.minutesOf(b.horaFin);
+    });
+  }
+
+  private minutesOf(value: string): number {
+    const [hour, minute] = String(value || '').split(':').map(Number);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return 0;
+    return hour * 60 + minute;
   }
 
   private applyDefaults(record: TimeRecord): TimeRecord {
@@ -1433,9 +1511,14 @@ export class MultipleImportPageComponent implements OnInit {
     }
 
     this.options.solicitudOptions(cliente, proyecto).subscribe((solicitudes) => {
-      this.solicitudOptions.set(solicitudes);
-      this.solicitudes.set(solicitudes.map((item) => item.name));
-      const selected = solicitudes[0] ?? null;
+      const options = solicitudes.map((solicitud) => ({
+        ...solicitud,
+        client: solicitud.client || cliente,
+        project: solicitud.project || proyecto,
+      }));
+      this.solicitudOptions.set(options);
+      this.solicitudes.set(options.map((item) => item.name));
+      const selected = options[0] ?? null;
       this.defaultSolicitud.set(selected?.requestValue || selected?.name || '');
       this.defaultGestionId.set(selected?.id || '');
       this.loadingDemand.set(false);
@@ -1495,7 +1578,7 @@ export class MultipleImportPageComponent implements OnInit {
       const matchedTemplate = this.templateForManagement(option, configuredTemplates);
       if (matchedTemplate) {
         const missing = this.missingRequiredTemplateFields(matchedTemplate);
-        if (missing.length) {
+        if (matchedTemplate.completed !== true || missing.length) {
           return { option, template: matchedTemplate, missing };
         }
         continue;
@@ -1508,7 +1591,6 @@ export class MultipleImportPageComponent implements OnInit {
   private defaultTemplateValues(option?: ManagementDemandOption): AdvancedTemplateValues {
     return {
       proyecto: option?.project || this.defaultProyecto(),
-      unity: option?.module || '',
       funcional: '',
       tipoActividad: this.parameters.defaultFor('tipoActividad'),
       causa: this.parameters.defaultFor('causa'),
@@ -1529,10 +1611,6 @@ export class MultipleImportPageComponent implements OnInit {
   ): ManagementAdvancedTemplate {
     const values = { ...template.values };
     let changed = false;
-    if (option.module && !values.unity) {
-      values.unity = option.module;
-      changed = true;
-    }
     if (option.client && !template.client) changed = true;
     if (option.project && !template.project) changed = true;
     return changed
