@@ -24,6 +24,63 @@ const findValue = (value: unknown, keys: string[]): unknown => {
   return '';
 };
 
+const defaultDailyHours: Record<number, number> = {
+  0: 0,
+  1: 9,
+  2: 9,
+  3: 9,
+  4: 9,
+  5: 8,
+  6: 0,
+};
+
+const validHours = (value: unknown, allowZero: boolean): value is number => {
+  const numericValue = Number(value);
+  return (
+    Number.isFinite(numericValue) &&
+    numericValue <= 24 &&
+    (allowZero ? numericValue >= 0 : numericValue > 0)
+  );
+};
+
+const sanitizeWorkSettings = (value: unknown) => {
+  if (!value || typeof value !== 'object') return null;
+  const settings = value as Record<string, unknown>;
+  const sourceDaily =
+    settings.dailyHours && typeof settings.dailyHours === 'object'
+      ? (settings.dailyHours as Record<string, unknown>)
+      : settings.daily_hours && typeof settings.daily_hours === 'object'
+        ? (settings.daily_hours as Record<string, unknown>)
+        : {};
+  const legacyMondayThursday = validHours(settings.mondayThursdayHours, true)
+    ? Number(settings.mondayThursdayHours)
+    : defaultDailyHours[1];
+  const legacyFriday = validHours(settings.fridayHours, true)
+    ? Number(settings.fridayHours)
+    : defaultDailyHours[5];
+  const dailyHours = Object.fromEntries(
+    [0, 1, 2, 3, 4, 5, 6].map((day) => {
+      const fallback = day === 0 || day === 6 ? 0 : day === 5 ? legacyFriday : legacyMondayThursday;
+      return [day, sourceDaily[day] ?? fallback];
+    }),
+  ) as Record<number, unknown>;
+  const invalidDays = Object.entries(dailyHours)
+    .filter(([, hours]) => !validHours(hours, true))
+    .map(([day]) => day);
+  if (invalidDays.length) return null;
+  if (!validHours(settings.maxDailyLaborHours, false)) return null;
+  if (!validHours(settings.maxHoursPerRecord, false)) return null;
+  return {
+    mondayThursdayHours: Number(dailyHours[1]),
+    fridayHours: Number(dailyHours[5]),
+    dailyHours: Object.fromEntries(
+      Object.entries(dailyHours).map(([day, hours]) => [day, Number(hours)]),
+    ),
+    maxDailyLaborHours: Number(settings.maxDailyLaborHours),
+    maxHoursPerRecord: Number(settings.maxHoursPerRecord),
+  };
+};
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (!['GET', 'POST'].includes(request.method)) return json({ error: 'Método no permitido' }, 405);
@@ -69,7 +126,9 @@ Deno.serve(async (request) => {
         .order('sort_order'),
       supabase
         .from('pmo_app_settings')
-        .select('monday_thursday_hours,friday_hours,max_daily_labor_hours,max_hours_per_record')
+        .select(
+          'monday_thursday_hours,friday_hours,daily_hours,max_daily_labor_hours,max_hours_per_record',
+        )
         .eq('id', 'global')
         .maybeSingle(),
     ]);
@@ -83,14 +142,25 @@ Deno.serve(async (request) => {
     });
   }
 
-  if (!isAdmin) return json({ error: 'Solo el administrador puede modificar la configuración' }, 403);
+  if (!isAdmin)
+    return json({ error: 'Solo el administrador puede modificar la configuración' }, 403);
 
   const payload = await request.json();
   if (!Array.isArray(payload?.fields)) return json({ error: 'Configuración inválida' }, 400);
+  const workSettings = sanitizeWorkSettings(payload?.workSettings);
+  if (!workSettings) {
+    return json(
+      {
+        error:
+          'La jornada debe usar valores entre 0 y 24 horas; los límites deben estar entre 1 y 24 horas.',
+      },
+      400,
+    );
+  }
 
   const { error: saveError } = await supabase.rpc('replace_pmo_configuration', {
     field_config: payload.fields,
-    work_config: payload.workSettings,
+    work_config: workSettings,
   });
   if (saveError) return json({ error: saveError.message }, 500);
 

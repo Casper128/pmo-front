@@ -127,12 +127,16 @@ export class ConfigurationPageComponent implements OnInit {
       });
       return;
     }
+    const validationErrors = this.validateWorkSettings();
+    if (validationErrors.length) {
+      this.message.set({
+        type: 'error',
+        text: validationErrors.join(' '),
+      });
+      return;
+    }
     try {
-      await this.parameters.save(
-        this.draftFields,
-        this.draftSettings,
-        this.draftDeletionSettings,
-      );
+      await this.parameters.save(this.draftFields, this.draftSettings, this.draftDeletionSettings);
       this.syncDraft();
       this.message.set({
         type: 'success',
@@ -191,6 +195,34 @@ export class ConfigurationPageComponent implements OnInit {
       technicalDeleteEmails: [...this.parameters.deletionSettings().technicalDeleteEmails],
     };
     this.technicalEmailDraft = '';
+  }
+
+  private validateWorkSettings(): string[] {
+    const errors: string[] = [];
+    const invalidDays = this.weekdaySettings
+      .filter((day) => !this.isValidHourValue(this.draftSettings.dailyHours[day.index], true))
+      .map((day) => day.label);
+    if (invalidDays.length) {
+      errors.push(
+        `Revisa las horas esperadas de: ${invalidDays.join(', ')}. Usa valores entre 0 y 24.`,
+      );
+    }
+    if (!this.isValidHourValue(this.draftSettings.maxDailyLaborHours, false)) {
+      errors.push('El máximo computable por día debe estar entre 1 y 24 horas.');
+    }
+    if (!this.isValidHourValue(this.draftSettings.maxHoursPerRecord, false)) {
+      errors.push('El máximo por registro debe estar entre 1 y 24 horas.');
+    }
+    return errors;
+  }
+
+  private isValidHourValue(value: unknown, allowZero: boolean): boolean {
+    const numericValue = Number(value);
+    return (
+      Number.isFinite(numericValue) &&
+      numericValue <= 24 &&
+      (allowZero ? numericValue >= 0 : numericValue > 0)
+    );
   }
 
   addTechnicalEmail(): void {

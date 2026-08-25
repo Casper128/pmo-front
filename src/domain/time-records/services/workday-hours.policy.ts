@@ -8,16 +8,21 @@ import type {
 export class WorkdayHoursPolicy {
   constructor(private readonly parameters: TimeRecordParameters) {}
 
-  alert(total: number, fecha: string): HorasAlert {
+  expectedHoursForDate(fecha: string): number {
     const day = new Date(fecha + 'T12:00:00').getDay();
+    return this.expectedHoursForDay(day);
+  }
+
+  expectedHoursForDay(day: number): number {
     const settings = this.parameters.workSettings();
-    const meta =
+    return (
       settings.dailyHours?.[day] ??
-      (day === 0 || day === 6
-        ? 0
-        : day === 5
-          ? settings.fridayHours
-          : settings.mondayThursdayHours);
+      (day === 0 || day === 6 ? 0 : day === 5 ? settings.fridayHours : settings.mondayThursdayHours)
+    );
+  }
+
+  alert(total: number, fecha: string): HorasAlert {
+    const meta = this.expectedHoursForDate(fecha);
     if (total > meta)
       return {
         color: '#DC2626',

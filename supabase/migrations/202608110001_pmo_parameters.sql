@@ -13,6 +13,7 @@ create table if not exists public.pmo_app_settings (
   id text primary key default 'global',
   monday_thursday_hours numeric(4,2) not null default 9,
   friday_hours numeric(4,2) not null default 8,
+  daily_hours jsonb not null default '{"0":0,"1":9,"2":9,"3":9,"4":9,"5":8,"6":0}'::jsonb,
   max_daily_labor_hours numeric(4,2) not null default 10,
   max_hours_per_record numeric(4,2) not null default 16,
   updated_at timestamptz not null default now()
@@ -90,11 +91,12 @@ begin
   where field->>'key' in ('tipoActividad','causa','complejidad','impacto','equipo','modoActuacion','lenguaje','tipoHora','prefijo','objetoRicef','categoria')
     and nullif(trim(option->>'value'), '') is not null;
 
-  insert into public.pmo_app_settings (id, monday_thursday_hours, friday_hours, max_daily_labor_hours, max_hours_per_record, updated_at)
+  insert into public.pmo_app_settings (id, monday_thursday_hours, friday_hours, daily_hours, max_daily_labor_hours, max_hours_per_record, updated_at)
   values (
     'global',
     (work_config->>'mondayThursdayHours')::numeric,
     (work_config->>'fridayHours')::numeric,
+    coalesce(work_config->'dailyHours', work_config->'daily_hours', '{"0":0,"1":9,"2":9,"3":9,"4":9,"5":8,"6":0}'::jsonb),
     (work_config->>'maxDailyLaborHours')::numeric,
     (work_config->>'maxHoursPerRecord')::numeric,
     now()
@@ -102,6 +104,7 @@ begin
   on conflict (id) do update set
     monday_thursday_hours = excluded.monday_thursday_hours,
     friday_hours = excluded.friday_hours,
+    daily_hours = excluded.daily_hours,
     max_daily_labor_hours = excluded.max_daily_labor_hours,
     max_hours_per_record = excluded.max_hours_per_record,
     updated_at = now();

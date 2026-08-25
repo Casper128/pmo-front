@@ -241,13 +241,16 @@ export class AppParametersService extends AppParametersFacade {
       }
       const settings = payload?.workSettings;
       if (settings) {
-        this.workSettings.set(this.sanitizeSettings({
-          mondayThursdayHours: Number(settings.monday_thursday_hours),
-          fridayHours: Number(settings.friday_hours),
-          dailyHours: settings.dailyHours || settings.daily_hours || DEFAULT_WORK_SETTINGS.dailyHours,
-          maxDailyLaborHours: Number(settings.max_daily_labor_hours),
-          maxHoursPerRecord: Number(settings.max_hours_per_record),
-        }));
+        this.workSettings.set(
+          this.sanitizeSettings({
+            mondayThursdayHours: Number(settings.monday_thursday_hours),
+            fridayHours: Number(settings.friday_hours),
+            dailyHours:
+              settings.dailyHours || settings.daily_hours || DEFAULT_WORK_SETTINGS.dailyHours,
+            maxDailyLaborHours: Number(settings.max_daily_labor_hours),
+            maxHoursPerRecord: Number(settings.max_hours_per_record),
+          }),
+        );
       }
       this.deletionSettings.set(this.sanitizeDeletionSettings(payload?.deletionSettings));
       this.source.set('supabase');
@@ -387,22 +390,25 @@ export class AppParametersService extends AppParametersFacade {
   }
 
   private sanitizeSettings(value: WorkSettings): WorkSettings {
-    const nonNegativeNumber = (current: unknown, fallback: number) =>
-      Number.isFinite(Number(current)) && Number(current) >= 0 ? Number(current) : fallback;
-    const positiveNumber = (current: unknown, fallback: number) =>
-      Number.isFinite(Number(current)) && Number(current) > 0 ? Number(current) : fallback;
-    const legacyMondayThursday = positiveNumber(
+    const boundedNumber = (current: unknown, fallback: number, minimum: number) => {
+      const numericValue = Number(current);
+      if (!Number.isFinite(numericValue) || numericValue < minimum) return fallback;
+      return Math.min(numericValue, 24);
+    };
+    const legacyMondayThursday = boundedNumber(
       value.mondayThursdayHours,
       DEFAULT_WORK_SETTINGS.mondayThursdayHours,
+      0,
     );
-    const legacyFriday = positiveNumber(value.fridayHours, DEFAULT_WORK_SETTINGS.fridayHours);
+    const legacyFriday = boundedNumber(value.fridayHours, DEFAULT_WORK_SETTINGS.fridayHours, 0);
     const sourceDaily = value.dailyHours || {};
     const dailyHours = Object.fromEntries(
       [0, 1, 2, 3, 4, 5, 6].map((day) => [
         day,
-        nonNegativeNumber(
+        boundedNumber(
           sourceDaily[day],
           day === 0 || day === 6 ? 0 : day === 5 ? legacyFriday : legacyMondayThursday,
+          0,
         ),
       ]),
     ) as Record<number, number>;
@@ -410,13 +416,15 @@ export class AppParametersService extends AppParametersFacade {
       mondayThursdayHours: dailyHours[1],
       fridayHours: dailyHours[5],
       dailyHours,
-      maxDailyLaborHours: positiveNumber(
+      maxDailyLaborHours: boundedNumber(
         value.maxDailyLaborHours,
         DEFAULT_WORK_SETTINGS.maxDailyLaborHours,
+        1,
       ),
-      maxHoursPerRecord: positiveNumber(
+      maxHoursPerRecord: boundedNumber(
         value.maxHoursPerRecord,
         DEFAULT_WORK_SETTINGS.maxHoursPerRecord,
+        1,
       ),
     };
   }
@@ -427,7 +435,11 @@ export class AppParametersService extends AppParametersFacade {
     const technicalDeleteEmails = Array.from(
       new Set(
         (Array.isArray(value?.technicalDeleteEmails) ? value?.technicalDeleteEmails : [])
-          .map((item) => String(item || '').trim().toLowerCase())
+          .map((item) =>
+            String(item || '')
+              .trim()
+              .toLowerCase(),
+          )
           .filter(Boolean),
       ),
     );

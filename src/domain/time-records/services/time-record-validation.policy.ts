@@ -70,13 +70,23 @@ export class TimeRecordValidationPolicy {
       });
 
     return Array.from(totals.entries())
-      .filter(([, totalHoras]) => totalHoras > this.maxDailyLaborHours())
       .map(([fecha, totalHoras]) => ({
         fecha,
         totalHoras,
-        limiteHoras: this.maxDailyLaborHours(),
+        limiteHoras: this.dailyLimitForDate(fecha),
         tipoHora: 'Computable',
+      }))
+      .filter((item) => totalHorasIsOverLimit(item.totalHoras, item.limiteHoras))
+      .map((item) => ({
+        ...item,
+        totalHoras: Number(item.totalHoras.toFixed(2)),
       }));
+  }
+
+  private dailyLimitForDate(fecha: string): number {
+    const expectedHours = this.hoursPolicy.expectedHoursForDate(fecha);
+    if (expectedHours <= 0) return 0;
+    return Math.min(expectedHours, this.maxDailyLaborHours());
   }
 
   calcHours(horaIni: string, horaFin: string): string {
@@ -119,3 +129,6 @@ export class TimeRecordValidationPolicy {
     return this.parameters.workSettings().maxDailyLaborHours;
   }
 }
+
+const totalHorasIsOverLimit = (totalHoras: number, limiteHoras: number): boolean =>
+  Number.isFinite(totalHoras) && totalHoras > limiteHoras;
