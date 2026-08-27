@@ -88,20 +88,33 @@
               <p class="text-sm text-slate-700">{{ item.record.desc }}</p>
 
               <div class="grid gap-2 sm:grid-cols-3">
-                <div class="preview-readonly-field">
-                  <span>Cliente</span>
-                  <strong>{{ item.record.cliente || 'Sin cliente' }}</strong>
-                </div>
-                <div class="preview-readonly-field">
-                  <span>Tipo hora</span>
-                  <strong>{{ item.record.tipoHora || 'Sin tipo' }}</strong>
-                </div>
-                <div class="preview-readonly-field">
-                  <span>Gestión Demanda</span>
-                  <strong>{{ item.record.solicitud || 'Sin gestión' }}</strong>
-                </div>
+                <app-ui-select
+                  label="Cliente"
+                  [options]="clienteOptions(item.record.cliente)"
+                  [searchThreshold]="0"
+                  searchPlaceholder="Buscar cliente..."
+                  [ngModel]="item.record.cliente"
+                  (ngModelChange)="onClienteChange(item.index, item.record, $event)"
+                />
+                <app-ui-select
+                  label="Gestión Demanda"
+                  [options]="gestionOptions(item.index, item.record)"
+                  [loading]="isLoadingGestiones(item.index)"
+                  [disabled]="!item.record.cliente"
+                  [searchThreshold]="0"
+                  searchPlaceholder="Buscar gestión..."
+                  [ngModel]="item.record.gestionId || item.record.solicitud"
+                  (ngModelChange)="onGestionChange(item.index, item.record, $event)"
+                />
+                <app-ui-select
+                  label="Tipo hora"
+                  [options]="tipoHoraSelectOptions(item.record.tipoHora)"
+                  [searchThreshold]="0"
+                  searchPlaceholder="Buscar tipo..."
+                  [ngModel]="item.record.tipoHora"
+                  (ngModelChange)="onTipoHoraChange(item.index, item.record, $event)"
+                />
               </div>
-
             </article>
           }
         </div>
@@ -137,7 +150,9 @@
                 {{ group.fecha | fechaEsp }}
               </span>
               <span class="text-xs text-slate-400"
-                >· {{ group.records.length }} registro{{ group.records.length !== 1 ? 's' : '' }}</span
+                >· {{ group.records.length }} registro{{
+                  group.records.length !== 1 ? 's' : ''
+                }}</span
               >
             </div>
             <div class="flex items-center gap-2">
@@ -167,15 +182,32 @@
                 {{ item.record.horaIni }} - {{ item.record.horaFin }}
               </span>
               <span class="font-bold text-blue-600">{{ item.record.horas }}h</span>
-              <span class="preview-chip">{{ item.record.tipoHora || 'Sin tipo' }}</span>
-              <span class="font-bold text-slate-700">{{ item.record.cliente || 'Sin cliente' }}</span>
-              <span
-                class="break-words text-xs font-bold text-slate-700"
-                [appOverflowTooltip]="item.record.solicitud"
-                [appOverflowTooltipLines]="2"
-              >
-                {{ item.record.solicitud || 'Sin gestión' }}
-              </span>
+              <app-ui-select
+                label="Tipo hora"
+                [options]="tipoHoraSelectOptions(item.record.tipoHora)"
+                [searchThreshold]="0"
+                searchPlaceholder="Buscar tipo..."
+                [ngModel]="item.record.tipoHora"
+                (ngModelChange)="onTipoHoraChange(item.index, item.record, $event)"
+              />
+              <app-ui-select
+                label="Cliente"
+                [options]="clienteOptions(item.record.cliente)"
+                [searchThreshold]="0"
+                searchPlaceholder="Buscar cliente..."
+                [ngModel]="item.record.cliente"
+                (ngModelChange)="onClienteChange(item.index, item.record, $event)"
+              />
+              <app-ui-select
+                label="Gestión Demanda"
+                [options]="gestionOptions(item.index, item.record)"
+                [loading]="isLoadingGestiones(item.index)"
+                [disabled]="!item.record.cliente"
+                [searchThreshold]="0"
+                searchPlaceholder="Buscar gestión..."
+                [ngModel]="item.record.gestionId || item.record.solicitud"
+                (ngModelChange)="onGestionChange(item.index, item.record, $event)"
+              />
               <span class="record-actions">
                 <button
                   class="ui-btn ui-btn-secondary min-h-8 px-3 py-1.5 text-xs"

@@ -444,7 +444,7 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   onDraftRecordsChange(records: TimeRecord[]) {
-    const prepared = this.sortedRecords(records.map((record) => this.applyDefaults(record)));
+    const prepared = this.sortedRecords(records.map((record) => this.applyImportDefaults(record)));
     if (prepared.length === 0) {
       this.records.set([]);
       this.persistPendingRecords();
@@ -513,6 +513,24 @@ export class MultipleImportPageComponent implements OnInit {
     this.refreshGroups();
     this.modalVisible.set(false);
     this.showAlert('✓ Registro actualizado', 'success');
+  }
+
+  onPreviewRecordChange(change: { index: number; record: TimeRecord }): void {
+    const recs = [...this.records()];
+    const current = recs[change.index];
+    if (!current) return;
+    const updated = {
+      ...change.record,
+      horas: this.domain.calcHoras(change.record.horaIni, change.record.horaFin),
+    };
+    recs[change.index] = updated;
+    this.records.set(this.sortedRecords(recs));
+    this.persistPendingRecords();
+    this.refreshGroups();
+    this.resetSendTracking();
+
+    const option = this.solicitudOptions().find((item) => item.id === updated.gestionId);
+    if (option) this.ensureManagementTemplate(option);
   }
 
   onDelete(index: number) {
@@ -875,14 +893,13 @@ export class MultipleImportPageComponent implements OnInit {
     const usesTechnicalDelete =
       !!technicalKey && this.parameters.canUseTechnicalDelete(requesterEmail);
     this.managementDeleteSaving.set(true);
-    const request$ =
-      usesTechnicalDelete
-        ? this.management.technicalDelete({ identifier, technicalKey, requesterEmail })
-        : this.management.requestDelete({
-            identifier,
-            auditorEmail: this.parameters.deletionSettings().auditorEmail,
-            report,
-          });
+    const request$ = usesTechnicalDelete
+      ? this.management.technicalDelete({ identifier, technicalKey, requesterEmail })
+      : this.management.requestDelete({
+          identifier,
+          auditorEmail: this.parameters.deletionSettings().auditorEmail,
+          report,
+        });
 
     request$.subscribe({
       next: () => {
@@ -1487,18 +1504,17 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   private minutesOf(value: string): number {
-    const [hour, minute] = String(value || '').split(':').map(Number);
+    const [hour, minute] = String(value || '')
+      .split(':')
+      .map(Number);
     if (!Number.isFinite(hour) || !Number.isFinite(minute)) return 0;
     return hour * 60 + minute;
   }
 
-  private applyDefaults(record: TimeRecord): TimeRecord {
+  private applyImportDefaults(record: TimeRecord): TimeRecord {
     return {
       ...record,
-      cliente: record.cliente || this.defaultCliente(),
-      proyecto: record.proyecto || this.defaultProyecto(),
-      solicitud: record.solicitud || this.defaultSolicitud(),
-      gestionId: record.gestionId || this.defaultGestionId(),
+      tipoHora: record.tipoHora || this.parameters.defaultFor('tipoHora') || 'Laboral',
     };
   }
 
@@ -1544,7 +1560,8 @@ export class MultipleImportPageComponent implements OnInit {
         this.configuredManagementTemplates.update((items) =>
           this.mergeManagementTemplate(items, templateWithControlData),
         );
-        if (templateWithControlData !== template) this.templates.save(templateWithControlData).subscribe();
+        if (templateWithControlData !== template)
+          this.templates.save(templateWithControlData).subscribe();
         return;
       }
       this.templateDialogMode.set('create');

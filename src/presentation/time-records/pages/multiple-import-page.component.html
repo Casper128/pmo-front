@@ -44,8 +44,11 @@
               [groups]="groups()"
               [totalGeneral]="totalGeneral()"
               [sending]="sending()"
+              [clientes]="clientes()"
+              [tipoHoraOptions]="tipoHoraOptions()"
               (editRecord)="onEdit($event)"
               (deleteRecord)="onDelete($event)"
+              (recordChange)="onPreviewRecordChange($event)"
               (sendAll)="onSendAll()"
               (cancelImport)="onCancelImport()"
             />

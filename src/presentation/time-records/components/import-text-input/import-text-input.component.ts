@@ -6,46 +6,46 @@ import {
   OnInit,
   Output,
   SimpleChanges,
+  inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TimeRecord } from '@domain/time-records/models/time-record.model';
+import { TimeRecordDomainService } from '@domain/time-records/services/time-record-domain.service';
+import { LoadSelectOptionsUseCase } from '@application/time-records/use-cases/load-select-options.use-case';
 import { ManagementDemandOption } from '@domain/time-records/models/management-template.model';
 import { UiFieldComponent } from '@presentation/shared/components/ui-field/ui-field.component';
 import {
   UiSelectComponent,
   UiSelectOption,
 } from '@presentation/shared/components/ui-select/ui-select.component';
-import { UiDateInputComponent } from '@presentation/shared/components/ui-date-input/ui-date-input.component';
-import { UiTimeInputComponent } from '@presentation/shared/components/ui-time-input/ui-time-input.component';
 
-interface ManualDraftRow {
+interface TextDraftRow {
+  id: string;
+  fecha: string;
   horaIni: string;
   horaFin: string;
+  horas: string;
   desc: string;
   observacion: string;
-}
-
-interface ManualDraft {
-  fecha: string;
   cliente: string;
+  proyecto: string;
   gestionId: string;
   solicitud: string;
   tipoHora: string;
-  rows: ManualDraftRow[];
+  gestionOptions: ManagementDemandOption[];
+  loadingGestiones: boolean;
+}
+
+interface StoredTextDraft {
+  rawText: string;
+  rows: Partial<TextDraftRow>[];
 }
 
 @Component({
   selector: 'app-import-text-input',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    UiFieldComponent,
-    UiSelectComponent,
-    UiDateInputComponent,
-    UiTimeInputComponent,
-  ],
+  imports: [CommonModule, FormsModule, UiFieldComponent, UiSelectComponent],
   templateUrl: './import-text-input.component.html',
 })
 export class ImportTextInputComponent implements OnChanges, OnInit {
@@ -61,280 +61,329 @@ export class ImportTextInputComponent implements OnChanges, OnInit {
   @Output() clienteChange = new EventEmitter<string>();
   @Output() gestionChange = new EventEmitter<string>();
 
-  private readonly storageKey = 'pmo_manual_time_draft';
-  draft: ManualDraft = this.loadDraft();
+  private readonly domain = inject(TimeRecordDomainService);
+  private readonly options = inject(LoadSelectOptionsUseCase);
+  private readonly storageKey = 'pmo_text_time_draft';
+  private readonly lastGestionStorageKey = 'pmo_last_management_by_client';
+
+  rawText = '';
+  rows: TextDraftRow[] = [];
   draftMessage = '';
+  parseErrors: string[] = [];
 
   ngOnInit(): void {
-    this.syncEmptyRowsWithExistingRecords();
+    this.restoreDraft();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['defaultCliente'] && this.defaultCliente && !this.draft.cliente) {
-      this.draft.cliente = this.defaultCliente;
+    if (changes['defaultSolicitudOptions'] && this.defaultSolicitudOptions.length) {
+      this.rows
+        .filter((row) => row.cliente === this.defaultCliente && !row.gestionOptions.length)
+        .forEach((row) => {
+          row.gestionOptions = this.defaultSolicitudOptions;
+          if (!row.gestionId) this.selectPreferredGestion(row);
+        });
       this.persistDraft();
     }
-    if (changes['defaultGestionId'] && this.defaultGestionId && !this.draft.gestionId) {
-      this.onGestionChange(this.defaultGestionId, false);
+    if (changes['tipoHoraOptions'] && this.tipoHoraOptions.length) {
+      this.rows
+        .filter((row) => !row.tipoHora)
+        .forEach((row) => {
+          row.tipoHora = this.firstTipoHora();
+        });
+      this.persistDraft();
     }
-    if (changes['existingRecords']) this.syncEmptyRowsWithExistingRecords();
   }
 
-  onClienteChange(cliente: string): void {
-    this.draft.cliente = cliente;
-    this.draft.gestionId = '';
-    this.draft.solicitud = '';
+  processText(): void {
+    this.parseErrors = this.domain.validateImportText(this.rawText);
+    this.draftMessage = '';
+    if (this.parseErrors.length) {
+      this.rows = [];
+      this.persistDraft();
+      return;
+    }
+
+    const parsed = this.domain.parseText(this.rawText);
+    if (!parsed.length) {
+      this.parseErrors = ['No se encontraron registros validos para convertir en borrador.'];
+      this.rows = [];
+      this.persistDraft();
+      return;
+    }
+
+    this.rows = parsed.map((record) => this.createRow(record));
+    this.rows.forEach((row) => this.loadGestionesForRow(row, false));
+    this.draftMessage = `${parsed.length} linea(s) lista(s) para completar.`;
+    this.persistDraft();
+  }
+
+  onRawTextChange(): void {
+    this.parseErrors = [];
+    this.draftMessage = '';
+    this.persistDraft();
+  }
+
+  onRowClienteChange(row: TextDraftRow, cliente: string): void {
+    row.cliente = cliente;
+    row.proyecto = '';
+    row.gestionId = '';
+    row.solicitud = '';
+    row.gestionOptions = [];
+    this.draftMessage = '';
     this.persistDraft();
     this.clienteChange.emit(cliente);
+    this.loadGestionesForRow(row, true);
   }
 
-  onGestionChange(gestionId: string, notify = true): void {
-    const option = this.defaultSolicitudOptions.find((item) => item.id === gestionId);
-    this.draft.gestionId = gestionId;
-    this.draft.solicitud = option?.requestValue || option?.name || gestionId;
-    this.persistDraft();
-    if (notify) this.gestionChange.emit(gestionId);
-  }
-
-  addRow(): void {
-    const suggestedTimes = this.suggestedTimesForNewRow();
-    this.draft.rows.push({
-      horaIni: suggestedTimes.horaIni,
-      horaFin: suggestedTimes.horaFin,
-      desc: '',
-      observacion: '',
-    });
-    this.persistDraft();
+  onRowGestionChange(row: TextDraftRow, gestionId: string): void {
+    const option = row.gestionOptions.find((item) => item.id === gestionId);
+    row.gestionId = gestionId;
+    row.solicitud = option?.requestValue || option?.name || gestionId;
+    row.proyecto = option?.project || row.proyecto;
     this.draftMessage = '';
+    this.persistDraft();
+    this.rememberGestion(row.cliente, gestionId);
+    this.gestionChange.emit(gestionId);
+  }
+
+  onRowChange(): void {
+    this.draftMessage = '';
+    this.persistDraft();
   }
 
   removeRow(index: number): void {
-    this.draft.rows.splice(index, 1);
-    if (!this.draft.rows.length) this.addRow();
-    this.persistDraft();
+    this.rows.splice(index, 1);
     this.draftMessage = '';
-  }
-
-  onDraftChange(): void {
     this.persistDraft();
-    this.draftMessage = '';
   }
 
   createDraftList(): void {
-    const draftRecords = this.toRecords();
-    if (!draftRecords.length) {
-      this.draftMessage =
-        'Completa al menos una fila con fecha, cliente, gestión, horas válidas y descripción.';
+    const errors = this.rows.flatMap((row, index) =>
+      this.baseRowErrors(row).map((error) => `Linea ${index + 1}: ${error}`),
+    );
+    if (!this.rows.length) errors.push('Pega y procesa al menos una actividad.');
+    if (errors.length) {
+      this.parseErrors = errors;
+      this.draftMessage = '';
       return;
     }
-    const records = [...this.existingRecords, ...draftRecords];
+
+    const records = [...this.existingRecords, ...this.rows.map((row) => this.toRecord(row))];
     this.recordsChange.emit(records);
-    this.resetRowsAfterCreate(draftRecords.at(-1)!);
-    this.draftMessage = `${draftRecords.length} registro(s) agregado(s) al borrador.`;
+    this.rows = [];
+    this.rawText = '';
+    this.parseErrors = [];
+    this.draftMessage = 'Borrador agregado a la vista previa.';
     this.persistDraft();
   }
 
   clear(): void {
-    this.draft = this.emptyDraft();
+    this.rawText = '';
+    this.rows = [];
+    this.parseErrors = [];
     this.draftMessage = '';
     this.persistDraft();
     this.recordsChange.emit([]);
   }
 
-  clienteOptions(): UiSelectOption[] {
+  clienteOptions(currentValue = ''): UiSelectOption[] {
+    const values = this.withCurrentValue(this.clientes, currentValue);
     return [
       { value: '', label: 'Seleccione un cliente' },
-      ...this.clientes.map((cliente) => ({ value: cliente, label: cliente })),
+      ...values.map((cliente) => ({ value: cliente, label: cliente })),
     ];
   }
 
-  gestionOptions(): UiSelectOption[] {
-    return [
-      { value: '', label: 'Seleccione una gestión' },
-      ...this.defaultSolicitudOptions.map((item) => ({ value: item.id, label: item.name })),
-    ];
-  }
-
-  calcHoras(start: string, end: string): string {
-    const diff = Math.max(0, this.diffMinutes(start, end));
-    return String(Number((diff / 60).toFixed(2)));
-  }
-
-  rowErrors(row: ManualDraftRow): string[] {
-    if (!this.rowHasInput(row)) return [];
-    const errors: string[] = [];
-    if (!this.draft.fecha) errors.push('Selecciona una fecha.');
-    if (!this.draft.cliente) errors.push('Selecciona un cliente.');
-    if (!this.draft.gestionId) errors.push('Selecciona una gestión.');
-    if (!this.draft.tipoHora) errors.push('Selecciona tipo de hora.');
-    if (!row.horaIni) errors.push('Indica hora inicio.');
-    if (!row.horaFin) errors.push('Indica hora fin.');
-    if (row.horaIni && row.horaFin && this.diffMinutes(row.horaIni, row.horaFin) <= 0) {
-      errors.push('La hora fin debe ser mayor a la hora inicio.');
+  gestionOptions(row: TextDraftRow): UiSelectOption[] {
+    const values = row.gestionOptions.map((item) => ({
+      value: item.id,
+      label: item.name,
+    }));
+    if (row.gestionId && !values.some((option) => option.value === row.gestionId)) {
+      values.unshift({ value: row.gestionId, label: row.solicitud || row.gestionId });
     }
-    if (!row.desc.trim()) errors.push('Agrega la descripción.');
+    return [{ value: '', label: 'Seleccione una gestión' }, ...values];
+  }
+
+  tipoHoraSelectOptions(currentValue = ''): UiSelectOption[] {
+    const options = [...this.tipoHoraOptions];
+    if (currentValue && !options.some((option) => option.value === currentValue)) {
+      options.unshift({ value: currentValue, label: currentValue });
+    }
+    return [{ value: '', label: 'Seleccione tipo de hora' }, ...options];
+  }
+
+  rowErrors(row: TextDraftRow): string[] {
+    return [...this.baseRowErrors(row), ...this.selectRowErrors(row)];
+  }
+
+  private baseRowErrors(row: TextDraftRow): string[] {
+    const errors: string[] = [];
+    if (!row.fecha) errors.push('fecha pendiente');
+    if (!row.horaIni) errors.push('hora inicio pendiente');
+    if (!row.horaFin) errors.push('hora fin pendiente');
+    if (!row.horas || Number(row.horas) <= 0) errors.push('horas invalidas');
+    if (!row.desc.trim()) errors.push('descripcion pendiente');
     return errors;
   }
 
-  private loadDraft(): ManualDraft {
+  private selectRowErrors(row: TextDraftRow): string[] {
+    const errors: string[] = [];
+    if (!row.cliente) errors.push('cliente pendiente');
+    if (!row.gestionId) errors.push('gestion pendiente');
+    if (!row.tipoHora) errors.push('tipo de hora pendiente');
+    return errors;
+  }
+
+  private restoreDraft(): void {
     try {
       const stored = localStorage.getItem(this.storageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored) as Partial<ManualDraft>;
-        return {
-          ...this.emptyDraft(),
-          ...parsed,
-          rows: parsed.rows?.length ? parsed.rows : this.emptyDraft().rows,
-        };
-      }
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as Partial<StoredTextDraft>;
+      this.rawText = parsed.rawText || '';
+      this.rows = Array.isArray(parsed.rows) ? parsed.rows.map((row) => this.createRow(row)) : [];
+      this.rows.forEach((row) => this.loadGestionesForRow(row, false));
     } catch {
       localStorage.removeItem(this.storageKey);
     }
-    return this.emptyDraft();
   }
 
   private persistDraft(): void {
-    localStorage.setItem(this.storageKey, JSON.stringify(this.draft));
+    const rows = this.rows.map(({ gestionOptions, loadingGestiones, ...row }) => row);
+    if (!this.rawText.trim() && !rows.length) {
+      localStorage.removeItem(this.storageKey);
+      return;
+    }
+    localStorage.setItem(this.storageKey, JSON.stringify({ rawText: this.rawText, rows }));
   }
 
-  private toRecords(): TimeRecord[] {
-    return this.draft.rows
-      .filter((row) => this.canCreateRecord(row))
-      .map((row) => {
-        const description = row.desc.trim();
-        return {
-          fecha: this.draft.fecha,
-          horaIni: row.horaIni,
-          horaFin: row.horaFin,
-          horas: this.calcHoras(row.horaIni, row.horaFin),
-          desc: description,
-          observacion: row.observacion.trim() || description,
-          cliente: this.draft.cliente,
-          proyecto: '',
-          solicitud: this.draft.solicitud,
-          gestionId: this.draft.gestionId,
-          tipoHora: this.draft.tipoHora || 'Laboral',
-        } satisfies TimeRecord;
-      });
-  }
-
-  private canCreateRecord(row: ManualDraftRow): boolean {
-    return this.rowHasInput(row) && this.rowErrors(row).length === 0;
-  }
-
-  private rowHasInput(row: ManualDraftRow): boolean {
-    return !!(
-      row.desc.trim() ||
-      row.observacion.trim() ||
-      (row.horaIni && row.horaFin && this.diffMinutes(row.horaIni, row.horaFin) <= 0)
-    );
-  }
-
-  private diffMinutes(start: string, end: string): number {
-    const [startHour, startMinute] = start.split(':').map(Number);
-    const [endHour, endMinute] = end.split(':').map(Number);
-    if (![startHour, startMinute, endHour, endMinute].every(Number.isFinite)) return 0;
-    return endHour * 60 + endMinute - (startHour * 60 + startMinute);
-  }
-
-  private emptyDraft(): ManualDraft {
+  private createRow(record: Partial<TimeRecord & TextDraftRow>): TextDraftRow {
+    const gestionOptions =
+      record.cliente === this.defaultCliente && this.defaultSolicitudOptions.length
+        ? this.defaultSolicitudOptions
+        : [];
+    const gestionId = record.gestionId || '';
+    const option = gestionOptions.find((item) => item.id === gestionId);
     return {
-      fecha: this.todayInputValue(),
-      cliente: this.defaultCliente,
-      gestionId: this.defaultGestionId,
-      solicitud:
-        this.defaultSolicitudOptions.find((item) => item.id === this.defaultGestionId)
-          ?.requestValue || '',
-      tipoHora: this.tipoHoraOptions[0]?.value || 'Laboral',
-      rows: [{ horaIni: '07:30', horaFin: '09:00', desc: '', observacion: '' }],
+      id: record.id || this.rowId(),
+      fecha: record.fecha || '',
+      horaIni: record.horaIni || '',
+      horaFin: record.horaFin || '',
+      horas: record.horas || this.domain.calcHoras(record.horaIni || '', record.horaFin || ''),
+      desc: record.desc || '',
+      observacion: record.observacion || record.desc || '',
+      cliente: record.cliente || '',
+      proyecto: record.proyecto || option?.project || '',
+      gestionId,
+      solicitud: record.solicitud || option?.requestValue || option?.name || '',
+      tipoHora: record.tipoHora || '',
+      gestionOptions,
+      loadingGestiones: false,
     };
   }
 
-  private todayInputValue(): string {
-    const today = new Date();
-    const day = String(today.getDate()).padStart(2, '0');
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const year = today.getFullYear();
-    return `${year}-${month}-${day}`;
+  private loadGestionesForRow(row: TextDraftRow, selectFirst: boolean): void {
+    if (!row.cliente) return;
+    if (row.cliente === this.defaultCliente && this.defaultSolicitudOptions.length) {
+      row.gestionOptions = this.defaultSolicitudOptions;
+      if (selectFirst || !row.gestionId) this.selectPreferredGestion(row);
+      this.persistDraft();
+      return;
+    }
+
+    row.loadingGestiones = true;
+    this.options.proyectos(row.cliente).subscribe({
+      next: (proyectos) => {
+        const proyecto = row.proyecto || proyectos[0] || '';
+        row.proyecto = proyecto;
+        this.options.solicitudOptions(row.cliente, proyecto).subscribe({
+          next: (solicitudes) => {
+            row.gestionOptions = solicitudes.map((solicitud) => ({
+              ...solicitud,
+              client: solicitud.client || row.cliente,
+              project: solicitud.project || proyecto,
+            }));
+            row.loadingGestiones = false;
+            if (selectFirst || !row.gestionId) this.selectPreferredGestion(row);
+            this.persistDraft();
+          },
+          error: () => {
+            row.loadingGestiones = false;
+            this.persistDraft();
+          },
+        });
+      },
+      error: () => {
+        row.loadingGestiones = false;
+        this.persistDraft();
+      },
+    });
   }
 
-  private suggestedTimesForNewRow(): Pick<ManualDraftRow, 'horaIni' | 'horaFin'> {
-    const lastEnd = this.draft.rows.at(-1)?.horaFin;
-    const suggestedStart = this.isTimeValue(lastEnd) ? lastEnd : '08:00';
-    return this.suggestedTimesFromStart(suggestedStart);
-  }
-
-  private suggestedTimesFromStart(
-    suggestedStart: string,
-  ): Pick<ManualDraftRow, 'horaIni' | 'horaFin'> {
-    const currentTime = this.currentTimeInputValue();
-    const suggestedEnd =
-      this.diffMinutes(suggestedStart, currentTime) > 0
-        ? currentTime
-        : this.nextHour(suggestedStart);
+  private toRecord(row: TextDraftRow): TimeRecord {
+    const description = row.desc.trim();
     return {
-      horaIni: suggestedStart,
-      horaFin: suggestedEnd,
+      fecha: row.fecha,
+      horaIni: row.horaIni,
+      horaFin: row.horaFin,
+      horas: row.horas,
+      desc: description,
+      observacion: row.observacion.trim() || description,
+      cliente: row.cliente,
+      proyecto: row.proyecto,
+      solicitud: row.solicitud,
+      gestionId: row.gestionId,
+      tipoHora: row.tipoHora,
     };
   }
 
-  private syncEmptyRowsWithExistingRecords(): void {
-    if (!this.existingRecords.length) return;
-    if (this.draft.rows.some((row) => this.rowHasInput(row))) return;
-    const latestRecord = this.latestRecord(this.existingRecords);
-    if (!latestRecord?.horaFin) return;
-    this.draft.rows = [this.emptyRowFromStart(latestRecord.horaFin)];
-    this.persistDraft();
+  private firstTipoHora(): string {
+    return this.tipoHoraOptions.find((option) => !option.disabled)?.value || '';
   }
 
-  private resetRowsAfterCreate(lastRecord: TimeRecord): void {
-    this.draft.rows = [this.emptyRowFromStart(lastRecord.horaFin)];
+  private selectPreferredGestion(row: TextDraftRow): void {
+    if (!row.cliente || !row.gestionOptions.length) return;
+    const remembered = this.rememberedGestion(row.cliente);
+    const option =
+      row.gestionOptions.find((item) => item.id === remembered) ||
+      row.gestionOptions.find((item) => item.id === row.gestionId) ||
+      row.gestionOptions[0];
+    if (option) this.onRowGestionChange(row, option.id);
   }
 
-  private emptyRowFromStart(start: string): ManualDraftRow {
-    const suggestedTimes = this.suggestedTimesFromStart(this.isTimeValue(start) ? start : '08:00');
-    return {
-      horaIni: suggestedTimes.horaIni,
-      horaFin: suggestedTimes.horaFin,
-      desc: '',
-      observacion: '',
-    };
+  private rememberedGestion(cliente: string): string {
+    try {
+      const stored = localStorage.getItem(this.lastGestionStorageKey);
+      const parsed = stored ? (JSON.parse(stored) as Record<string, string>) : {};
+      return parsed[cliente] || '';
+    } catch {
+      localStorage.removeItem(this.lastGestionStorageKey);
+      return '';
+    }
   }
 
-  private latestRecord(records: TimeRecord[]): TimeRecord | undefined {
-    return [...records]
-      .sort((a, b) => {
-        const dateComparison = String(a.fecha || '').localeCompare(String(b.fecha || ''));
-        if (dateComparison !== 0) return dateComparison;
-        const startComparison = this.minutesOf(a.horaIni) - this.minutesOf(b.horaIni);
-        if (startComparison !== 0) return startComparison;
-        return this.minutesOf(a.horaFin) - this.minutesOf(b.horaFin);
-      })
-      .at(-1);
+  private rememberGestion(cliente: string, gestionId: string): void {
+    if (!cliente || !gestionId) return;
+    try {
+      const stored = localStorage.getItem(this.lastGestionStorageKey);
+      const parsed = stored ? (JSON.parse(stored) as Record<string, string>) : {};
+      localStorage.setItem(
+        this.lastGestionStorageKey,
+        JSON.stringify({ ...parsed, [cliente]: gestionId }),
+      );
+    } catch {
+      localStorage.removeItem(this.lastGestionStorageKey);
+    }
   }
 
-  private minutesOf(value: string): number {
-    const [hour, minute] = String(value || '')
-      .split(':')
-      .map(Number);
-    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return 0;
-    return hour * 60 + minute;
+  private withCurrentValue(values: readonly string[], currentValue: string): string[] {
+    const unique = new Set(values.filter(Boolean));
+    if (currentValue) unique.add(currentValue);
+    return [...unique];
   }
 
-  private currentTimeInputValue(): string {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  }
-
-  private isTimeValue(value: string | undefined): value is string {
-    return /^\d{2}:\d{2}$/.test(value || '');
-  }
-
-  private nextHour(value: string): string {
-    const [hour, minute] = value.split(':').map(Number);
-    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return '09:00';
-    const date = new Date(2000, 0, 1, hour, minute);
-    date.setHours(date.getHours() + 1);
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  private rowId(): string {
+    return `draft-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 }
