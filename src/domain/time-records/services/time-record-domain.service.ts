@@ -1,7 +1,5 @@
 import { TimeRecordApiBody } from '../models/time-record-api.model';
-import {
-  AdvancedTemplateValues,
-} from '../models/management-template.model';
+import { AdvancedTemplateValues } from '../models/management-template.model';
 import {
   TimeRecord,
   DayGroup,
@@ -57,6 +55,7 @@ export class TimeRecordDomainService {
    * Parsea texto en formato:
    *   26/05/2026
    *   7:30AM-9:00AM | Descripción
+   *   -10:30AM | Descripción con inicio heredado de la línea anterior
    */
   parseText(texto: string): TimeRecord[] {
     const lineas = texto
@@ -66,6 +65,7 @@ export class TimeRecordDomainService {
       .filter((l) => l.trim());
     const registros: TimeRecord[] = [];
     let fechaActual: string | null = null;
+    let horaFinAnterior = '';
 
     for (const linea of lineas) {
       const trimmed = linea.trim();
@@ -75,32 +75,15 @@ export class TimeRecordDomainService {
         const [, d, m, y] = fechaMatch;
         const candidate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         fechaActual = this.validation.isValidDateValue(candidate) ? candidate : null;
+        horaFinAnterior = '';
         continue;
       }
 
       if (!fechaActual) continue;
 
-      const horaMatch = trimmed.match(
-        /^(\d{1,2}):(\d{2})(AM|PM)-(\d{1,2}):(\d{2})(AM|PM)(?:\s*\|\s*|\s+)(.+)$/i,
-      );
-      if (!horaMatch) continue;
-
-      let [, ih, im, iampm, fh, fm, fampm, resto] = horaMatch;
-      let ihN = parseInt(ih),
-        fhN = parseInt(fh);
-      const imN = parseInt(im),
-        fmN = parseInt(fm);
-
-      if (ihN < 1 || ihN > 12 || fhN < 1 || fhN > 12 || imN > 59 || fmN > 59) continue;
-
-      if (iampm.toUpperCase() === 'PM' && ihN !== 12) ihN += 12;
-      if (iampm.toUpperCase() === 'AM' && ihN === 12) ihN = 0;
-      if (fampm.toUpperCase() === 'PM' && fhN !== 12) fhN += 12;
-      if (fampm.toUpperCase() === 'AM' && fhN === 12) fhN = 0;
-
-      const horaIni = `${String(ihN).padStart(2, '0')}:${im}`;
-      const horaFin = `${String(fhN).padStart(2, '0')}:${fm}`;
-      if (!this.validation.isValidTimeValue(horaIni) || !this.validation.isValidTimeValue(horaFin)) continue;
+      const parsedLine = this.parseImportTimeLine(trimmed, horaFinAnterior);
+      if (!parsedLine) continue;
+      const { horaIni, horaFin, resto } = parsedLine;
 
       const mins = this.validation.diffMinutes(horaIni, horaFin);
       if (mins <= 0 || mins > this.maxHoursPerRecord() * 60) continue;
@@ -117,6 +100,7 @@ export class TimeRecordDomainService {
         desc,
         observacion: desc,
       });
+      horaFinAnterior = horaFin;
     }
 
     return registros;
@@ -130,6 +114,7 @@ export class TimeRecordDomainService {
       .filter((l) => l.trim());
     const errors: string[] = [];
     let fechaActual = '';
+    let horaFinAnterior = '';
 
     lineas.forEach((linea, index) => {
       const lineNumber = index + 1;
@@ -142,9 +127,11 @@ export class TimeRecordDomainService {
         if (!this.validation.isValidDateValue(candidate)) {
           errors.push(`Linea ${lineNumber}: fecha invalida`);
           fechaActual = '';
+          horaFinAnterior = '';
           return;
         }
         fechaActual = candidate;
+        horaFinAnterior = '';
         return;
       }
 
@@ -153,28 +140,38 @@ export class TimeRecordDomainService {
         return;
       }
 
-      const horaMatch = trimmed.match(
-        /^(\d{1,2}):(\d{2})(AM|PM)-(\d{1,2}):(\d{2})(AM|PM)(?:\s*\|\s*|\s+)(.+)$/i,
-      );
-      if (!horaMatch) {
-        errors.push(`Linea ${lineNumber}: usa formato 7:30AM-9:00AM descripcion`);
+      if (this.isShortImportTimeLine(trimmed) && !horaFinAnterior) {
+        errors.push(`Linea ${lineNumber}: agrega un rango completo antes de usar inicio heredado`);
         return;
       }
 
-      const [, ih, im, iampm, fh, fm, fampm, resto] = horaMatch;
-      const normalized = this.normalizeMeridianRange(ih, im, iampm, fh, fm, fampm);
-      if (!normalized) {
+      const parsedLine = this.parseImportTimeLine(trimmed, horaFinAnterior);
+      if (!parsedLine) {
+        errors.push(
+          `Linea ${lineNumber}: usa formato 7:30AM-9:00AM descripcion o -10:30AM descripcion`,
+        );
+        return;
+      }
+
+      const { horaIni, horaFin, resto } = parsedLine;
+      if (
+        !this.validation.isValidTimeValue(horaIni) ||
+        !this.validation.isValidTimeValue(horaFin)
+      ) {
         errors.push(`Linea ${lineNumber}: hora invalida`);
         return;
       }
 
-      const horas = this.calcHoras(normalized.horaIni, normalized.horaFin);
+      const horas = this.calcHoras(horaIni, horaFin);
       if (!horas || Number(horas) <= 0) {
         errors.push(`Linea ${lineNumber}: la duracion debe ser mayor a 0`);
+        return;
       }
       if (!resto.trim()) {
         errors.push(`Linea ${lineNumber}: agrega descripcion`);
+        return;
       }
+      horaFinAnterior = horaFin;
     });
 
     return errors;
@@ -193,12 +190,15 @@ export class TimeRecordDomainService {
       .map(([fecha, items]) => {
         const totalHoras = items.reduce(
           (sum, { record }) =>
-            this.isCountableHour(record.tipoHora)
-              ? sum + parseFloat(record.horas || '0')
-              : sum,
+            this.isCountableHour(record.tipoHora) ? sum + parseFloat(record.horas || '0') : sum,
           0,
         );
-        return { fecha, records: items, totalHoras, alerta: this.hoursPolicy.alert(totalHoras, fecha) };
+        return {
+          fecha,
+          records: items,
+          totalHoras,
+          alerta: this.hoursPolicy.alert(totalHoras, fecha),
+        };
       });
   }
 
@@ -290,22 +290,50 @@ export class TimeRecordDomainService {
     fm: string,
     fampm: string,
   ): { horaIni: string; horaFin: string } | null {
-    let ihN = parseInt(ih),
-      fhN = parseInt(fh);
-    const imN = parseInt(im),
-      fmN = parseInt(fm);
-
-    if (ihN < 1 || ihN > 12 || fhN < 1 || fhN > 12 || imN > 59 || fmN > 59) return null;
-
-    if (iampm.toUpperCase() === 'PM' && ihN !== 12) ihN += 12;
-    if (iampm.toUpperCase() === 'AM' && ihN === 12) ihN = 0;
-    if (fampm.toUpperCase() === 'PM' && fhN !== 12) fhN += 12;
-    if (fampm.toUpperCase() === 'AM' && fhN === 12) fhN = 0;
+    const horaIni = this.normalizeMeridianTime(ih, im, iampm);
+    const horaFin = this.normalizeMeridianTime(fh, fm, fampm);
+    if (!horaIni || !horaFin) return null;
 
     return {
-      horaIni: `${String(ihN).padStart(2, '0')}:${im}`,
-      horaFin: `${String(fhN).padStart(2, '0')}:${fm}`,
+      horaIni,
+      horaFin,
     };
+  }
+
+  private parseImportTimeLine(
+    line: string,
+    inheritedStart: string,
+  ): { horaIni: string; horaFin: string; resto: string } | null {
+    const fullMatch = line.match(
+      /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)(?:\s*\|\s*|\s+)(.+)$/i,
+    );
+    if (fullMatch) {
+      const [, ih, im, iampm, fh, fm, fampm, resto] = fullMatch;
+      const normalized = this.normalizeMeridianRange(ih, im, iampm, fh, fm, fampm);
+      return normalized ? { ...normalized, resto } : null;
+    }
+
+    const shortMatch = line.match(/^-\s*(\d{1,2}):(\d{2})\s*(AM|PM)(?:\s*\|\s*|\s+)(.+)$/i);
+    if (!shortMatch || !inheritedStart) return null;
+    const [, fh, fm, fampm, resto] = shortMatch;
+    const horaFin = this.normalizeMeridianTime(fh, fm, fampm);
+    return horaFin ? { horaIni: inheritedStart, horaFin, resto } : null;
+  }
+
+  private isShortImportTimeLine(line: string): boolean {
+    return /^-\s*\d{1,2}:\d{2}\s*(AM|PM)(?:\s*\|\s*|\s+).+$/i.test(line);
+  }
+
+  private normalizeMeridianTime(hour: string, minute: string, meridian: string): string | null {
+    let hourNumber = parseInt(hour);
+    const minuteNumber = parseInt(minute);
+
+    if (hourNumber < 1 || hourNumber > 12 || minuteNumber > 59) return null;
+
+    if (meridian.toUpperCase() === 'PM' && hourNumber !== 12) hourNumber += 12;
+    if (meridian.toUpperCase() === 'AM' && hourNumber === 12) hourNumber = 0;
+
+    return `${String(hourNumber).padStart(2, '0')}:${minute}`;
   }
 
   private normalizeText(value: string): string {

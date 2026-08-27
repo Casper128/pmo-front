@@ -26,14 +26,14 @@ export class ConfigurationPageComponent implements OnInit {
   draftFields: AdvancedFieldConfiguration[] = [];
   selectedFieldKey: AdvancedFieldKey = 'tipoActividad';
   draftSettings: WorkSettings = {
-    mondayThursdayHours: 9,
+    mondayThursdayHours: 8.5,
     fridayHours: 8,
     dailyHours: {
       0: 0,
-      1: 9,
-      2: 9,
-      3: 9,
-      4: 9,
+      1: 8.5,
+      2: 8.5,
+      3: 8.5,
+      4: 8.5,
       5: 8,
       6: 0,
     },

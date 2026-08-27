@@ -1,7 +1,3 @@
-alter table public.pmo_app_settings
-  add column if not exists daily_hours jsonb not null
-  default '{"0":0,"1":8.5,"2":8.5,"3":8.5,"4":8.5,"5":8,"6":0}'::jsonb;
-
 create or replace function public.replace_pmo_configuration(field_config jsonb, work_config jsonb)
 returns void
 language plpgsql
@@ -9,9 +5,30 @@ security definer
 set search_path = public
 as $$
 begin
-  delete from public.pmo_field_options;
+  delete from public.pmo_field_options
+  where field_key in (
+    'tipoActividad',
+    'causa',
+    'complejidad',
+    'impacto',
+    'equipo',
+    'modoActuacion',
+    'lenguaje',
+    'tipoHora',
+    'prefijo',
+    'objetoRicef',
+    'categoria'
+  );
 
-  insert into public.pmo_field_options (field_key, option_value, option_label, active, sort_order, is_default, updated_at)
+  insert into public.pmo_field_options (
+    field_key,
+    option_value,
+    option_label,
+    active,
+    sort_order,
+    is_default,
+    updated_at
+  )
   select
     field->>'key',
     option->>'value',
@@ -22,15 +39,39 @@ begin
     now()
   from jsonb_array_elements(field_config) field
   cross join lateral jsonb_array_elements(field->'options') option
-  where field->>'key' in ('tipoActividad','causa','complejidad','impacto','equipo','modoActuacion','lenguaje','tipoHora','prefijo','objetoRicef','categoria')
+  where field->>'key' in (
+    'tipoActividad',
+    'causa',
+    'complejidad',
+    'impacto',
+    'equipo',
+    'modoActuacion',
+    'lenguaje',
+    'tipoHora',
+    'prefijo',
+    'objetoRicef',
+    'categoria'
+  )
     and nullif(trim(option->>'value'), '') is not null;
 
-  insert into public.pmo_app_settings (id, monday_thursday_hours, friday_hours, daily_hours, max_daily_labor_hours, max_hours_per_record, updated_at)
+  insert into public.pmo_app_settings (
+    id,
+    monday_thursday_hours,
+    friday_hours,
+    daily_hours,
+    max_daily_labor_hours,
+    max_hours_per_record,
+    updated_at
+  )
   values (
     'global',
     (work_config->>'mondayThursdayHours')::numeric,
     (work_config->>'fridayHours')::numeric,
-    coalesce(work_config->'dailyHours', work_config->'daily_hours', '{"0":0,"1":8.5,"2":8.5,"3":8.5,"4":8.5,"5":8,"6":0}'::jsonb),
+    coalesce(
+      work_config->'dailyHours',
+      work_config->'daily_hours',
+      '{"0":0,"1":8.5,"2":8.5,"3":8.5,"4":8.5,"5":8,"6":0}'::jsonb
+    ),
     (work_config->>'maxDailyLaborHours')::numeric,
     (work_config->>'maxHoursPerRecord')::numeric,
     now()

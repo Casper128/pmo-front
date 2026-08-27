@@ -24,16 +24,7 @@
       <div class="grid gap-4">
         <aside class="space-y-4 xl xl:top-4 xl:self-start">
           <app-import-text-input
-            [clientes]="clientes()"
-            [tipoHoraOptions]="tipoHoraOptions()"
-            [defaultSolicitudOptions]="solicitudOptions()"
-            [defaultCliente]="defaultCliente()"
-            [defaultGestionId]="defaultGestionId()"
             [existingRecords]="records()"
-            [loadingClientes]="loadingClients()"
-            [loadingGestiones]="loadingDemand()"
-            (clienteChange)="onDefaultClienteChange($event)"
-            (gestionChange)="onDefaultGestionChange($event)"
             (recordsChange)="onDraftRecordsChange($event)"
           />
         </aside>
