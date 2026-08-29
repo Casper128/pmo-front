@@ -1,0 +1,163 @@
+:host {
+  display: block;
+}
+
+.consultant-stats {
+  position: relative;
+}
+
+.consultant-stats::before,
+.consultant-stats::after {
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 999px;
+  content: '';
+}
+
+.consultant-stats::before {
+  top: 6rem;
+  right: 8vw;
+  width: 22rem;
+  height: 22rem;
+  background: rgb(23 105 170 / 0.13);
+  box-shadow: -58vw 18vh 0 3rem rgb(15 118 110 / 0.1);
+}
+
+.consultant-stats::after {
+  right: 18vw;
+  bottom: 8vh;
+  width: 16rem;
+  height: 16rem;
+  background: rgb(183 121 31 / 0.08);
+}
+
+.stats-filter-panel {
+  background: rgb(255 255 255 / 0.7);
+  box-shadow:
+    9px 11px 24px rgb(21 32 51 / 0.1),
+    -8px -8px 20px rgb(255 255 255 / 0.72),
+    inset 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+.stats-chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 1280px) {
+  .stats-chart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+:host ::ng-deep .consultant-stats app-ui-page-header header,
+:host ::ng-deep .consultant-stats app-analytics-chart-card article,
+:host ::ng-deep .consultant-stats > .ui-page-content > .ui-surface:not(.stats-filter-panel) {
+  border-color: rgb(255 255 255 / 0.72);
+  background: rgb(255 255 255 / 0.62);
+  box-shadow:
+    10px 12px 28px rgb(21 32 51 / 0.11),
+    -8px -8px 22px rgb(255 255 255 / 0.68),
+    inset 0 1px 0 rgb(255 255 255 / 0.8);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  backdrop-filter: blur(18px) saturate(1.08);
+}
+
+:host ::ng-deep .consultant-stats app-ui-metric-card article {
+  border-color: rgb(255 255 255 / 0.76);
+  background: rgb(255 255 255 / 0.66);
+  box-shadow:
+    8px 10px 22px rgb(21 32 51 / 0.1),
+    -6px -6px 18px rgb(255 255 255 / 0.7),
+    inset 0 1px 0 rgb(255 255 255 / 0.82);
+  -webkit-backdrop-filter: blur(16px) saturate(1.06);
+  backdrop-filter: blur(16px) saturate(1.06);
+}
+
+:host ::ng-deep .consultant-stats app-analytics-chart-card article {
+  min-height: 100%;
+}
+
+:host ::ng-deep .consultant-stats app-analytics-chart-card article > div:first-child {
+  border-radius: 0.85rem;
+}
+
+:host ::ng-deep .consultant-stats .ui-control,
+:host ::ng-deep .consultant-stats .field-input {
+  border-color: rgb(185 198 212 / 0.9);
+  background: rgb(255 255 255 / 0.72);
+  box-shadow:
+    inset 3px 3px 7px rgb(21 32 51 / 0.08),
+    inset -3px -3px 7px rgb(255 255 255 / 0.76);
+}
+
+:host ::ng-deep .consultant-stats .ui-control--open,
+:host ::ng-deep .consultant-stats .ui-control:focus-within,
+:host ::ng-deep .consultant-stats .field-input:focus {
+  border-color: var(--ui-accent);
+  box-shadow:
+    0 0 0 3px var(--ui-focus),
+    inset 3px 3px 7px rgb(21 32 51 / 0.08),
+    inset -3px -3px 7px rgb(255 255 255 / 0.76);
+}
+
+:host ::ng-deep .consultant-stats .ui-menu-surface {
+  background: rgb(255 255 255 / 0.9);
+  -webkit-backdrop-filter: blur(18px) saturate(1.06);
+  backdrop-filter: blur(18px) saturate(1.06);
+}
+
+:host ::ng-deep .consultant-stats .ui-btn {
+  box-shadow:
+    5px 6px 14px rgb(21 32 51 / 0.11),
+    -4px -4px 12px rgb(255 255 255 / 0.64);
+}
+
+:host ::ng-deep .consultant-stats .ui-responsive-table th {
+  background: rgb(242 246 250 / 0.9);
+}
+
+:host ::ng-deep .consultant-stats .ui-responsive-table tbody tr:hover {
+  background: rgb(232 241 250 / 0.84);
+}
+
+:host-context([data-theme='dark']) .consultant-stats::before {
+  background: rgb(124 184 238 / 0.12);
+  box-shadow: -58vw 18vh 0 3rem rgb(95 208 194 / 0.08);
+}
+
+:host-context([data-theme='dark']) .consultant-stats::after {
+  background: rgb(244 198 107 / 0.07);
+}
+
+:host-context([data-theme='dark']) .stats-filter-panel,
+:host-context([data-theme='dark']) ::ng-deep .consultant-stats app-ui-page-header header,
+:host-context([data-theme='dark']) ::ng-deep .consultant-stats app-analytics-chart-card article,
+:host-context([data-theme='dark'])
+  ::ng-deep
+  .consultant-stats
+  > .ui-page-content
+  > .ui-surface:not(.stats-filter-panel),
+:host-context([data-theme='dark']) ::ng-deep .consultant-stats app-ui-metric-card article {
+  border-color: rgb(255 255 255 / 0.1);
+  background: rgb(32 43 61 / 0.72);
+  box-shadow:
+    9px 11px 24px rgb(0 0 0 / 0.28),
+    -5px -5px 14px rgb(255 255 255 / 0.035),
+    inset 0 1px 0 rgb(255 255 255 / 0.07);
+}
+
+:host-context([data-theme='dark']) ::ng-deep .consultant-stats .ui-control,
+:host-context([data-theme='dark']) ::ng-deep .consultant-stats .field-input {
+  border-color: rgb(82 97 118 / 0.9);
+  background: rgb(24 33 49 / 0.78);
+  box-shadow:
+    inset 3px 3px 7px rgb(0 0 0 / 0.3),
+    inset -3px -3px 7px rgb(255 255 255 / 0.035);
+}
+
+:host-context([data-theme='dark']) ::ng-deep .consultant-stats .ui-menu-surface {
+  background: rgb(32 43 61 / 0.94);
+}

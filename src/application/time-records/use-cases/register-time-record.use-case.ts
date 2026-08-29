@@ -58,6 +58,8 @@ export class RegisterTimeRecordUseCase {
     Object.entries(values).forEach(([key, value]) => {
       if (key === 'tipoHora') return;
       if (value === undefined || value === null || String(value).trim() === '') return;
+      if (key === 'funcional' && String(copy.funcional || '').trim()) return;
+      if (key === 'ricef' && String(copy.ricef || '').trim()) return;
       copy[key as AdvancedTemplateFieldKey] = String(value);
     });
     return copy;

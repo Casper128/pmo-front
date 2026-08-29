@@ -67,7 +67,14 @@
                   </p>
                   <p class="mt-1 text-sm font-bold text-blue-700">{{ item.record.horas }}h</p>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    class="ui-btn ui-btn-secondary min-h-9 px-3 py-2 text-xs"
+                    type="button"
+                    (click)="duplicateRecord.emit(item.index)"
+                  >
+                    Duplicar
+                  </button>
                   <button
                     class="ui-btn ui-btn-secondary min-h-9 px-3 py-2 text-xs"
                     type="button"
@@ -86,6 +93,14 @@
               </div>
 
               <p class="text-sm text-slate-700">{{ item.record.desc }}</p>
+              @if (item.record.funcional) {
+                <p class="text-xs font-bold text-blue-600">
+                  Funcional: {{ item.record.funcional }}
+                </p>
+              }
+              @if (item.record.ricef) {
+                <p class="text-xs font-bold text-blue-600">RICEF: {{ item.record.ricef }}</p>
+              }
 
               <div class="grid gap-2 sm:grid-cols-3">
                 <app-ui-select
@@ -212,6 +227,13 @@
                 <button
                   class="ui-btn ui-btn-secondary min-h-8 px-3 py-1.5 text-xs"
                   type="button"
+                  (click)="duplicateRecord.emit(item.index)"
+                >
+                  Duplicar
+                </button>
+                <button
+                  class="ui-btn ui-btn-secondary min-h-8 px-3 py-1.5 text-xs"
+                  type="button"
                   (click)="editRecord.emit(item.index)"
                 >
                   Editar
@@ -237,6 +259,14 @@
               >
                 {{ item.record.desc }}
               </p>
+              @if (item.record.funcional) {
+                <p class="mt-1 text-xs font-bold text-blue-600">
+                  Funcional: {{ item.record.funcional }}
+                </p>
+              }
+              @if (item.record.ricef) {
+                <p class="mt-1 text-xs font-bold text-blue-600">RICEF: {{ item.record.ricef }}</p>
+              }
             </div>
           </article>
         }

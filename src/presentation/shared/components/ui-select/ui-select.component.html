@@ -19,7 +19,6 @@
     [attr.aria-describedby]="descriptionId"
     [class.ui-control--error]="error"
     [class.ui-control--open]="open && !error"
-    [class.ring-4]="open"
     (click)="toggle()"
     (keydown)="onTriggerKeydown($event)"
     (blur)="onTouched()"

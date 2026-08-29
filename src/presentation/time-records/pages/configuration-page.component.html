@@ -117,7 +117,8 @@
                       max="24"
                       step="0.5"
                       [disabled]="!parameters.canManage()"
-                      [(ngModel)]="draftSettings.dailyHours[day.index]"
+                      [ngModel]="draftSettings.dailyHours[day.index]"
+                      (ngModelChange)="updateDailyHour(day.index, $event)"
                       [attr.aria-label]="'Horas esperadas para ' + day.label"
                     />
                   </label>

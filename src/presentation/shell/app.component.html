@@ -9,10 +9,8 @@
       </div>
     </section>
   } @else if (!auth.isLoggedIn()) {
-    <section class="grid min-h-screen place-items-center bg-[var(--ui-bg)] px-4 py-8">
-      <div
-        class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
-      >
+    <section class="ui-login-page grid min-h-screen place-items-center bg-transparent px-4 py-8">
+      <div class="ui-login-card w-full max-w-md p-6 sm:p-8">
         <form (ngSubmit)="login()">
           <div class="mb-8 flex items-center gap-3">
             <div class="ui-brand-mark size-11">PM</div>
@@ -70,10 +68,7 @@
         [class.w-20]="sidebarCollapsed()"
         [class.ui-sidebar--collapsed]="sidebarCollapsed()"
       >
-        <div
-          class="mb-6 flex items-center gap-2"
-          [class.justify-center]="sidebarCollapsed()"
-        >
+        <div class="mb-6 flex items-center gap-2" [class.justify-center]="sidebarCollapsed()">
           <div class="flex min-w-0 items-center gap-3">
             <div class="ui-brand-mark size-11 shrink-0">PM</div>
             <div class="min-w-0" [class.hidden]="sidebarCollapsed()">
@@ -156,7 +151,7 @@
       </div>
 
       <nav
-        class="fixed inset-x-0 bottom-0 z-30 grid auto-cols-fr grid-flow-col border-t border-slate-200 bg-white/95 px-2 py-2 text-xs font-bold text-slate-500 backdrop-blur lg:hidden"
+        class="fixed inset-x-0 bottom-0 z-30 grid auto-cols-fr grid-flow-col border-t border-white/70 bg-white/70 px-2 py-2 text-xs font-bold text-slate-500 backdrop-blur-xl lg:hidden"
         aria-label="Navegación principal"
       >
         @for (item of mobileNavItems; track item.route) {

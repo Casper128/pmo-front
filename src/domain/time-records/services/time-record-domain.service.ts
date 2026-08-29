@@ -55,6 +55,8 @@ export class TimeRecordDomainService {
    * Parsea texto en formato:
    *   26/05/2026
    *   7:30AM-9:00AM | Descripción
+   *   7:30AM-9:00AM | Descripción | Funcional opcional
+   *   7:30AM-9:00AM | Descripción | Funcional opcional | RICEF opcional
    *   -10:30AM | Descripción con inicio heredado de la línea anterior
    */
   parseText(texto: string): TimeRecord[] {
@@ -90,6 +92,8 @@ export class TimeRecordDomainService {
       const horas = mins > 0 ? (mins / 60).toFixed(1) : '0';
       const campos = resto.split('|').map((campo) => campo.trim());
       const desc = campos[0] || '';
+      const funcional = campos[1] || '';
+      const ricef = campos[2] || '';
 
       registros.push({
         ...this.configuredDefaults(),
@@ -98,6 +102,8 @@ export class TimeRecordDomainService {
         horaFin,
         horas,
         desc,
+        funcional,
+        ricef,
         observacion: desc,
       });
       horaFinAnterior = horaFin;
@@ -148,7 +154,7 @@ export class TimeRecordDomainService {
       const parsedLine = this.parseImportTimeLine(trimmed, horaFinAnterior);
       if (!parsedLine) {
         errors.push(
-          `Linea ${lineNumber}: usa formato 7:30AM-9:00AM descripcion o -10:30AM descripcion`,
+          `Linea ${lineNumber}: usa formato 7:30AM-9:00AM | descripcion | funcional opcional | RICEF opcional o -10:30AM | descripcion | funcional opcional | RICEF opcional`,
         );
         return;
       }
@@ -167,7 +173,8 @@ export class TimeRecordDomainService {
         errors.push(`Linea ${lineNumber}: la duracion debe ser mayor a 0`);
         return;
       }
-      if (!resto.trim()) {
+      const [desc] = resto.split('|').map((campo) => campo.trim());
+      if (!desc) {
         errors.push(`Linea ${lineNumber}: agrega descripcion`);
         return;
       }

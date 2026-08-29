@@ -10,6 +10,8 @@ export interface TimeRecord {
   solicitud: string;
   gestionId: string;
   tipoHora: string;
+  funcional?: string;
+  ricef?: string;
 }
 
 export const TIME_RECORD_DEFAULTS: Omit<

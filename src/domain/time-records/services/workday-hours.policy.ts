@@ -25,24 +25,24 @@ export class WorkdayHoursPolicy {
     const meta = this.expectedHoursForDate(fecha);
     if (total > meta)
       return {
-        color: '#DC2626',
-        bg: '#FEF2F2',
-        border: '#FECACA',
+        color: 'var(--ui-hours-danger)',
+        bg: 'var(--ui-hours-danger-bg)',
+        border: 'var(--ui-hours-danger-border)',
         icon: 'alert',
         label: `Excede ${meta}h`,
       };
     if (total === meta)
       return {
-        color: '#059669',
-        bg: '#ECFDF5',
-        border: '#A7F3D0',
+        color: 'var(--ui-hours-success)',
+        bg: 'var(--ui-hours-success-bg)',
+        border: 'var(--ui-hours-success-border)',
         icon: 'check',
         label: `Exacto ${meta}h`,
       };
     return {
-      color: '#D97706',
-      bg: '#FFFBEB',
-      border: '#FDE68A',
+      color: 'var(--ui-hours-pending)',
+      bg: 'var(--ui-hours-pending-bg)',
+      border: 'var(--ui-hours-pending-border)',
       icon: 'pending',
       label: `Faltan ${(meta - total).toFixed(1)}h`,
     };

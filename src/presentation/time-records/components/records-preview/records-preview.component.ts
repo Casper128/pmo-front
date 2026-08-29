@@ -34,6 +34,7 @@ export class RecordsPreviewComponent implements OnChanges {
   @Input() clientes: string[] = [];
   @Input() tipoHoraOptions: UiSelectOption[] = [];
   @Output() editRecord = new EventEmitter<number>();
+  @Output() duplicateRecord = new EventEmitter<number>();
   @Output() deleteRecord = new EventEmitter<number>();
   @Output() recordChange = new EventEmitter<{ index: number; record: TimeRecord }>();
   @Output() sendAll = new EventEmitter<void>();

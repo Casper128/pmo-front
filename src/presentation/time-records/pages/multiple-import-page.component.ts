@@ -486,6 +486,12 @@ export class MultipleImportPageComponent implements OnInit {
     this.modalVisible.set(true);
   }
 
+  onDuplicateDraftRecord(index: number): void {
+    const source = this.records()[index];
+    if (!source) return;
+    this.addRecordToDrafts({ ...source }, 'Registro duplicado en borradores.');
+  }
+
   onSaveEdit(updated: TimeRecord) {
     const recs = [...this.records()];
     const idx = this.editingIndex()!;
@@ -870,6 +876,11 @@ export class MultipleImportPageComponent implements OnInit {
     this.managementEditDraft.set(draft);
     this.managementEditVisible.set(true);
     this.refreshManagementEditValidation();
+  }
+
+  duplicateManagementReportToDraft(report: ManagementReport): void {
+    const record = this.managementReportToDraftRecord(report);
+    this.addRecordToDrafts(record, 'Reporte duplicado en borradores.');
   }
 
   openManagementDelete(report: ManagementReport): void {
@@ -1491,6 +1502,73 @@ export class MultipleImportPageComponent implements OnInit {
       return;
     }
     localStorage.setItem(this.pendingRecordsStorageKey, JSON.stringify(records));
+  }
+
+  private addRecordToDrafts(record: TimeRecord, message: string): void {
+    const draft = this.applyImportDefaults({
+      ...record,
+      horas: this.domain.calcHoras(record.horaIni, record.horaFin) || record.horas || '0',
+    });
+    const updatedRecords = this.sortedRecords([...this.records(), draft]);
+    const newIndex = this.findLastMatchingRecordIndex(updatedRecords, draft);
+    this.records.set(updatedRecords);
+    this.persistPendingRecords();
+    this.refreshGroups();
+    this.syncReportDatesFromRecords(updatedRecords);
+    this.resetSendTracking();
+    this.showPreview.set(true);
+    this.currentView.set('import');
+    if (newIndex >= 0) {
+      this.editingIndex.set(newIndex);
+      this.editingRecord.set({ ...updatedRecords[newIndex] });
+      this.modalVisible.set(true);
+    }
+    this.showAlert(message, 'success');
+  }
+
+  private managementReportToDraftRecord(report: ManagementReport): TimeRecord {
+    const fecha =
+      this.managementReportDate(report) || this.domain.normalizeDateValue(report.HoraInicio || '');
+    const horaIni = this.extractTimeValue(report.HoraInicio || report.fechaInicio || '');
+    const horaFin = this.extractTimeValue(report.HoraFin || '');
+    const gestion = this.managementOptionFromReport(report);
+    const solicitud = this.managementName(report);
+    const horas = this.domain.calcHoras(horaIni, horaFin) || String(report.tiempoRealHoras || '0');
+    return {
+      fecha,
+      horaIni,
+      horaFin,
+      horas,
+      desc: report.descripcionActividad || report.observacion || '',
+      observacion: report.observacion || report.descripcionActividad || '',
+      cliente: this.clientName(report) === 'Sin cliente' ? String(report.cliente || '') : this.clientName(report),
+      proyecto: String(report.proyecto || gestion?.project || ''),
+      solicitud: solicitud === 'Sin gestion' ? String(report.solicitud || '') : solicitud,
+      gestionId: gestion?.id || String(report.gestionDemanda || report.solicitud || ''),
+      tipoHora: report.tipoHora || this.parameters.defaultFor('tipoHora') || 'Laboral',
+      funcional: report.funcional || '',
+      ricef: report.objetoRicef || '',
+    };
+  }
+
+  private findLastMatchingRecordIndex(records: readonly TimeRecord[], target: TimeRecord): number {
+    for (let index = records.length - 1; index >= 0; index -= 1) {
+      if (this.sameDraftRecord(records[index], target)) return index;
+    }
+    return -1;
+  }
+
+  private sameDraftRecord(left: TimeRecord, right: TimeRecord): boolean {
+    return (
+      left.fecha === right.fecha &&
+      left.horaIni === right.horaIni &&
+      left.horaFin === right.horaFin &&
+      left.desc === right.desc &&
+      left.cliente === right.cliente &&
+      left.solicitud === right.solicitud &&
+      left.gestionId === right.gestionId &&
+      left.tipoHora === right.tipoHora
+    );
   }
 
   private sortedRecords(records: TimeRecord[]): TimeRecord[] {

@@ -1,4 +1,4 @@
-<div class="ui-page">
+<div class="ui-page consultant-stats">
   <div class="ui-page-content min-w-0 space-y-5">
     <app-ui-page-header
       eyebrow="Analítica personal"
@@ -16,7 +16,7 @@
       </button>
     </app-ui-page-header>
 
-    <section class="ui-surface p-5">
+    <section class="ui-surface stats-filter-panel p-5">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p class="text-[11px] font-bold uppercase tracking-widest text-blue-600">Filtros</p>
@@ -142,6 +142,119 @@
         />
       </section>
 
+      <section class="stats-chart-grid">
+        <app-analytics-chart-card
+          eyebrow="Tendencia"
+          title="Horas por periodo"
+          description="Evolución de horas según el rango seleccionado."
+          [data]="dailyTrend()"
+          type="line"
+          ariaLabel="Horas del consultor por periodo"
+          emptyMessage="Sin horas para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
+          eyebrow="Clientes"
+          title="Horas por cliente"
+          description="Distribución del esfuerzo por cliente."
+          [data]="clientBreakdown()"
+          type="doughnut"
+          ariaLabel="Horas del consultor por cliente"
+          emptyMessage="Sin clientes para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
+          eyebrow="Especialidad"
+          title="Horas por módulo"
+          description="Módulos con mayor dedicación."
+          [data]="moduleBreakdown()"
+          type="bar"
+          ariaLabel="Horas del consultor por módulo"
+          emptyMessage="Sin módulos para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
+          eyebrow="Actividad"
+          title="Horas por actividad"
+          description="Tipos de actividad más recurrentes."
+          [data]="activityBreakdown()"
+          type="bar"
+          ariaLabel="Horas del consultor por actividad"
+          emptyMessage="Sin actividades para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
+          eyebrow="Funcional"
+          title="Horas por funcional"
+          description="Concentración por responsable funcional."
+          [data]="functionalBreakdown()"
+          type="bar"
+          ariaLabel="Horas del consultor por funcional"
+          emptyMessage="Sin funcionales para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
+          eyebrow="Prefijos"
+          title="Horas por prefijo"
+          description="Necesidades, incidentes, servicios y proyectos."
+          [data]="prefixBreakdown()"
+          type="pie"
+          ariaLabel="Horas del consultor por prefijo"
+          emptyMessage="Sin prefijos para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
+          eyebrow="Clasificación"
+          title="Horas por tipo de hora"
+          description="Facturable, fábrica y no facturable."
+          [data]="hourTypeBreakdown()"
+          type="doughnut"
+          ariaLabel="Horas del consultor por tipo de hora"
+          emptyMessage="Sin tipos de hora para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
+          eyebrow="Tecnología"
+          title="Horas por tecnología"
+          description="Tecnologías con mayor presencia."
+          [data]="technologyBreakdown()"
+          type="bar"
+          ariaLabel="Horas del consultor por tecnología"
+          emptyMessage="Sin tecnologías para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
+          eyebrow="Categoría"
+          title="Horas por categoría"
+          description="Distribución por categoría registrada."
+          [data]="categoryBreakdown()"
+          type="bar"
+          ariaLabel="Horas del consultor por categoría"
+          emptyMessage="Sin categorías para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
+          eyebrow="Causa"
+          title="Horas por causa"
+          description="Lectura de causas reportadas."
+          [data]="causeBreakdown()"
+          type="bar"
+          ariaLabel="Horas del consultor por causa"
+          emptyMessage="Sin causas para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
+          eyebrow="Complejidad"
+          title="Horas por complejidad"
+          description="Distribución de esfuerzo por complejidad."
+          [data]="complexityBreakdown()"
+          type="bar"
+          ariaLabel="Horas del consultor por complejidad"
+          emptyMessage="Sin complejidad para graficar."
+          [configurable]="true"
+        />
+      </section>
+
       <section class="ui-surface">
         <div class="border-b border-blue-100 px-5 py-4">
           <p class="text-[11px] font-bold uppercase tracking-widest text-blue-600">Resumen</p>
@@ -222,6 +335,7 @@
                   <th class="px-4 py-3">Módulo / tecnología</th>
                   <th class="px-4 py-3">Clasificación</th>
                   <th class="px-4 py-3 text-right">Horas</th>
+                  <th class="px-4 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
@@ -284,10 +398,21 @@
                     <td data-label="Horas" class="px-4 py-3 text-right font-bold text-blue-700">
                       {{ formatHours(hours(record)) }}
                     </td>
+                    <td data-label="Acciones" class="px-4 py-3 text-right">
+                      <button
+                        class="ui-btn ui-btn-secondary min-h-9 px-3 py-2 text-xs"
+                        type="button"
+                        title="Crear borrador desde este registro"
+                        aria-label="Crear borrador desde este registro"
+                        (click)="duplicateReportedRecordToDraft(record)"
+                      >
+                        Duplicar
+                      </button>
+                    </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td class="px-4 py-12 text-center font-bold text-slate-400" colspan="6">
+                    <td class="px-4 py-12 text-center font-bold text-slate-400" colspan="7">
                       No hay registros que coincidan con los filtros.
                     </td>
                   </tr>

@@ -38,6 +38,7 @@
               [clientes]="clientes()"
               [tipoHoraOptions]="tipoHoraOptions()"
               (editRecord)="onEdit($event)"
+              (duplicateRecord)="onDuplicateDraftRecord($event)"
               (deleteRecord)="onDelete($event)"
               (recordChange)="onPreviewRecordChange($event)"
               (sendAll)="onSendAll()"
@@ -685,6 +686,37 @@
                             />
                           </svg>
                           <span class="sr-only">Editar</span>
+                        </button>
+                        <span class="mx-0.5 h-5 w-px bg-slate-200" aria-hidden="true"></span>
+                        <button
+                          class="ui-icon-btn border-0 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:bg-white disabled:text-slate-300"
+                          type="button"
+                          title="Duplicar como borrador"
+                          aria-label="Duplicar como borrador"
+                          (click)="duplicateManagementReportToDraft(report)"
+                        >
+                          <svg
+                            class="size-4 fill-none stroke-current"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            aria-hidden="true"
+                          >
+                            <rect
+                              x="8"
+                              y="8"
+                              width="11"
+                              height="11"
+                              rx="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                            <path
+                              d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                          <span class="sr-only">Duplicar como borrador</span>
                         </button>
                         <span class="mx-0.5 h-5 w-px bg-slate-200" aria-hidden="true"></span>
                         <button

@@ -23,7 +23,7 @@
       </summary>
       <div class="mt-3 overflow-x-auto rounded-lg bg-white p-3 font-mono text-[12px] shadow-sm">
         <p class="text-slate-800">26/05/2026</p>
-        <p>7:30AM-9:00AM | Desarrollo de ajuste FI</p>
+        <p>7:30AM-9:00AM | Desarrollo de ajuste FI | Funcional opcional | RICEF opcional</p>
         <p>-10:30AM | Revisión con usuario</p>
         <p>1:00PM-2:00PM | Retomar después de almuerzo</p>
         <p>-3:30PM | Pruebas y cierre</p>
@@ -35,8 +35,8 @@
       type="textarea"
       [rows]="8"
       [monospace]="true"
-      placeholder="26/05/2026&#10;7:30AM-9:00AM | Descripción de la actividad&#10;-10:30AM | Continúa desde 9:00AM&#10;1:00PM-2:00PM | Reinicia después de almuerzo"
-      hint="Usa -10:30AM para continuar desde la hora final anterior; escribe dos horas cuando quieras cortar la secuencia."
+      placeholder="26/05/2026&#10;7:30AM-9:00AM | Descripción de la actividad | Funcional opcional | RICEF opcional&#10;-10:30AM | Continúa desde 9:00AM&#10;1:00PM-2:00PM | Reinicia después de almuerzo"
+      hint="Agrega | Funcional | RICEF cuando quieras sobrescribirlos; si no los escribes se usarán los de la asignación."
       [(ngModel)]="rawText"
       (ngModelChange)="onRawTextChange()"
     />

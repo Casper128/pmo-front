@@ -118,6 +118,21 @@ export class ConfigurationPageComponent implements OnInit {
     [field.options[index], field.options[target]] = [field.options[target], field.options[index]];
   }
 
+  updateDailyHour(dayIndex: number, value: string | number): void {
+    const numericValue = Number(value);
+    const dailyHours = {
+      ...this.draftSettings.dailyHours,
+      [dayIndex]: Number.isFinite(numericValue) ? numericValue : Number.NaN,
+    };
+    this.draftSettings = {
+      ...this.draftSettings,
+      dailyHours,
+      mondayThursdayHours: Number(dailyHours[1]),
+      fridayHours: Number(dailyHours[5]),
+    };
+    this.message.set(null);
+  }
+
   async save(): Promise<void> {
     this.message.set(null);
     if (!this.parameters.canManage()) {
@@ -136,7 +151,11 @@ export class ConfigurationPageComponent implements OnInit {
       return;
     }
     try {
-      await this.parameters.save(this.draftFields, this.draftSettings, this.draftDeletionSettings);
+      await this.parameters.save(
+        this.draftFields,
+        this.normalizedDraftSettings(),
+        this.draftDeletionSettings,
+      );
       this.syncDraft();
       this.message.set({
         type: 'success',
@@ -195,6 +214,23 @@ export class ConfigurationPageComponent implements OnInit {
       technicalDeleteEmails: [...this.parameters.deletionSettings().technicalDeleteEmails],
     };
     this.technicalEmailDraft = '';
+  }
+
+  private normalizedDraftSettings(): WorkSettings {
+    const dailyHours = Object.fromEntries(
+      this.weekdaySettings.map((day) => [
+        day.index,
+        Number(this.draftSettings.dailyHours[day.index]),
+      ]),
+    ) as Record<number, number>;
+    return {
+      ...this.draftSettings,
+      dailyHours,
+      mondayThursdayHours: dailyHours[1],
+      fridayHours: dailyHours[5],
+      maxDailyLaborHours: Number(this.draftSettings.maxDailyLaborHours),
+      maxHoursPerRecord: Number(this.draftSettings.maxHoursPerRecord),
+    };
   }
 
   private validateWorkSettings(): string[] {

@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthGateway } from '@application/auth/auth.gateway';
+import { TimeRecord } from '@domain/time-records/models/time-record.model';
 import { ManagementReport as ConsultantRecord } from '@domain/time-records/models/management-report.model';
 import {
   HourBillingFilter,
@@ -21,6 +23,7 @@ import {
   UiSegmentedControlComponent,
   UiSegmentedOption,
 } from '@presentation/shared/components/ui-segmented-control/ui-segmented-control.component';
+import { AnalyticsChartCardComponent } from '../components/analytics-chart-card/analytics-chart-card.component';
 
 interface BreakdownItem {
   label: string;
@@ -43,13 +46,17 @@ interface BreakdownItem {
     UiSearchInputComponent,
     UiPageHeaderComponent,
     UiSegmentedControlComponent,
+    AnalyticsChartCardComponent,
   ],
   templateUrl: './consultant-statistics-page.component.html',
+  styleUrl: './consultant-statistics-page.component.css',
 })
 export class ConsultantStatisticsPageComponent implements OnInit {
+  private readonly pendingRecordsStorageKey = 'pmo_pending_time_records';
   private management = inject(TimeManagementGateway);
   private auth = inject(AuthGateway);
   private domain = inject(TimeRecordDomainService);
+  private router = inject(Router);
 
   records = signal<ConsultantRecord[]>([]);
   loading = signal(false);
@@ -414,6 +421,16 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     this.setDefaultPeriod(this.ownRecords());
   }
 
+  duplicateReportedRecordToDraft(record: ConsultantRecord): void {
+    const draft = this.reportedRecordToDraft(record);
+    const pendingRecords = this.readPendingRecords();
+    localStorage.setItem(
+      this.pendingRecordsStorageKey,
+      JSON.stringify([...pendingRecords, draft]),
+    );
+    void this.router.navigate(['/registros/importar']);
+  }
+
   hours(record: ConsultantRecord): number {
     const value = Number(record.tiempoRealHoras || 0);
     return Number.isFinite(value) ? value : 0;
@@ -624,7 +641,56 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   }
 
   private recordDate(record: ConsultantRecord): string {
-    return String(record.fechaInicio || '').match(/\d{4}-\d{2}-\d{2}/)?.[0] || '';
+    return (
+      String(record.fechaInicio || '').match(/\d{4}-\d{2}-\d{2}/)?.[0] ||
+      String(record.HoraInicio || '').match(/\d{4}-\d{2}-\d{2}/)?.[0] ||
+      ''
+    );
+  }
+
+  private reportedRecordToDraft(record: ConsultantRecord): TimeRecord {
+    const horaIni = this.extractTimeValue(record.HoraInicio || record.fechaInicio || '');
+    const horaFin = this.extractTimeValue(record.HoraFin || '');
+    const horas = horaIni && horaFin ? this.domain.calcHoras(horaIni, horaFin) : '';
+    const cliente = this.clientName(record);
+    const solicitud = this.managementName(record);
+    return {
+      fecha: this.recordDate(record),
+      horaIni,
+      horaFin,
+      horas: horas || String(record.tiempoRealHoras || '0'),
+      desc: record.descripcionActividad || record.observacion || '',
+      observacion: record.observacion || record.descripcionActividad || '',
+      cliente: cliente === 'Sin cliente' ? '' : cliente,
+      proyecto: String(record.proyecto || ''),
+      solicitud: solicitud === 'Sin gestión' ? String(record.solicitud || '') : solicitud,
+      gestionId: String(record.gestionDemanda || record.solicitud || ''),
+      tipoHora: record.tipoHora || 'Laboral',
+      funcional: record.funcional || '',
+      ricef: record.objetoRicef || '',
+    };
+  }
+
+  private readPendingRecords(): TimeRecord[] {
+    try {
+      const stored = localStorage.getItem(this.pendingRecordsStorageKey);
+      if (!stored) return [];
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? (parsed as TimeRecord[]) : [];
+    } catch {
+      localStorage.removeItem(this.pendingRecordsStorageKey);
+      return [];
+    }
+  }
+
+  private extractTimeValue(value: string): string {
+    if (!value) return '';
+    const isoMatch = value.match(/T(\d{2}:\d{2})/);
+    if (isoMatch) return isoMatch[1];
+    const textualMatch = value.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
+    if (textualMatch) return `${textualMatch[1].padStart(2, '0')}:${textualMatch[2]}`;
+    const plainMatch = value.match(/^(\d{2}:\d{2})/);
+    return plainMatch ? plainMatch[1] : '';
   }
 
   private isCurrentUserRecord(record: ConsultantRecord): boolean {
