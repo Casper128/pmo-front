@@ -88,6 +88,11 @@ export class RecordsPreviewComponent implements OnChanges {
       proyecto: '',
       solicitud: '',
       gestionId: '',
+      funcional: record.duplicatedFromGestionId ? '' : record.funcional,
+      ricef: record.duplicatedFromGestionId ? '' : record.ricef,
+      duplicatedFromGestionId: record.duplicatedFromGestionId
+        ? undefined
+        : record.duplicatedFromGestionId,
     };
     this.gestionOptionsByIndex.delete(index);
     this.recordChange.emit({ index, record: updated });
@@ -96,6 +101,8 @@ export class RecordsPreviewComponent implements OnChanges {
 
   onGestionChange(index: number, record: TimeRecord, gestionId: string): void {
     const option = this.gestionOptionsByIndex.get(index)?.find((item) => item.id === gestionId);
+    const changedDuplicatedGestion =
+      !!record.duplicatedFromGestionId && record.duplicatedFromGestionId !== gestionId;
     this.recordChange.emit({
       index,
       record: {
@@ -103,6 +110,11 @@ export class RecordsPreviewComponent implements OnChanges {
         gestionId,
         solicitud: option?.requestValue || option?.name || gestionId,
         proyecto: option?.project || record.proyecto,
+        funcional: changedDuplicatedGestion ? '' : record.funcional,
+        ricef: changedDuplicatedGestion ? '' : record.ricef,
+        duplicatedFromGestionId: changedDuplicatedGestion
+          ? undefined
+          : record.duplicatedFromGestionId,
       },
     });
     this.rememberGestion(record.cliente, gestionId);

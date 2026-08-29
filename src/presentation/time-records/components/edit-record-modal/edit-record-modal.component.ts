@@ -96,6 +96,7 @@ export class EditRecordModalComponent implements OnChanges {
       this.draft.proyecto = '';
       this.draft.solicitud = '';
       this.draft.gestionId = '';
+      this.clearDuplicatedAdvancedFields();
     }
     if (!cliente) {
       this.proyectos = [];
@@ -113,6 +114,7 @@ export class EditRecordModalComponent implements OnChanges {
     if (!this.draft?.cliente) return;
     this.draft.solicitud = '';
     this.draft.gestionId = '';
+    this.clearDuplicatedAdvancedFields();
     this.refreshValidation();
     this.refreshPayloadPreview();
     this.loadSolicitudes(this.draft.cliente, proyecto);
@@ -121,8 +123,13 @@ export class EditRecordModalComponent implements OnChanges {
   onSolicitudChange(gestionId: string): void {
     if (!this.draft) return;
     const option = this.solicitudOptionsList.find((item) => item.id === gestionId);
+    const changedDuplicatedGestion =
+      !!this.draft.duplicatedFromGestionId && this.draft.duplicatedFromGestionId !== gestionId;
     this.draft.gestionId = gestionId;
     this.draft.solicitud = option?.requestValue || option?.name || gestionId;
+    if (changedDuplicatedGestion) {
+      this.clearDuplicatedAdvancedFields();
+    }
     this.refreshValidation();
     this.refreshPayloadPreview();
   }
@@ -160,6 +167,13 @@ export class EditRecordModalComponent implements OnChanges {
       ...this.domain.getMissingFields(this.draft),
       ...this.domain.getInvalidFields(this.draft),
     ];
+  }
+
+  private clearDuplicatedAdvancedFields(): void {
+    if (!this.draft?.duplicatedFromGestionId) return;
+    this.draft.funcional = '';
+    this.draft.ricef = '';
+    this.draft.duplicatedFromGestionId = undefined;
   }
 
   private refreshPayloadPreview(): void {

@@ -424,10 +424,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   duplicateReportedRecordToDraft(record: ConsultantRecord): void {
     const draft = this.reportedRecordToDraft(record);
     const pendingRecords = this.readPendingRecords();
-    localStorage.setItem(
-      this.pendingRecordsStorageKey,
-      JSON.stringify([...pendingRecords, draft]),
-    );
+    localStorage.setItem(this.pendingRecordsStorageKey, JSON.stringify([...pendingRecords, draft]));
     void this.router.navigate(['/registros/importar']);
   }
 
@@ -668,6 +665,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
       tipoHora: record.tipoHora || 'Laboral',
       funcional: record.funcional || '',
       ricef: record.objetoRicef || '',
+      duplicatedFromGestionId: String(record.gestionDemanda || record.solicitud || ''),
     };
   }
 

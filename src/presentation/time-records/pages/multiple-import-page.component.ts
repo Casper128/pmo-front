@@ -489,7 +489,7 @@ export class MultipleImportPageComponent implements OnInit {
   onDuplicateDraftRecord(index: number): void {
     const source = this.records()[index];
     if (!source) return;
-    this.addRecordToDrafts({ ...source }, 'Registro duplicado en borradores.');
+    this.addRecordToDrafts(this.markDuplicatedRecord(source), 'Registro duplicado en borradores.');
   }
 
   onSaveEdit(updated: TimeRecord) {
@@ -1541,13 +1541,26 @@ export class MultipleImportPageComponent implements OnInit {
       horas,
       desc: report.descripcionActividad || report.observacion || '',
       observacion: report.observacion || report.descripcionActividad || '',
-      cliente: this.clientName(report) === 'Sin cliente' ? String(report.cliente || '') : this.clientName(report),
+      cliente:
+        this.clientName(report) === 'Sin cliente'
+          ? String(report.cliente || '')
+          : this.clientName(report),
       proyecto: String(report.proyecto || gestion?.project || ''),
       solicitud: solicitud === 'Sin gestion' ? String(report.solicitud || '') : solicitud,
       gestionId: gestion?.id || String(report.gestionDemanda || report.solicitud || ''),
       tipoHora: report.tipoHora || this.parameters.defaultFor('tipoHora') || 'Laboral',
       funcional: report.funcional || '',
       ricef: report.objetoRicef || '',
+      duplicatedFromGestionId:
+        gestion?.id || String(report.gestionDemanda || report.solicitud || ''),
+    };
+  }
+
+  private markDuplicatedRecord(record: TimeRecord): TimeRecord {
+    const gestionId = record.gestionId || record.solicitud;
+    return {
+      ...record,
+      duplicatedFromGestionId: gestionId || record.duplicatedFromGestionId,
     };
   }
 

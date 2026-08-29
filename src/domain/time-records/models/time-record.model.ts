@@ -12,6 +12,7 @@ export interface TimeRecord {
   tipoHora: string;
   funcional?: string;
   ricef?: string;
+  duplicatedFromGestionId?: string;
 }
 
 export const TIME_RECORD_DEFAULTS: Omit<
