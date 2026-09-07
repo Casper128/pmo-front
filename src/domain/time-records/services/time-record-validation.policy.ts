@@ -85,8 +85,13 @@ export class TimeRecordValidationPolicy {
 
   private dailyLimitForDate(fecha: string): number {
     const expectedHours = this.hoursPolicy.expectedHoursForDate(fecha);
-    if (expectedHours <= 0) return 0;
+    if (expectedHours <= 0 && this.isWeekend(fecha)) return this.maxDailyLaborHours();
     return Math.min(expectedHours, this.maxDailyLaborHours());
+  }
+
+  private isWeekend(fecha: string): boolean {
+    const day = new Date(fecha + 'T12:00:00').getDay();
+    return day === 0 || day === 6;
   }
 
   calcHours(horaIni: string, horaFin: string): string {
