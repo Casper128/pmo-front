@@ -40,6 +40,7 @@ Configura también las credenciales técnicas usadas exclusivamente por la funci
 
 ```powershell
 npx supabase secrets set PMO_AUDIT_EMAIL="correo-tecnico" PMO_AUDIT_PASSWORD="clave-tecnica"
+npx supabase secrets set PMO_TECHNICAL_DELETE_KEY="clave-tecnica-autorizada"
 ```
 
 ## 4. Desplegar la función administrativa
@@ -48,6 +49,10 @@ npx supabase secrets set PMO_AUDIT_EMAIL="correo-tecnico" PMO_AUDIT_PASSWORD="cl
 npx supabase functions deploy pmo-config-admin --no-verify-jwt
 npx supabase functions deploy pmo-user-audit --no-verify-jwt
 npx supabase functions deploy pmo-management-edit --no-verify-jwt
+npx supabase functions deploy pmo-management-delete --no-verify-jwt
+npx supabase functions deploy pmo-management-delete-technical --no-verify-jwt
+npx supabase functions deploy pmo-management-delete-request --no-verify-jwt
+npx supabase functions deploy pmo-management-templates --no-verify-jwt
 npx supabase functions deploy pmo-location-admin --no-verify-jwt
 npx supabase functions deploy pmo-send-logs --no-verify-jwt
 ```

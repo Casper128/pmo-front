@@ -67,6 +67,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   client = signal('');
   module = signal('');
   activity = signal('');
+  managementType = signal('');
   prefix = signal('');
   hourBillingFilter = signal<HourBillingFilter>('all');
   search = signal('');
@@ -84,9 +85,15 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   activities = computed(() =>
     this.unique(this.ownRecords().map((record) => this.activityName(record))),
   );
+  managementTypes = computed(() =>
+    this.unique(this.ownRecords().map((record) => this.managementTypeName(record))),
+  );
   clientOptions = computed(() => this.asOptions(this.clients(), 'Todos los clientes'));
   moduleOptions = computed(() => this.asOptions(this.modules(), 'Todos los módulos'));
   activityOptions = computed(() => this.asOptions(this.activities(), 'Todas las actividades'));
+  managementTypeOptions = computed(() =>
+    this.asOptions(this.managementTypes(), 'Todos los tipos de gestión'),
+  );
   readonly prefixOptions: readonly UiSelectOption[] = [
     { value: '', label: 'Todos los prefijos' },
     { value: 'CH', label: 'CH · Necesidad' },
@@ -121,6 +128,8 @@ export class ConsultantStatisticsPageComponent implements OnInit {
         if (this.client() && this.clientName(record) !== this.client()) return false;
         if (this.module() && this.moduleName(record) !== this.module()) return false;
         if (this.activity() && this.activityName(record) !== this.activity()) return false;
+        if (this.managementType() && this.managementTypeName(record) !== this.managementType())
+          return false;
         if (this.prefix() && this.prefixCode(record) !== this.prefix()) return false;
         if (!term) return true;
         return [
@@ -140,6 +149,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
           this.clientName(record),
           this.moduleName(record),
           this.managementName(record),
+          this.managementTypeName(record),
         ].some((value) => this.normalize(value).includes(term));
       })
       .sort((a, b) => this.recordDate(b).localeCompare(this.recordDate(a)));
@@ -178,6 +188,9 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   clientBreakdown = computed(() => this.breakdownBy((record) => this.clientName(record)));
   moduleBreakdown = computed(() => this.breakdownBy((record) => this.moduleName(record)));
   activityBreakdown = computed(() => this.breakdownBy((record) => this.activityName(record)));
+  managementTypeBreakdown = computed(() =>
+    this.breakdownBy((record) => this.managementTypeName(record)),
+  );
   activityTable = computed(() => this.breakdownBy((record) => this.activityName(record), 12));
   functionalBreakdown = computed(() =>
     this.breakdownBy((record) => this.cleanDimension(record.funcional, 'Sin funcional')),
@@ -240,6 +253,8 @@ export class ConsultantStatisticsPageComponent implements OnInit {
   );
   mainModule = computed(() => this.moduleBreakdown()[0]?.label || 'Sin datos');
   mainActivity = computed(() => this.activityBreakdown()[0]?.label || 'Sin datos');
+  mainManagementType = computed(() => this.managementTypeBreakdown()[0]?.label || 'Sin datos');
+  mainManagementTypeShare = computed(() => this.managementTypeBreakdown()[0]?.share || 0);
   mainTechnology = computed(() => this.technologyBreakdown()[0]?.label || 'Sin datos');
   mainFunctional = computed(() => this.functionalBreakdown()[0]?.label || 'Sin datos');
   highestEffortRecords = computed(() =>
@@ -415,6 +430,7 @@ export class ConsultantStatisticsPageComponent implements OnInit {
     this.client.set('');
     this.module.set('');
     this.activity.set('');
+    this.managementType.set('');
     this.prefix.set('');
     this.hourBillingFilter.set('all');
     this.search.set('');
@@ -455,6 +471,15 @@ export class ConsultantStatisticsPageComponent implements OnInit {
 
   activityName(record: ConsultantRecord): string {
     return this.cleanDimension(record.tipoActividad, 'Sin actividad');
+  }
+
+  managementTypeName(record: ConsultantRecord): string {
+    return this.cleanDimension(
+      record.solicitud_tiemposConsultores?.tipoSolicitud ||
+        record.tipoSolicitud ||
+        record.tipoGestion,
+      'Sin tipo de gestión',
+    );
   }
 
   downloadBreakdownTablePng(title: string, firstHeader: string, rows: BreakdownItem[]): void {

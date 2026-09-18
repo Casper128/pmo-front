@@ -11,6 +11,8 @@ export interface ManagementReport {
   prefijo?: string;
   tipoHora?: string;
   tipoActividad?: string;
+  tipoSolicitud?: string;
+  tipoGestion?: string;
   causa?: string;
   descripcionActividad?: string;
   observacion?: string;

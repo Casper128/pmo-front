@@ -70,6 +70,12 @@
               (ngModelChange)="activity.set($event)"
             />
             <app-ui-select
+              label="Tipo de gestión"
+              [options]="managementTypeOptions()"
+              [ngModel]="managementType()"
+              (ngModelChange)="managementType.set($event)"
+            />
+            <app-ui-select
               label="Prefijo"
               [options]="prefixOptions"
               [ngModel]="prefix()"
@@ -184,6 +190,16 @@
           [configurable]="true"
         />
         <app-analytics-chart-card
+          eyebrow="Gestión"
+          title="Horas por tipo de gestión"
+          description="Tipos de gestión que más se repiten en el periodo."
+          [data]="managementTypeBreakdown()"
+          type="doughnut"
+          ariaLabel="Horas del consultor por tipo de gestión"
+          emptyMessage="Sin tipos de gestión para graficar."
+          [configurable]="true"
+        />
+        <app-analytics-chart-card
           eyebrow="Funcional"
           title="Horas por funcional"
           description="Concentración por responsable funcional."
@@ -282,9 +298,12 @@
             </p>
           </div>
           <div class="p-5">
-            <p class="text-xs font-bold text-slate-500">Cobertura del servicio</p>
-            <p class="mt-2 text-lg font-bold text-slate-900">
-              {{ moduleCount() }} módulos · {{ technologyCount() }} tecnologías
+            <p class="text-xs font-bold text-slate-500">Tipo de gestión recurrente</p>
+            <p class="mt-2 break-words text-lg font-bold text-slate-900">
+              {{ mainManagementType() }}
+            </p>
+            <p class="mt-1 text-xs font-bold text-slate-400">
+              {{ formatHours(mainManagementTypeShare()) }}% de las horas filtradas
             </p>
           </div>
         </div>
