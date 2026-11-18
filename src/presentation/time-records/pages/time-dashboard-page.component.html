@@ -1,0 +1,292 @@
+<div class="ui-page">
+  <div class="ui-page-content min-w-0 space-y-5">
+    <app-ui-page-header
+      eyebrow="Analítica personal"
+      title="Dashboard de tiempos"
+      description="Resumen de tus horas reportadas: carga diaria, clientes, facturación y solicitudes recientes."
+    >
+      <button
+        pageHeaderAside
+        class="ui-btn ui-btn-primary min-h-10 disabled:opacity-60"
+        type="button"
+        [disabled]="loading()"
+        (click)="loadRecords()"
+      >
+        {{ loading() ? 'Actualizando...' : 'Actualizar datos' }}
+      </button>
+    </app-ui-page-header>
+
+    <section class="ui-surface p-5" aria-labelledby="dashboard-filters-title">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 id="dashboard-filters-title" class="text-lg font-bold text-slate-900">
+          Periodo y filtros
+        </h2>
+        <app-ui-segmented-control
+          label="Periodo rápido"
+          [options]="periodPresetOptions"
+          [value]="periodPreset()"
+          (valueChange)="applyPeriodPreset($event)"
+        />
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <app-ui-date-input
+          label="Desde"
+          [ngModel]="dateFrom()"
+          (ngModelChange)="setDateFrom($event)"
+        />
+        <app-ui-date-input label="Hasta" [ngModel]="dateTo()" (ngModelChange)="setDateTo($event)" />
+        <app-ui-select
+          label="Cliente"
+          [options]="clientOptions()"
+          [ngModel]="client()"
+          (ngModelChange)="client.set($event)"
+        />
+        <app-ui-select
+          label="Tipo de hora"
+          [options]="hourTypeOptions()"
+          [ngModel]="hourType()"
+          (ngModelChange)="hourType.set($event)"
+        />
+      </div>
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+        @if (dateError()) {
+          <p class="text-sm font-bold text-red-600" role="alert">{{ dateError() }}</p>
+        } @else {
+          <p class="text-xs font-bold text-slate-500">
+            {{ snapshot().rowCount }} de {{ ownRecords().length }} registros incluidos.
+          </p>
+        }
+        <button
+          class="text-xs font-bold text-blue-700 hover:text-blue-900"
+          type="button"
+          (click)="clearFilters()"
+        >
+          Restablecer filtros
+        </button>
+      </div>
+    </section>
+
+    @if (loading() && !loaded()) {
+      <section class="ui-surface grid min-h-80 place-items-center" role="status" aria-live="polite">
+        <div class="text-center">
+          <span
+            class="mx-auto block size-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"
+          ></span>
+          <p class="mt-3 text-sm font-bold text-slate-500">Consultando registros...</p>
+        </div>
+      </section>
+    } @else if (error()) {
+      <section class="ui-alert ui-alert-error" role="alert">
+        {{ error() }}
+      </section>
+    } @else if (!dateError()) {
+      <section
+        class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
+        aria-label="Indicadores del periodo"
+      >
+        <app-ui-metric-card
+          label="Horas reportadas"
+          [value]="formatHours(kpis().totalHours) + ' h'"
+          [description]="variationText()"
+          tone="blue"
+        />
+        <app-ui-metric-card
+          label="Facturable"
+          [value]="formatHours(kpis().billablePct) + '%'"
+          [description]="formatHours(kpis().billableHours) + ' h facturables por tipo de hora'"
+          tone="blue"
+        />
+        <app-ui-metric-card
+          label="Clientes atendidos"
+          [value]="kpis().clientCount"
+          description="Clientes con reportes en el periodo"
+        />
+        <app-ui-metric-card
+          label="Horas extra"
+          [value]="formatHours(kpis().extraHours) + ' h'"
+          description="Registros con tipo de hora Fábrica"
+          [tone]="kpis().extraHours > 0 ? 'amber' : 'slate'"
+        />
+        <app-ui-metric-card
+          label="Días reportados"
+          [value]="kpis().reportedDays + ' / ' + kpis().expectedDays"
+          [description]="
+            formatHours(kpis().expectedHours) + ' h esperadas según la jornada (sin festivos)'
+          "
+        />
+      </section>
+
+      @if (!snapshot().rowCount) {
+        <app-ui-state-message
+          title="Sin registros en el periodo"
+          description="No hay horas reportadas para el rango y los filtros seleccionados. Amplía el periodo o restablece los filtros."
+          actionLabel="Restablecer filtros"
+          (action)="clearFilters()"
+        />
+      } @else {
+        <section class="grid gap-4 xl:grid-cols-2">
+          <div class="xl:col-span-2">
+            <app-analytics-chart-card
+              eyebrow="Carga diaria"
+              title="Horas reportadas por día"
+              description="Todos los días del rango, incluidos los días sin reportes."
+              [customBody]="true"
+            >
+              <app-weekly-hours-chart
+                chartCardBody
+                [data]="snapshot().daily"
+                ariaLabel="Horas reportadas por día del periodo"
+              />
+            </app-analytics-chart-card>
+          </div>
+
+          <app-analytics-chart-card
+            eyebrow="Clientes"
+            title="Horas por cliente"
+            description="Distribución del esfuerzo por cliente, de mayor a menor."
+            [data]="snapshot().byClient"
+            type="bar"
+            [horizontal]="true"
+            ariaLabel="Horas por cliente"
+            emptyMessage="Sin clientes para graficar."
+          />
+
+          <app-analytics-chart-card
+            eyebrow="Facturación"
+            title="Facturable vs. no facturable"
+            description="Clasificación según el tipo de hora de cada registro."
+            [data]="snapshot().billing"
+            type="doughnut"
+            ariaLabel="Horas facturables, de fábrica y no facturables"
+            emptyMessage="Sin horas para clasificar."
+          />
+
+          <app-analytics-chart-card
+            eyebrow="Evolución"
+            title="Comparativo mes a mes"
+            description="Horas por mes calendario del rango y variación frente al mes anterior. Los meses parciales no se prorratean."
+            [customBody]="true"
+          >
+            <app-grouped-bar-chart
+              chartCardBody
+              [labels]="monthLabels()"
+              [series]="monthSeries()"
+              [stacked]="true"
+              ariaLabel="Horas por mes según clasificación de facturación"
+            />
+          </app-analytics-chart-card>
+
+          <app-analytics-chart-card
+            eyebrow="Gestión de la demanda"
+            title="Horas estimadas vs. reales"
+            description="Selecciona una gestión (cliente + solicitud) del periodo filtrado para ver su detalle. Ordenadas de la más reciente a la más antigua."
+            [customBody]="true"
+          >
+            <div chartCardBody class="space-y-4">
+              <app-ui-select
+                label="Gestión de demanda"
+                searchPlaceholder="Buscar gestión..."
+                [searchThreshold]="0"
+                [options]="requestOptions()"
+                [ngModel]="selectedRequest()?.key ?? ''"
+                (ngModelChange)="selectedRequestKey.set($event)"
+              />
+
+              @if (selectedRequest(); as request) {
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p
+                    class="font-bold text-slate-900"
+                    [appOverflowTooltip]="request.request"
+                    [appOverflowTooltipLines]="2"
+                  >
+                    {{ request.request }}
+                  </p>
+                  <p class="mt-0.5 text-xs font-bold text-slate-500">{{ request.client }}</p>
+                  <p class="mt-2 text-xs font-semibold text-slate-500">
+                    {{ formatDateTime(request.firstAt) }} → {{ formatDateTime(request.latestAt) }}
+                  </p>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <app-ui-metric-card
+                    label="Reales"
+                    [value]="formatHours(request.hours) + ' h'"
+                    [description]="
+                      request.count + (request.count === 1 ? ' registro' : ' registros')
+                    "
+                    tone="blue"
+                  />
+                  <app-ui-metric-card
+                    label="Estimadas"
+                    [value]="
+                      request.estimatedHours === null
+                        ? '—'
+                        : formatHours(request.estimatedHours) + ' h'
+                    "
+                    description="Pendiente de fuente de datos"
+                  />
+                  <app-ui-metric-card
+                    label="Consumo"
+                    [value]="
+                      request.consumptionPct === null
+                        ? '—'
+                        : formatHours(request.consumptionPct) + ' %'
+                    "
+                    description="Reales / estimadas"
+                  />
+                  <app-ui-metric-card
+                    label="Días con actividad"
+                    [value]="request.activeDays"
+                    [description]="
+                      formatHours(request.hours / request.activeDays) + ' h promedio por día'
+                    "
+                  />
+                </div>
+
+                <p class="ui-alert ui-alert-warning text-sm" role="note">
+                  Estimaciones pendientes: aún no hay fuente de datos para horas estimadas. Solo se
+                  muestran las horas reales.
+                </p>
+
+                <div>
+                  <p class="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Clasificación de horas
+                  </p>
+                  <ul class="space-y-2">
+                    @for (item of request.billing; track item.label) {
+                      <li>
+                        <div class="flex items-center justify-between text-sm">
+                          <span class="font-bold text-slate-700">{{ item.label }}</span>
+                          <span class="tabular-nums text-slate-600"
+                            >{{ formatHours(item.hours) }} h ·
+                            {{ formatHours(sharePct(item.hours, request.hours)) }} %</span
+                          >
+                        </div>
+                        <div
+                          class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"
+                          aria-hidden="true"
+                        >
+                          <div
+                            class="h-full rounded-full"
+                            [style.width.%]="sharePct(item.hours, request.hours)"
+                            [style.background-color]="billingColor(item.label)"
+                          ></div>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              } @else {
+                <app-ui-state-message
+                  title="Sin gestiones en el periodo"
+                  description="Ajusta el rango o los filtros para ver el detalle de una gestión."
+                  tone="warning"
+                />
+              }
+            </div>
+          </app-analytics-chart-card>
+        </section>
+      }
+    }
+  </div>
+</div>

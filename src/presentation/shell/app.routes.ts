@@ -27,6 +27,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'registros/dashboard',
+    loadComponent: () =>
+      import('@presentation/time-records/pages/time-dashboard-page.component').then(
+        (m) => m.TimeDashboardPageComponent,
+      ),
+  },
+  {
     path: 'registros/estadisticas',
     loadComponent: () =>
       import('@presentation/time-records/pages/consultant-statistics-page.component').then(
@@ -69,6 +76,6 @@ export const routes: Routes = [
         (m) => m.ConfigurationPageComponent,
       ),
   },
-  // Redirige raíz a la página de importación (ajusta según tu app)
-  { path: '', redirectTo: 'registros/importar', pathMatch: 'full' },
+  // Redirige raíz al dashboard (pantalla inicial)
+  { path: '', redirectTo: 'registros/dashboard', pathMatch: 'full' },
 ];

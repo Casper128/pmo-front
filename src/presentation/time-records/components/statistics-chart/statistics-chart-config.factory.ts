@@ -35,6 +35,40 @@ export interface StatisticsChartTheme {
   circularBorder: string;
 }
 
+/** Paleta clara/oscura de las gráficas según `data-theme` del documento. */
+export function resolveStatisticsChartTheme(): StatisticsChartTheme {
+  const isDark = document.documentElement.dataset['theme'] === 'dark';
+  return isDark
+    ? {
+        axis: '#a1a1a6',
+        axisStrong: '#c7c7cc',
+        grid: 'rgba(229, 231, 235, .24)',
+        line: '#8fc7ff',
+        lineFill: 'rgba(143, 199, 255, .18)',
+        label: '#b9dcff',
+        circularLabelStroke: 'rgba(10, 10, 12, .72)',
+        circularLabelText: '#f5f5f7',
+        tooltipBackground: '#f5f5f7',
+        tooltipTitle: '#111827',
+        tooltipBody: '#374151',
+        circularBorder: '#1c1c1e',
+      }
+    : {
+        axis: '#64748b',
+        axisStrong: '#475569',
+        grid: '#e2e8f0',
+        line: '#2563eb',
+        lineFill: '#2563eb22',
+        label: '#1e3a8a',
+        circularLabelStroke: 'rgba(15, 23, 42, .65)',
+        circularLabelText: '#ffffff',
+        tooltipBackground: '#0f172a',
+        tooltipTitle: '#ffffff',
+        tooltipBody: '#e2e8f0',
+        circularBorder: '#ffffff',
+      };
+}
+
 export class StatisticsChartConfigFactory {
   build(input: StatisticsChartConfigInput): ChartConfiguration<ChartType, number[], string> {
     const isCircular = input.type === 'doughnut' || input.type === 'pie';

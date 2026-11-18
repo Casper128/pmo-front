@@ -41,20 +41,28 @@ export class RecordsPreviewComponent implements OnChanges {
   @Output() cancelImport = new EventEmitter<void>();
 
   private readonly options = inject(LoadSelectOptionsUseCase);
-  private readonly gestionOptionsByIndex = new Map<number, ManagementDemandOption[]>();
-  private readonly loadingGestionesByIndex = new Set<number>();
+  private readonly gestionOptionsByKey = new Map<string, ManagementDemandOption[]>();
+  private readonly loadingGestionKeys = new Set<string>();
+  private readonly initializedIndexes = new Set<number>();
   private readonly lastGestionStorageKey = 'pmo_last_management_by_client';
 
   constructor(public domain: TimeRecordDomainService) {}
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['clientes']) {
+      this.options.preloadManagementOptions(this.clientes).subscribe();
+    }
     if (!changes['groups']) return;
     this.groups
       .flatMap((group) => group.records)
-      .filter((item) => item.record.cliente && !this.gestionOptionsByIndex.has(item.index))
-      .forEach((item) =>
-        this.loadGestiones(item.index, item.record.cliente, item.record.proyecto, item.record),
-      );
+      .filter((item) => item.record.cliente && !this.initializedIndexes.has(item.index))
+      .forEach((item) => {
+        this.initializedIndexes.add(item.index);
+        const { index, record } = item;
+        this.loadGestiones(record.cliente, record.proyecto, () => {
+          if (!record.gestionId) this.selectPreferredGestion(index, record);
+        });
+      });
   }
 
   get recordCount(): number {
@@ -94,13 +102,12 @@ export class RecordsPreviewComponent implements OnChanges {
         ? undefined
         : record.duplicatedFromGestionId,
     };
-    this.gestionOptionsByIndex.delete(index);
     this.recordChange.emit({ index, record: updated });
-    if (cliente) this.loadGestiones(index, cliente, '', updated, true);
+    if (cliente) this.loadGestiones(cliente, '', () => this.selectPreferredGestion(index, updated));
   }
 
   onGestionChange(index: number, record: TimeRecord, gestionId: string): void {
-    const option = this.gestionOptionsByIndex.get(index)?.find((item) => item.id === gestionId);
+    const option = this.gestionesFor(record).find((item) => item.id === gestionId);
     const changedDuplicatedGestion =
       !!record.duplicatedFromGestionId && record.duplicatedFromGestionId !== gestionId;
     this.recordChange.emit({
@@ -132,8 +139,8 @@ export class RecordsPreviewComponent implements OnChanges {
     ];
   }
 
-  gestionOptions(index: number, record: TimeRecord): UiSelectOption[] {
-    const values = (this.gestionOptionsByIndex.get(index) || []).map((item) => ({
+  gestionOptions(record: TimeRecord): UiSelectOption[] {
+    const values = this.gestionesFor(record).map((item) => ({
       value: item.id,
       label: item.name,
     }));
@@ -152,46 +159,40 @@ export class RecordsPreviewComponent implements OnChanges {
     return [{ value: '', label: 'Seleccione tipo de hora' }, ...options];
   }
 
-  isLoadingGestiones(index: number): boolean {
-    return this.loadingGestionesByIndex.has(index);
+  isLoadingGestiones(record: TimeRecord): boolean {
+    return this.loadingGestionKeys.has(this.gestionKey(record.cliente, record.proyecto));
   }
 
-  private loadGestiones(
-    index: number,
-    cliente: string,
-    proyecto: string,
-    record?: TimeRecord,
-    selectPreferred = false,
-  ): void {
+  private gestionesFor(record: TimeRecord): ManagementDemandOption[] {
+    return this.gestionOptionsByKey.get(this.gestionKey(record.cliente, record.proyecto)) || [];
+  }
+
+  private gestionKey(cliente: string, proyecto = ''): string {
+    return `${cliente}\u0000${proyecto || ''}`;
+  }
+
+  /** Carga (o reutiliza de la caché) las gestiones del cliente y ejecuta `onLoaded` fuera del ciclo actual. */
+  private loadGestiones(cliente: string, proyecto: string, onLoaded?: () => void): void {
     if (!cliente) return;
-    this.loadingGestionesByIndex.add(index);
-    this.options.proyectos(cliente).subscribe({
-      next: (proyectos) => {
-        const selectedProject = proyecto || proyectos[0] || '';
-        this.options.solicitudOptions(cliente, selectedProject).subscribe({
-          next: (solicitudes) => {
-            this.gestionOptionsByIndex.set(
-              index,
-              solicitudes.map((solicitud) => ({
-                ...solicitud,
-                client: solicitud.client || cliente,
-                project: solicitud.project || selectedProject,
-              })),
-            );
-            this.loadingGestionesByIndex.delete(index);
-            if (record && (selectPreferred || !record.gestionId)) {
-              this.selectPreferredGestion(index, record);
-            }
-          },
-          error: () => this.loadingGestionesByIndex.delete(index),
-        });
+    const key = this.gestionKey(cliente, proyecto);
+    if (this.gestionOptionsByKey.has(key)) {
+      if (onLoaded) queueMicrotask(onLoaded);
+      return;
+    }
+    this.loadingGestionKeys.add(key);
+    this.options.managementOptions(cliente, proyecto).subscribe({
+      next: ({ project, options }) => {
+        this.gestionOptionsByKey.set(key, options);
+        this.gestionOptionsByKey.set(this.gestionKey(cliente, project), options);
+        this.loadingGestionKeys.delete(key);
+        onLoaded?.();
       },
-      error: () => this.loadingGestionesByIndex.delete(index),
+      error: () => this.loadingGestionKeys.delete(key),
     });
   }
 
   private selectPreferredGestion(index: number, record: TimeRecord): void {
-    const options = this.gestionOptionsByIndex.get(index) || [];
+    const options = this.gestionesFor(record);
     if (!record.cliente || !options.length) return;
     const remembered = this.rememberedGestion(record.cliente);
     const option =

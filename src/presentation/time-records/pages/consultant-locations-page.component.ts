@@ -99,7 +99,7 @@ export class ConsultantLocationsPageComponent implements OnInit, AfterViewInit, 
 
   ngOnInit(): void {
     if (!this.authorized()) {
-      void this.router.navigateByUrl('/registros/importar', { replaceUrl: true });
+      void this.router.navigateByUrl('/registros/dashboard', { replaceUrl: true });
       return;
     }
     this.load();
@@ -124,7 +124,7 @@ export class ConsultantLocationsPageComponent implements OnInit, AfterViewInit, 
   load(): void {
     if (!this.authorized()) {
       this.consultants.set([]);
-      void this.router.navigateByUrl('/registros/importar', { replaceUrl: true });
+      void this.router.navigateByUrl('/registros/dashboard', { replaceUrl: true });
       return;
     }
     this.loading.set(true);

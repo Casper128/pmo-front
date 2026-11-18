@@ -35,6 +35,7 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip);
 })
 export class WeeklyHoursChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input({ required: true }) data: DailyHours[] = [];
+  @Input() ariaLabel = 'Horas reportadas por día de la semana';
   @ViewChild('chartCanvas') private chartCanvas?: ElementRef<HTMLCanvasElement>;
 
   private chart?: Chart<'bar'>;

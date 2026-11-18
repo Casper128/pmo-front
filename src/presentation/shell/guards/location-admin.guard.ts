@@ -11,5 +11,5 @@ export const locationAdminGuard: CanActivateFn = () => {
     .toLowerCase();
   return environment.locationAdminEmails.includes(email)
     ? true
-    : router.createUrlTree(['/registros/importar']);
+    : router.createUrlTree(['/registros/dashboard']);
 };

@@ -21,4 +21,6 @@ export class AnalyticsChartCardComponent {
   @Input() accent: AnalyticsAccent = 'blue';
   @Input() horizontal = false;
   @Input() configurable = false;
+  /** Si es true, proyecta `[chartCardBody]` en lugar de la gráfica estándar. */
+  @Input() customBody = false;
 }

@@ -16,7 +16,6 @@ import { LoadSelectOptionsUseCase } from '@application/time-records/use-cases/lo
 import { ImportTextInputComponent } from '../components/import-text-input/import-text-input.component';
 import { RecordsPreviewComponent } from '../components/records-preview/records-preview.component';
 import { EditRecordModalComponent } from '../components/edit-record-modal/edit-record-modal.component';
-import { WeeklyHoursChartComponent } from '../components/weekly-hours-chart/weekly-hours-chart.component';
 import { AuthGateway } from '@application/auth/auth.gateway';
 import readXlsxFile from 'read-excel-file/browser';
 import { ManagementReport } from '@domain/time-records/models/management-report.model';
@@ -62,12 +61,11 @@ interface ManagementEditDraft {
   descripcion: string;
 }
 
-interface DailyHours {
+interface ManagementDayGroup {
   date: string;
   label: string;
-  shortLabel: string;
   hours: number;
-  count: number;
+  reports: ManagementReport[];
 }
 
 interface ExcelTimeReport {
@@ -117,7 +115,6 @@ type SendPhase = 'idle' | 'sending' | 'saving-logs' | 'completed' | 'log-error' 
     ImportTextInputComponent,
     RecordsPreviewComponent,
     EditRecordModalComponent,
-    WeeklyHoursChartComponent,
     OverflowTooltipDirective,
     UiSelectComponent,
     UiDateInputComponent,
@@ -384,27 +381,28 @@ export class MultipleImportPageComponent implements OnInit {
     this.managementReports().length ? 'Limpiar filtros' : 'Actualizar reportes',
   );
 
-  managementWeekChart = computed<DailyHours[]>(() => {
-    const rows = this.filteredManagementReports();
-    const start = this.managementFechaIni();
-    const end = this.managementFechaFin();
-
-    if (!start || !end) {
-      const latestDate = rows
-        .map((report) => this.managementReportDate(report))
-        .filter((date): date is string => !!date)
-        .sort()
-        .at(-1);
-      const base = latestDate ? this.parseLocalDate(latestDate) : new Date();
-      const monday = this.startOfWeek(base);
-      return this.buildDailyHours(rows, monday, 7);
+  /** Registros visibles agrupados por día (más reciente primero) con su total de horas. */
+  managementDayGroups = computed<ManagementDayGroup[]>(() => {
+    const groups = new Map<string, ManagementReport[]>();
+    for (const report of this.filteredManagementReports()) {
+      const date = this.managementReportDate(report);
+      const reports = groups.get(date);
+      if (reports) reports.push(report);
+      else groups.set(date, [report]);
     }
-
-    const startDate = this.parseLocalDate(start);
-    const endDate = this.parseLocalDate(end);
-    const days = Math.max(1, this.daysBetween(startDate, endDate) + 1);
-    return this.buildDailyHours(rows, startDate, Math.min(days, 31));
+    return [...groups.entries()]
+      .sort(([a], [b]) => (a === b ? 0 : !a ? 1 : !b ? -1 : b.localeCompare(a)))
+      .map(([date, reports]) => ({
+        date,
+        label: date ? this.formatFullDate(date) : 'Sin fecha',
+        hours: reports.reduce((sum, report) => sum + this.reportHours(report), 0),
+        reports,
+      }));
   });
+
+  managementTotalHours = computed(() =>
+    this.managementDayGroups().reduce((sum, group) => sum + group.hours, 0),
+  );
 
   managementRangeLabel = computed(() => {
     const start = this.managementFechaIni();
@@ -413,22 +411,6 @@ export class MultipleImportPageComponent implements OnInit {
     if (start && end) return `${this.formatFullDate(start)} - ${this.formatFullDate(end)}`;
     return start ? `Desde ${this.formatFullDate(start)}` : `Hasta ${this.formatFullDate(end)}`;
   });
-
-  private buildDailyHours(rows: ManagementReport[], startDate: Date, days: number): DailyHours[] {
-    return Array.from({ length: days }, (_, index) => {
-      const day = new Date(startDate);
-      day.setDate(startDate.getDate() + index);
-      const date = this.toDateInputValue(day);
-      const dayRows = rows.filter((report) => this.managementReportDate(report) === date);
-      return {
-        date,
-        label: this.formatFullDate(date),
-        shortLabel: this.formatShortDate(date),
-        hours: dayRows.reduce((sum, report) => sum + this.reportHours(report), 0),
-        count: dayRows.length,
-      };
-    });
-  }
 
   ngOnInit(): void {
     const view = this.route.snapshot.data['view'];
@@ -1370,14 +1352,6 @@ export class MultipleImportPageComponent implements OnInit {
     }).format(this.parseLocalDate(date));
   }
 
-  formatShortDate(date: string): string {
-    if (!date) return '--';
-    return new Intl.DateTimeFormat('es-CO', {
-      weekday: 'short',
-      day: '2-digit',
-    }).format(this.parseLocalDate(date));
-  }
-
   showAlert(text: string, type: 'success' | 'error', title = 'No se puede continuar') {
     this.alert.set({ text, type });
     if (type === 'error') {
@@ -1474,6 +1448,8 @@ export class MultipleImportPageComponent implements OnInit {
     this.options.clientes().subscribe((clientes) => {
       this.clientes.set(clientes);
       this.loadingClients.set(false);
+      // Precarga de gestiones por cliente para que los selects de cada fila tengan datos al instante.
+      this.options.preloadManagementOptions(clientes).subscribe();
       const cliente = clientes[0] ?? '';
       if (!cliente) return;
       this.onDefaultClienteChange(cliente);
@@ -2194,11 +2170,6 @@ export class MultipleImportPageComponent implements OnInit {
     result.setDate(result.getDate() - day + 1);
     result.setHours(0, 0, 0, 0);
     return result;
-  }
-
-  private daysBetween(start: Date, end: Date): number {
-    const msPerDay = 24 * 60 * 60 * 1000;
-    return Math.round((end.getTime() - start.getTime()) / msPerDay);
   }
 
   private toDateInputValue(date: Date): string {

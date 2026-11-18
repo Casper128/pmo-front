@@ -113,8 +113,8 @@
                 />
                 <app-ui-select
                   label="Gestión Demanda"
-                  [options]="gestionOptions(item.index, item.record)"
-                  [loading]="isLoadingGestiones(item.index)"
+                  [options]="gestionOptions(item.record)"
+                  [loading]="isLoadingGestiones(item.record)"
                   [disabled]="!item.record.cliente"
                   [searchThreshold]="0"
                   searchPlaceholder="Buscar gestión..."
@@ -215,8 +215,8 @@
               />
               <app-ui-select
                 label="Gestión Demanda"
-                [options]="gestionOptions(item.index, item.record)"
-                [loading]="isLoadingGestiones(item.index)"
+                [options]="gestionOptions(item.record)"
+                [loading]="isLoadingGestiones(item.record)"
                 [disabled]="!item.record.cliente"
                 [searchThreshold]="0"
                 searchPlaceholder="Buscar gestión..."

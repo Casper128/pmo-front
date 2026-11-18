@@ -10,7 +10,9 @@
   </div>
 
   <div class="mt-4 min-w-0 flex-1">
-    @if (data.length) {
+    @if (customBody) {
+      <ng-content select="[chartCardBody]" />
+    } @else if (data.length) {
       <app-statistics-chart
         [type]="type"
         [data]="data"

@@ -6,6 +6,7 @@ import {
   lucideBarChart3,
   lucideClipboardCheck,
   lucideClipboardList,
+  lucideLayoutDashboard,
   lucideLayoutTemplate,
   lucideSendHorizontal,
   lucideSettings,
@@ -75,7 +76,10 @@ export class AppComponent implements OnDestroy {
     {
       label: 'Análisis',
       adminOnly: false,
-      items: [{ label: 'Datos', route: '/registros/estadisticas', icon: lucideBarChart3 }],
+      items: [
+        { label: 'Dashboard', route: '/registros/dashboard', icon: lucideLayoutDashboard },
+        { label: 'Datos', route: '/registros/estadisticas', icon: lucideBarChart3 },
+      ],
     },
     {
       label: 'Preferencias',
@@ -109,7 +113,7 @@ export class AppComponent implements OnDestroy {
       .toLowerCase();
     const allowed = environment.locationAdminEmails.includes(email);
     if (!allowed && this.router.url.startsWith('/administracion/ubicaciones')) {
-      void this.router.navigateByUrl('/registros/importar', { replaceUrl: true });
+      void this.router.navigateByUrl('/registros/dashboard', { replaceUrl: true });
     }
   });
 

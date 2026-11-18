@@ -6,6 +6,7 @@ import { RegisterTimeRecordUseCase } from '@application/time-records/use-cases/r
 import { SendAllRecordsUseCase } from '@application/time-records/use-cases/send-all-records.use-case';
 import { TimeRecordRepository } from '@domain/time-records/repositories/time-record.repository';
 import { TimeRecordDomainService } from '@domain/time-records/services/time-record-domain.service';
+import { TimeDashboardCalculator } from '@domain/time-records/services/time-dashboard.calculator';
 import { TimeRecordApiBodyBuilder } from '@domain/time-records/services/time-record-api-body.builder';
 import { AppParametersFacade } from '@application/configuration/app-parameters.facade';
 import { TimeManagementHttpAdapter } from '@infrastructure/time-records/adapters/time-management-http.adapter';
@@ -41,6 +42,11 @@ export const TIME_RECORDS_PROVIDERS: Provider[] = [
   {
     provide: TimeRecordDomainService,
     useFactory: (parameters: AppParametersFacade) => new TimeRecordDomainService(parameters),
+    deps: [AppParametersFacade],
+  },
+  {
+    provide: TimeDashboardCalculator,
+    useFactory: (parameters: AppParametersFacade) => new TimeDashboardCalculator(parameters),
     deps: [AppParametersFacade],
   },
   {
