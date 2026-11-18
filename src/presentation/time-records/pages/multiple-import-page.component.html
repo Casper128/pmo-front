@@ -34,7 +34,7 @@
             <app-records-preview
               [groups]="groups()"
               [totalGeneral]="totalGeneral()"
-              [sending]="sending()"
+              [sending]="sendLocked()"
               [clientes]="clientes()"
               [tipoHoraOptions]="tipoHoraOptions()"
               (editRecord)="onEdit($event)"
@@ -1082,7 +1082,8 @@
               </p>
             </div>
             <p class="mt-4 text-sm font-semibold text-slate-600">
-              Los registros permanecen bloqueados para evitar duplicarlos.
+              Los registros enviados ya se retiraron de borradores; reintenta la confirmación del
+              historial.
             </p>
           } @else {
             <div class="rounded-2xl border border-red-200 bg-red-50 p-4">

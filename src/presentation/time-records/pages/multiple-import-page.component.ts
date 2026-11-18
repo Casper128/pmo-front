@@ -2,7 +2,9 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { TimeRecord, DayGroup } from '@domain/time-records/models/time-record.model';
+import { colombiaDateLabel } from '@domain/time-records/services/colombia-date-label';
 import {
   HourBillingFilter,
   TimeRecordDomainService,
@@ -164,11 +166,21 @@ export class MultipleImportPageComponent implements OnInit {
   sendErrorCount = signal(0);
   sendFailureMessage = signal('');
   private pendingSendResult: SendResult | null = null;
+  /** Identifica la ejecución vigente; los progresos de ejecuciones anteriores se ignoran. */
+  private sendRunId = 0;
+  /** Registros confirmados por el backend en la ejecución vigente (por referencia). */
+  private sentRecords = new Set<TimeRecord>();
+  private sendSubscription: Subscription | null = null;
+
+  /** Mientras dure el envío o falte confirmar el historial, los borradores no se modifican. */
+  readonly sendLocked = computed(() =>
+    (['sending', 'saving-logs', 'log-error'] as SendPhase[]).includes(this.sendPhase()),
+  );
 
   sendProgressPercent = computed(() => {
     const total = this.sendTotal();
     if (!total) return 0;
-    return Math.round((this.sendProcessed() / total) * 100);
+    return Math.min(100, Math.round((this.sendProcessed() / total) * 100));
   });
 
   // Alert message
@@ -426,6 +438,7 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   onDraftRecordsChange(records: TimeRecord[]) {
+    if (this.sendLocked()) return;
     const prepared = this.sortedRecords(records.map((record) => this.applyImportDefaults(record)));
     if (prepared.length === 0) {
       this.records.set([]);
@@ -469,12 +482,14 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   onDuplicateDraftRecord(index: number): void {
+    if (this.sendLocked()) return;
     const source = this.records()[index];
     if (!source) return;
     this.addRecordToDrafts(this.markDuplicatedRecord(source), 'Registro duplicado en borradores.');
   }
 
   onSaveEdit(updated: TimeRecord) {
+    if (this.sendLocked()) return;
     const recs = [...this.records()];
     const idx = this.editingIndex()!;
     // recalc horas
@@ -504,6 +519,7 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   onPreviewRecordChange(change: { index: number; record: TimeRecord }): void {
+    if (this.sendLocked()) return;
     const recs = [...this.records()];
     const current = recs[change.index];
     if (!current) return;
@@ -522,6 +538,7 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   onDelete(index: number) {
+    if (this.sendLocked()) return;
     const recs = this.records().filter((_, i) => i !== index);
     this.records.set(this.sortedRecords(recs));
     this.persistPendingRecords();
@@ -534,7 +551,7 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   onSendAll() {
-    if (this.sending()) return;
+    if (this.sending() || this.sendLocked() || this.sendSubscription?.closed === false) return;
 
     if (this.records().length === 0) {
       this.showAlert('No hay registros listos para enviar.', 'error', 'Envío bloqueado');
@@ -618,23 +635,32 @@ export class MultipleImportPageComponent implements OnInit {
       return;
     }
 
+    const batch = [...this.records()];
+    const runId = ++this.sendRunId;
+    const sent = new Set<TimeRecord>();
+    this.sentRecords = sent;
     this.sending.set(true);
     this.sendPhase.set('sending');
-    this.sendTotal.set(this.records().length);
+    this.sendTotal.set(batch.length);
     this.sendProcessed.set(0);
     this.sendSuccessCount.set(0);
     this.sendErrorCount.set(0);
     this.sendFailureMessage.set('');
     this.pendingSendResult = null;
-    this.sendAll
-      .execute(this.records(), (log) => this.onSendProgress(log))
+    this.sendSubscription = this.sendAll
+      .execute(batch, (log) => {
+        if (runId === this.sendRunId) this.onSendProgress(log, batch, sent);
+      })
       .subscribe({
         next: (result) => {
+          if (runId !== this.sendRunId) return;
           this.pendingSendResult = result;
           this.persistSendLogs(result);
         },
         error: (error: unknown) => {
+          if (runId !== this.sendRunId) return;
           this.sending.set(false);
+          this.removeSentRecords(sent);
           this.sendPhase.set('failed');
           this.sendFailureMessage.set(this.getErrorMessage(error));
         },
@@ -657,6 +683,7 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   onCancelImport() {
+    if (this.sendLocked()) return;
     this.records.set([]);
     this.persistPendingRecords();
     this.groups.set([]);
@@ -1385,8 +1412,13 @@ export class MultipleImportPageComponent implements OnInit {
     return typeof message === 'string' && message.trim() ? message : 'Intenta nuevamente.';
   }
 
-  private onSendProgress(log: SendRecordLog) {
-    this.sendProcessed.update((value) => value + 1);
+  private onSendProgress(log: SendRecordLog, batch: TimeRecord[], sent: Set<TimeRecord>) {
+    this.sendProcessed.update((value) => Math.min(value + 1, this.sendTotal()));
+    const record = batch[log.index];
+    if (!log.ok || !record) return;
+    // Retira de localStorage cada registro confirmado para que una recarga no lo reenvíe.
+    sent.add(record);
+    this.persistPendingRecords(this.records().filter((item) => !sent.has(item)));
   }
 
   private persistSendLogs(result: SendResult): void {
@@ -1405,6 +1437,8 @@ export class MultipleImportPageComponent implements OnInit {
         next: () => this.completeSend(result),
         error: (error: unknown) => {
           this.sending.set(false);
+          // Los registros confirmados salen de borradores para que no puedan reenviarse.
+          this.removeSentRecords(this.sentRecords);
           this.sendPhase.set('log-error');
           this.sendFailureMessage.set(this.getErrorMessage(error));
         },
@@ -1415,24 +1449,29 @@ export class MultipleImportPageComponent implements OnInit {
     this.sending.set(false);
     this.sendSuccessCount.set(result.enviados);
     this.sendErrorCount.set(result.errores);
-    if (result.errores === 0) {
-      this.records.set([]);
-      this.persistPendingRecords();
+    this.removeSentRecords(this.sentRecords);
+    this.sendPhase.set('completed');
+  }
+
+  /** Poda por referencia (no por índice) los registros que el backend confirmó. */
+  private removeSentRecords(sent: ReadonlySet<TimeRecord>): void {
+    const remaining = this.records().filter((record) => !sent.has(record));
+    this.records.set(remaining);
+    this.persistPendingRecords();
+    if (remaining.length === 0) {
       this.groups.set([]);
       this.totalGeneral.set(0);
       this.showPreview.set(false);
     } else {
-      this.records.set(
-        this.records().filter((_, index) => !result.enviadosIndices.includes(index)),
-      );
-      this.persistPendingRecords();
       this.refreshGroups();
-      this.showPreview.set(this.records().length > 0);
+      this.showPreview.set(true);
     }
-    this.sendPhase.set('completed');
   }
 
   private resetSendTracking() {
+    // Nunca libera el bloqueo con un envío o una confirmación en curso.
+    if (this.sendPhase() === 'sending' || this.sendPhase() === 'saving-logs') return;
+    this.sentRecords = new Set<TimeRecord>();
     this.sending.set(false);
     this.sendTotal.set(0);
     this.sendProcessed.set(0);
@@ -1471,8 +1510,7 @@ export class MultipleImportPageComponent implements OnInit {
     }
   }
 
-  private persistPendingRecords(): void {
-    const records = this.records();
+  private persistPendingRecords(records = this.records()): void {
     if (!records.length) {
       localStorage.removeItem(this.pendingRecordsStorageKey);
       return;
@@ -1481,6 +1519,7 @@ export class MultipleImportPageComponent implements OnInit {
   }
 
   private addRecordToDrafts(record: TimeRecord, message: string): void {
+    if (this.sendLocked()) return;
     const draft = this.applyImportDefaults({
       ...record,
       horas: this.domain.calcHoras(record.horaIni, record.horaFin) || record.horas || '0',
@@ -2001,7 +2040,7 @@ export class MultipleImportPageComponent implements OnInit {
       HoraInicio: `${y}-${mo}-${d}T${ih}:${im}:00.000Z`,
       HoraFin: `${y}-${mo}-${d}T${fh}:${fm}:00.000Z`,
       tiempoRealHoras: draft.horas,
-      fechaInicio: this.buildColombiaDateLabel(draft.fecha, draft.horaIni),
+      fechaInicio: colombiaDateLabel(draft.fecha),
       tipoHora: draft.tipoHora || 'Laboral',
       descripcionActividad: draft.descripcion.trim(),
       observacion: draft.descripcion.trim(),
@@ -2014,7 +2053,7 @@ export class MultipleImportPageComponent implements OnInit {
         if ((report.identificador || '') !== draft.identificador) return report;
         return {
           ...report,
-          fechaInicio: this.buildColombiaDateLabel(draft.fecha, draft.horaIni),
+          fechaInicio: colombiaDateLabel(draft.fecha),
           HoraInicio: this.buildIsoDateTime(draft.fecha, draft.horaIni),
           HoraFin: this.buildIsoDateTime(draft.fecha, draft.horaFin),
           tiempoRealHoras: draft.horas,
@@ -2088,28 +2127,6 @@ export class MultipleImportPageComponent implements OnInit {
       dec: '12',
     };
     return `${textual[3]}-${months[textual[1].toLowerCase()] || '01'}-${textual[2].padStart(2, '0')}`;
-  }
-
-  private buildColombiaDateLabel(date: string, time: string): string {
-    const [y, mo, d] = date.split('-');
-    const [ih, im] = time.split(':');
-    const dias = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const meses = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    const dateObj = new Date(`${date}T12:00:00`);
-    return `${dias[dateObj.getDay()]} ${meses[Number(mo) - 1]} ${d} ${y} ${ih}:${im}:00 GMT-0500 (hora estandar de Colombia)`;
   }
 
   private valueFromRawUser(key: string): unknown {

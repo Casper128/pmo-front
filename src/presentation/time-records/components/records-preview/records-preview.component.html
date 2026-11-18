@@ -106,6 +106,7 @@
                 <app-ui-select
                   label="Cliente"
                   [options]="clienteOptions(item.record.cliente)"
+                  [disabled]="sending"
                   [searchThreshold]="0"
                   searchPlaceholder="Buscar cliente..."
                   [ngModel]="item.record.cliente"
@@ -115,7 +116,7 @@
                   label="Gestión Demanda"
                   [options]="gestionOptions(item.record)"
                   [loading]="isLoadingGestiones(item.record)"
-                  [disabled]="!item.record.cliente"
+                  [disabled]="sending || !item.record.cliente"
                   [searchThreshold]="0"
                   searchPlaceholder="Buscar gestión..."
                   [ngModel]="item.record.gestionId || item.record.solicitud"
@@ -124,6 +125,7 @@
                 <app-ui-select
                   label="Tipo hora"
                   [options]="tipoHoraSelectOptions(item.record.tipoHora)"
+                  [disabled]="sending"
                   [searchThreshold]="0"
                   searchPlaceholder="Buscar tipo..."
                   [ngModel]="item.record.tipoHora"
@@ -200,6 +202,7 @@
               <app-ui-select
                 label="Tipo hora"
                 [options]="tipoHoraSelectOptions(item.record.tipoHora)"
+                [disabled]="sending"
                 [searchThreshold]="0"
                 searchPlaceholder="Buscar tipo..."
                 [ngModel]="item.record.tipoHora"
@@ -208,6 +211,7 @@
               <app-ui-select
                 label="Cliente"
                 [options]="clienteOptions(item.record.cliente)"
+                [disabled]="sending"
                 [searchThreshold]="0"
                 searchPlaceholder="Buscar cliente..."
                 [ngModel]="item.record.cliente"
@@ -217,7 +221,7 @@
                 label="Gestión Demanda"
                 [options]="gestionOptions(item.record)"
                 [loading]="isLoadingGestiones(item.record)"
-                [disabled]="!item.record.cliente"
+                [disabled]="sending || !item.record.cliente"
                 [searchThreshold]="0"
                 searchPlaceholder="Buscar gestión..."
                 [ngModel]="item.record.gestionId || item.record.solicitud"

@@ -192,6 +192,7 @@ export class RecordsPreviewComponent implements OnChanges {
   }
 
   private selectPreferredGestion(index: number, record: TimeRecord): void {
+    if (this.sending) return;
     const options = this.gestionesFor(record);
     if (!record.cliente || !options.length) return;
     const remembered = this.rememberedGestion(record.cliente);

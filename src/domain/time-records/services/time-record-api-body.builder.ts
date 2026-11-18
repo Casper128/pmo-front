@@ -4,6 +4,7 @@ import {
 } from '../models/management-template.model';
 import { TimeRecordApiBody } from '../models/time-record-api.model';
 import { TimeRecord } from '../models/time-record.model';
+import { colombiaDateLabel } from './colombia-date-label';
 import type { TimeRecordParameters } from './time-record-domain.service';
 import { TimeRecordValidationPolicy } from './time-record-validation.policy';
 
@@ -24,7 +25,7 @@ export class TimeRecordApiBodyBuilder {
     const [y, mo, d] = reg.fecha.split('-');
     const [ih, im] = reg.horaIni.split(':');
     const [fh, fm] = reg.horaFin.split(':');
-    const fechaInicio = this.colombianDateString(reg.fecha, y, mo, d, ih, im);
+    const fechaInicio = colombiaDateLabel(reg.fecha);
     const fechaRealPruebas = this.validation.normalizeDateValue(this.templateValue(reg, 'fechaReal'));
 
     return {
@@ -60,33 +61,6 @@ export class TimeRecordApiBodyBuilder {
       fechaEstimadarealPruebas: fechaRealPruebas,
       fechaEstimadaRealPruebas: fechaRealPruebas || null,
     };
-  }
-
-  private colombianDateString(
-    fecha: string,
-    year: string,
-    month: string,
-    day: string,
-    hour: string,
-    minute: string,
-  ): string {
-    const dias = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const meses = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    const dateObj = new Date(fecha + 'T12:00:00');
-    return `${dias[dateObj.getDay()]} ${meses[parseInt(month) - 1]} ${day} ${year} ${hour}:${minute}:00 GMT-0500 (Colombia Standard Time)`;
   }
 
   private templateValue(reg: AdvancedTemplateValues, key: AdvancedTemplateFieldKey): string {
