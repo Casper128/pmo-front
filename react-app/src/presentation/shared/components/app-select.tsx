@@ -12,7 +12,7 @@ import {
 } from '@/shared/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
-import { normalizeSearch } from '@presentation/shared/format';
+import { normalizeText } from '@presentation/shared/format';
 import { OverflowText } from './overflow-text';
 
 export interface AppSelectOption {
@@ -56,7 +56,7 @@ const fromRadixValue = (value: string) => (value === EMPTY_OPTION_SENTINEL ? '' 
 
 /** Filtro de cmdk con la normalización de `ui-select` (sin tildes ni mayúsculas, "contiene"). */
 const filterByLabel = (_value: string, search: string, keywords: string[] = []) =>
-  normalizeSearch(keywords.join(' ')).includes(normalizeSearch(search)) ? 1 : 0;
+  normalizeText(keywords.join(' ')).includes(normalizeText(search)) ? 1 : 0;
 
 /**
  * Selector (equivale a `ui-select`): Shadcn `Select` con pocas opciones y combobox `Popover` + `Command`

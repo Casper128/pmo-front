@@ -132,8 +132,10 @@ export function DraftsProvider({ children, initialSendPhase = 'idle' }: DraftsPr
 
   const groups = useMemo(
     () => {
-      // `workSettings` cambia cuando terminan de cargar los parámetros: las alertas por día dependen de la
-      // jornada configurada y deben recalcularse.
+      // `groupByDate` lee la jornada configurada dentro de `domain` (referencia estable), así que `workSettings` no
+      // aparece como entrada y exhaustive-deps lo marca como innecesario. Se mantiene como dependencia para
+      // recalcular las alertas por día cuando terminan de cargar los parámetros; `void` evita el aviso. Quitarlo
+      // exigiría que `groupByDate` reciba la jornada (cambio en domain, sincronizado con Angular).
       void workSettings;
       return domain.groupByDate(records);
     },

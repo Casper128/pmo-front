@@ -7,9 +7,8 @@ import type { TimeRecord } from '@domain/time-records/models/time-record.model';
 import type { TimeRecordRepository } from '@domain/time-records/repositories/time-record.repository';
 import type { TimeRecordApiBodyBuilder } from '@domain/time-records/services/time-record-api-body.builder';
 import type { ManagementTemplateGateway } from '../ports/management-template.gateway';
+import { applyTemplateValues } from '../template-values';
 import {
-  type AdvancedTemplateFieldKey,
-  type AdvancedTemplateValues,
   type ManagementAdvancedTemplate,
   REQUIRED_ADVANCED_TEMPLATE_FIELDS,
   isMissingAdvancedTemplateValue,
@@ -48,7 +47,7 @@ export class RegisterTimeRecordUseCase {
       record,
       await this.templates.get(record.gestionId || record.solicitud),
     );
-    const body = this.bodyBuilder.build(this.applyTemplate(record, template.values));
+    const body = this.bodyBuilder.build(applyTemplateValues(record, template.values));
     const capturedLocation = await this.location.capture({ ...REPORT_LOCATION_REQUEST });
 
     let response: TimeRecordRegistrationResponse;
@@ -60,21 +59,6 @@ export class RegisterTimeRecordUseCase {
     }
     await this.auditResult(capturedLocation, body, true);
     return response;
-  }
-
-  private applyTemplate(
-    record: TimeRecord,
-    values: AdvancedTemplateValues,
-  ): TimeRecord & AdvancedTemplateValues {
-    const copy: TimeRecord & AdvancedTemplateValues = { ...record };
-    Object.entries(values).forEach(([key, value]) => {
-      if (key === 'tipoHora') return;
-      if (value === undefined || value === null || String(value).trim() === '') return;
-      if (key === 'funcional' && String(copy.funcional || '').trim()) return;
-      if (key === 'ricef' && String(copy.ricef || '').trim()) return;
-      copy[key as AdvancedTemplateFieldKey] = String(value);
-    });
-    return copy;
   }
 
   private async auditResult(

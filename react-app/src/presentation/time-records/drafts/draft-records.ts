@@ -65,9 +65,8 @@ export function recordErrors(domain: TimeRecordDomainService, record: TimeRecord
 /** Errores al guardar una edición: los del dominio más el tope diario de un registro computable. */
 export function recordSaveErrors(domain: TimeRecordDomainService, record: TimeRecord): string[] {
   const errors = recordErrors(domain, record);
-  if (domain.isCountableHour(record.tipoHora) && Number(record.horas || 0) > domain.getMaxDailyLaborHours()) {
-    errors.push(`Un registro computable no puede superar ${domain.getMaxDailyLaborHours()} horas`);
-  }
+  const [exceeded] = domain.getLaborRecordsHoursExceeded([record]);
+  if (exceeded) errors.push(`Un registro computable no puede superar ${exceeded.limiteHoras} horas`);
   return errors;
 }
 

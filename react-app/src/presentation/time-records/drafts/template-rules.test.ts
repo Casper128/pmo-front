@@ -1,7 +1,8 @@
 import type { ManagementAdvancedTemplate } from '@domain/time-records/models/management-template.model';
-import { completeTemplate, makeDraft } from '@/test/fakes/drafts-fixtures';
+import { applyTemplateValues } from '@application/time-records/template-values';
+import { completeTemplate, createFakeRepository, createFakeTemplates, makeDraft } from '@/test/fakes/drafts-fixtures';
+import { createTestContainer } from '@/test/fakes/test-container';
 import {
-  applyTemplateValues,
   buildManagementTemplateMap,
   defaultTemplateValues,
   mergeManagementTemplate,
@@ -57,13 +58,29 @@ describe('plantilla obligatoria por gestión (funciones puras)', () => {
     expect(upsertTemplate([template], completeTemplate('G-2', 'Dos'))).toHaveLength(2);
   });
 
-  it('applyTemplateValues ignora tipoHora y valores vacíos; payloadFields rellena "Sin valor"', () => {
-    const applied = applyTemplateValues(makeDraft(), { tipoHora: 'Fábrica', causa: 'Error', lenguaje: '  ' });
-    expect(applied.tipoHora).toBe('Laboral');
-    expect(applied.causa).toBe('Error');
-    expect(applied.lenguaje).toBeUndefined();
+  it('payloadFields rellena "Sin valor"', () => {
     const fields = payloadFields({ ricef: '', proyecto: 'P', fechaEstimadaPruebas: null } as never);
     expect(fields.find((f) => f.label === 'RICEF')?.value).toBe('Sin valor');
     expect(fields.find((f) => f.label === 'Proyecto')?.value).toBe('P');
+  });
+});
+
+describe('paridad entre vista previa y envío', () => {
+  it('el payload mostrado por el diálogo es el que recibe repository.register', async () => {
+    const repository = createFakeRepository();
+    repository.register.mockResolvedValue({ status: 200 });
+    const stored = { ...template, values: { ...template.values, funcional: 'De plantilla', ricef: 'R-T' } };
+    const container = createTestContainer({
+      timeRecordRepository: repository,
+      templates: createFakeTemplates([stored]),
+    });
+    const record = makeDraft({ funcional: 'Propio', ricef: '' });
+
+    const previewed = container.apiBodyBuilder.build(applyTemplateValues(record, stored.values));
+    await container.registerTimeRecord.execute(record);
+
+    expect(repository.register).toHaveBeenCalledWith(previewed);
+    expect(payloadFields(previewed).find((f) => f.label === 'Funcional')?.value).toBe('Propio');
+    expect(payloadFields(previewed).find((f) => f.label === 'RICEF')?.value).toBe('R-T');
   });
 });

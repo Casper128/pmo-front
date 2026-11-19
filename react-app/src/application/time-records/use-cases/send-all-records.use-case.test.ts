@@ -124,6 +124,8 @@ describe('SendAllRecordsUseCase', () => {
       logs: expectedLogs,
     });
     expect(progress).toEqual(expectedLogs);
+    const { logs } = await result;
+    progress.forEach((log, i) => expect(log).toBe(logs[i]));
   });
 
   it('extrae el identificador RH-…DO-n del cuerpo y usa "Respuesta no confirmada" sin mensaje', async () => {

@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import type { LocationGateway, UserAuditGateway } from '@application/audit/audit.gateways';
+import { LoginUseCase } from '@application/auth/login.use-case';
 import { LoadSelectOptionsUseCase } from '@application/time-records/use-cases/load-select-options.use-case';
 import { RegisterTimeRecordUseCase } from '@application/time-records/use-cases/register-time-record.use-case';
 import { SendAllRecordsUseCase } from '@application/time-records/use-cases/send-all-records.use-case';
@@ -52,12 +53,12 @@ export function createTestContainer(overrides: Partial<Container> = {}): Contain
     deleteRequests: unavailable('deleteRequests'),
     location,
     userAudit,
-    consultantLocations: unavailable('consultantLocations'),
     domainService: new TimeRecordDomainService(parameters),
     dashboardCalculator: new TimeDashboardCalculator(parameters),
     apiBodyBuilder,
     registerTimeRecord,
     sendAllRecords: new SendAllRecordsUseCase(registerTimeRecord),
+    login: new LoginUseCase(auth, location, userAudit),
     loadSelectOptions: new LoadSelectOptionsUseCase(timeRecordRepository),
     ...overrides,
   };

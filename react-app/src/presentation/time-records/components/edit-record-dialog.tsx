@@ -4,6 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
+import { applyTemplateValues } from '@application/time-records/template-values';
 import type { TimeRecord } from '@domain/time-records/models/time-record.model';
 import type { TimeRecordDomainService } from '@domain/time-records/services/time-record-domain.service';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
@@ -27,7 +28,7 @@ import { DatePicker } from '@presentation/shared/components/date-picker';
 import { TimeInput } from '@presentation/shared/components/time-input';
 import { queryKeys } from '@presentation/shared/query-keys';
 import { recordErrors } from '../drafts/draft-records';
-import { applyTemplateValues, payloadFields } from '../drafts/template-rules';
+import { payloadFields } from '../drafts/template-rules';
 import { useParameterOptions } from '../hooks/use-parameter-options';
 import { useClientes, useManagementOptions } from '../hooks/use-select-options';
 

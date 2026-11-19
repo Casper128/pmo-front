@@ -1,25 +1,15 @@
 import type { AdvancedFieldKey } from '@domain/configuration/app-parameters.model';
 import type { TimeRecordApiBody } from '@domain/time-records/models/time-record-api.model';
-import type { TimeRecord } from '@domain/time-records/models/time-record.model';
 import {
   REQUIRED_ADVANCED_TEMPLATE_FIELDS,
   isMissingAdvancedTemplateValue,
-  type AdvancedTemplateFieldKey,
   type AdvancedTemplateValues,
   type ManagementAdvancedTemplate,
   type ManagementDemandOption,
 } from '@domain/time-records/models/management-template.model';
+import { normalizeText } from '@presentation/shared/format';
 
 export type TemplateMap = ReadonlyMap<string, ManagementAdvancedTemplate>;
-
-/** `normalizeText` de Angular: sin tildes, en minúsculas y sin espacios en los extremos. */
-export function normalizeText(value: unknown): string {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim();
-}
 
 /** `uniqueText` de Angular: sin vacíos ni repetidos, ordenado en español. */
 function uniqueText(values: readonly string[]): string[] {
@@ -117,20 +107,6 @@ export function upsertTemplate(
   return list.some((item) => item.gestionId === saved.gestionId)
     ? list.map((item) => (item.gestionId === saved.gestionId ? saved : item))
     : [...list, saved];
-}
-
-/** Aplica los valores de la plantilla sobre el registro (salvo `tipoHora` y los vacíos), como el modal de edición. */
-export function applyTemplateValues(
-  record: TimeRecord,
-  values: AdvancedTemplateValues,
-): TimeRecord & AdvancedTemplateValues {
-  const copy: TimeRecord & AdvancedTemplateValues = { ...record };
-  Object.entries(values).forEach(([key, value]) => {
-    if (key === 'tipoHora') return;
-    if (value === undefined || value === null || String(value).trim() === '') return;
-    copy[key as AdvancedTemplateFieldKey] = String(value);
-  });
-  return copy;
 }
 
 /** Campos avanzados que se enviarán (vista de solo lectura del modal de edición). */

@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { LocationGateway, UserAuditGateway } from '@application/audit/audit.gateways';
-import type { ConsultantLocationGateway } from '@application/audit/consultant-location.gateway';
 import type { AuthGateway } from '@application/auth/auth.gateway';
+import type { LoginUseCase } from '@application/auth/login.use-case';
 import type { AppParametersFacade } from '@application/configuration/app-parameters.facade';
 import type { ManagementDeleteRequestGateway } from '@application/time-records/ports/management-delete-request.gateway';
 import type { ManagementTemplateGateway } from '@application/time-records/ports/management-template.gateway';
@@ -31,12 +31,12 @@ export interface Container {
   readonly deleteRequests: ManagementDeleteRequestGateway;
   readonly location: LocationGateway;
   readonly userAudit: UserAuditGateway;
-  readonly consultantLocations: ConsultantLocationGateway;
   readonly domainService: TimeRecordDomainService;
   readonly dashboardCalculator: TimeDashboardCalculator;
   readonly apiBodyBuilder: TimeRecordApiBodyBuilder;
   readonly registerTimeRecord: RegisterTimeRecordUseCase;
   readonly sendAllRecords: SendAllRecordsUseCase;
+  readonly login: LoginUseCase;
   readonly loadSelectOptions: LoadSelectOptionsUseCase;
 }
 

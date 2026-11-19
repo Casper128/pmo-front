@@ -3,7 +3,7 @@ import {
   formatDateDisplay,
   formatDateYmd,
   formatFechaEsp,
-  normalizeSearch,
+  normalizeText,
   normalizeTime,
   parseDateValue,
   toDateValue,
@@ -101,12 +101,12 @@ describe('normalizeTime (port de UiTimeInputComponent.normalize)', () => {
   });
 });
 
-describe('normalizeSearch (búsqueda de ui-select)', () => {
+describe('normalizeText (búsqueda de ui-select)', () => {
   it('ignora tildes, mayúsculas y espacios de los extremos', () => {
-    expect(normalizeSearch('  Medellín ÁRea ')).toBe('medellin area');
+    expect(normalizeText('  Medellín ÁRea ')).toBe('medellin area');
   });
 
   it('descompone y elimina marcas diacríticas combinadas (ñ, ü)', () => {
-    expect(normalizeSearch('Peñón Güéjar')).toBe('penon guejar');
+    expect(normalizeText('Peñón Güéjar')).toBe('penon guejar');
   });
 });

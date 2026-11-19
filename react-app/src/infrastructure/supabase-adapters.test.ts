@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeFetch, jsonResponse, requestAt, testEnvironment } from '@/test/http';
-import { SupabaseConsultantLocationAdapter } from './audit/supabase-consultant-location.adapter';
 import { SupabaseUserAuditAdapter } from './audit/supabase-user-audit.adapter';
 import { AuthService } from './auth/auth.service';
 import { HttpClient } from './http/http-client';
@@ -133,28 +132,6 @@ describe('Adaptadores Supabase y de gestión (paridad de peticiones con Angular)
         successful: true,
         report: { reference: 'DO-1', customer: 'Cliente', date: '2026-09-09' },
       },
-    });
-  });
-
-  it('SupabaseConsultantLocationAdapter.list: GET sin Content-Type, params from/to y radio por defecto', async () => {
-    const { http, auth, fetchMock } = setup(
-      jsonResponse({ consultants: [{ user_key: 'k', email: 'persona@example.test', home_latitude: '4.6' }], events: [] }),
-    );
-    const result = await new SupabaseConsultantLocationAdapter(http, auth, testEnvironment).list({
-      dateFrom: '2026-09-01',
-      dateTo: '2026-09-30',
-    });
-    expect(requestAt(fetchMock)).toEqual({
-      url: `${FUNCTIONS}/pmo-location-admin?from=2026-09-01&to=2026-09-30`,
-      method: 'GET',
-      headers: { apikey: testEnvironment.supabasePublishableKey, Authorization: 'Bearer token-1', Accept: ACCEPT },
-      body: null,
-    });
-    expect(result.consultants[0]).toMatchObject({
-      fullName: 'persona@example.test',
-      homeLatitude: 4.6,
-      homeRadiusM: 500,
-      lastWithinHomeRadius: null,
     });
   });
 });

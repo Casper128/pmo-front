@@ -1,3 +1,4 @@
+import { LoginUseCase } from '@application/auth/login.use-case';
 import { RegisterTimeRecordUseCase } from '@application/time-records/use-cases/register-time-record.use-case';
 import { SendAllRecordsUseCase } from '@application/time-records/use-cases/send-all-records.use-case';
 import { LoadSelectOptionsUseCase } from '@application/time-records/use-cases/load-select-options.use-case';
@@ -6,7 +7,6 @@ import { TimeRecordApiBodyBuilder } from '@domain/time-records/services/time-rec
 import { TimeRecordDomainService } from '@domain/time-records/services/time-record-domain.service';
 import type { Environment } from '@env/environment';
 import { BrowserGeolocationAdapter } from '@infrastructure/audit/browser-geolocation.adapter';
-import { SupabaseConsultantLocationAdapter } from '@infrastructure/audit/supabase-consultant-location.adapter';
 import { SupabaseUserAuditAdapter } from '@infrastructure/audit/supabase-user-audit.adapter';
 import { AuthService } from '@infrastructure/auth/auth.service';
 import { AppParametersService } from '@infrastructure/configuration/app-parameters.service';
@@ -49,13 +49,12 @@ export function createContainer(environment: Environment, overrides: Partial<Con
     deleteRequests: overrides.deleteRequests ?? new ManagementDeleteRequestAdapter(http, auth, environment),
     location,
     userAudit,
-    consultantLocations:
-      overrides.consultantLocations ?? new SupabaseConsultantLocationAdapter(http, auth, environment),
     domainService: overrides.domainService ?? new TimeRecordDomainService(parameters),
     dashboardCalculator: overrides.dashboardCalculator ?? new TimeDashboardCalculator(parameters),
     apiBodyBuilder,
     registerTimeRecord,
     sendAllRecords: overrides.sendAllRecords ?? new SendAllRecordsUseCase(registerTimeRecord),
+    login: overrides.login ?? new LoginUseCase(auth, location, userAudit),
     loadSelectOptions: overrides.loadSelectOptions ?? new LoadSelectOptionsUseCase(timeRecordRepository),
   };
 }

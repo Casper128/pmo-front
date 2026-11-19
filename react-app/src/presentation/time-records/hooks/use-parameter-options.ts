@@ -16,7 +16,9 @@ export function useParameterOptions(key: AdvancedFieldKey): AppSelectOption[] {
       parameters
         .optionsFor(key)
         .map((option) => ({ value: option.value, label: option.label, disabled: !option.active })),
-    // `fields` no se lee aquí: es la señal de que las opciones cambiaron.
+    // `fields` no se lee en el callback: `optionsFor` lo consulta por dentro y devuelve un array nuevo en cada
+    // llamada (no sirve como selector de `useAppParameters`), así que `fields` es solo la señal de invalidación.
+    // Evitar el disable exigiría que la fachada exponga las opciones con referencia estable (cambio de contrato).
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [parameters, key, fields],
   );

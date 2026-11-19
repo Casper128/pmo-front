@@ -6,6 +6,7 @@ import type {
   ManagementDemandOption,
 } from '@domain/time-records/models/management-template.model';
 import { useContainer } from '@presentation/providers/container-context';
+import { errorMessage } from '@presentation/shared/error-message';
 import { queryKeys } from '@presentation/shared/query-keys';
 import {
   buildManagementTemplateMap,
@@ -14,11 +15,6 @@ import {
   upsertTemplate,
   withManagementControlData,
 } from '../drafts/template-rules';
-
-const errorMessage = (error: unknown): string =>
-  typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
-    ? error.message
-    : '';
 
 export interface UseManagementTemplatesOptions {
   /** Proyecto del cliente por defecto: valor inicial del proyecto en una plantilla nueva. */

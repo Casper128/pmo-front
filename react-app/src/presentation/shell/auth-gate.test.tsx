@@ -4,7 +4,8 @@ import { FakeAppParameters } from '@/test/fakes/fake-app-parameters';
 import { FakeAuthGateway, testUser } from '@/test/fakes/fake-auth';
 import { renderApp } from '@/test/fakes/render-app';
 import { createTestContainer } from '@/test/fakes/test-container';
-import { LOGIN_LOCATION_REQUEST, SESSION_REFRESH_INTERVAL_MS } from './session-config';
+import { SESSION_REFRESH_INTERVAL_MS } from './session-config';
+import { LOGIN_LOCATION_REQUEST } from '@application/auth/login.use-case';
 
 const loginHeading = () => screen.findByRole('heading', { name: 'Registro de tiempos' });
 const dashboardHeading = () => screen.findByRole('heading', { name: 'Dashboard de tiempos' });

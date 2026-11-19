@@ -84,9 +84,9 @@ export function normalizeTime(value: string | null | undefined): string {
     : '';
 }
 
-/** Normaliza para buscar como `ui-select`: sin tildes, minúsculas y sin espacios en los extremos. */
-export function normalizeSearch(value: string): string {
-  return value
+/** Sin tildes, en minúsculas y sin espacios en los extremos (`normalizeText` de Angular; búsqueda de `ui-select`). */
+export function normalizeText(value: unknown): string {
+  return String(value || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()

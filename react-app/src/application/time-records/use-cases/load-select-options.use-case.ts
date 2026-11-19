@@ -21,18 +21,6 @@ export class LoadSelectOptionsUseCase {
     return this.repository.getClientes();
   }
 
-  proyectos(cliente: string): Promise<string[]> {
-    return this.repository.getProyectos(cliente);
-  }
-
-  solicitudes(cliente: string, proyecto: string): Promise<string[]> {
-    return this.repository.getSolicitudes(cliente, proyecto);
-  }
-
-  solicitudOptions(cliente: string, proyecto: string): Promise<ManagementDemandOption[]> {
-    return this.repository.getSolicitudOptions(cliente, proyecto);
-  }
-
   /**
    * Gestiones del cliente, cacheadas. Sin `proyecto` usa el primer proyecto del cliente
    * (mismo criterio que la carga por fila). Si la consulta falla se descarta la entrada

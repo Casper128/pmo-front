@@ -3,16 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useContainer } from '@presentation/providers/container-context';
+import { errorMessage } from '@presentation/shared/error-message';
 import { useAuth } from '@presentation/shared/hooks/use-auth';
 import { DraftsProvider } from '@presentation/time-records/drafts/drafts-provider';
 import { AppLayout } from './app-layout';
 import { LoginPage, type LoginValues } from './login-page';
-import { LOGIN_LOCATION_REQUEST, SESSION_REFRESH_INTERVAL_MS } from './session-config';
-
-const errorMessage = (error: unknown): string =>
-  typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
-    ? error.message
-    : '';
+import { SESSION_REFRESH_INTERVAL_MS } from './session-config';
 
 function SessionRestoring() {
   return (
@@ -32,7 +28,7 @@ function SessionRestoring() {
  * cada 4 min y cierra sesión si la renovación devuelve sesión expirada.
  */
 export function AuthGate() {
-  const { location, userAudit, parameters } = useContainer();
+  const { login: loginUseCase, parameters } = useContainer();
   const { auth, isLoggedIn } = useAuth();
   const queryClient = useQueryClient();
   const [restoring, setRestoring] = useState(true);
@@ -81,12 +77,7 @@ export function AuthGate() {
       setLoginError('');
       setLoggingIn(true);
       try {
-        const user = await auth.login(email.trim(), password);
-        auth.setUser(user);
-        void location
-          .capture(LOGIN_LOCATION_REQUEST)
-          .then((workLocation) => userAudit.recordLogin(workLocation))
-          .catch(() => undefined);
+        await loginUseCase.execute(email.trim(), password);
         void parameters.load();
       } catch (error) {
         setLoginError(errorMessage(error) || 'No se pudo iniciar sesión');
@@ -95,7 +86,7 @@ export function AuthGate() {
         setLoggingIn(false);
       }
     },
-    [auth, location, userAudit, parameters],
+    [loginUseCase, parameters],
   );
 
   if (restoring) return <SessionRestoring />;
