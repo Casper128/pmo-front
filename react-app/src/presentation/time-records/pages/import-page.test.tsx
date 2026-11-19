@@ -2,9 +2,14 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { toast } from 'sonner';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
+import type { SendLogGateway } from '@application/time-records/ports/send-log.gateway';
+import type { TimeManagementGateway } from '@application/time-records/ports/time-management.gateway';
+import type { SendAllRecordsUseCase } from '@application/time-records/use-cases/send-all-records.use-case';
+import type { ManagementReport } from '@domain/time-records/models/management-report.model';
 import type { TimeRecord } from '@domain/time-records/models/time-record.model';
-import { createDraftsContainer, createFakeTemplates, makeDraft, testCatalog } from '@/test/fakes/drafts-fixtures';
+import { completeTemplate, createDraftsContainer, createFakeTemplates, makeDraft, testCatalog } from '@/test/fakes/drafts-fixtures';
 import { renderApp } from '@/test/fakes/render-app';
+import { SendAllStub, log, result } from '@/test/fakes/send-all-stub';
 import { setViewportWidth } from '@/test/viewport';
 import { AppProviders } from '@presentation/providers/app-providers';
 import { createQueryClient } from '@presentation/providers/query-client';
@@ -638,12 +643,14 @@ describe('ImportPage', () => {
         const { container } = renderLocked(phase);
         await screen.findByText('2 registros en 1 día');
 
+        // El diálogo de progreso (modal) oculta la página a los lectores de pantalla: se consulta con `hidden`.
         for (const button of ['Duplicar registro 1', 'Editar registro 1', 'Eliminar registro 2']) {
-          expect(screen.getByRole('button', { name: button })).toBeDisabled();
+          expect(screen.getByRole('button', { name: button, hidden: true })).toBeDisabled();
         }
-        expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Procesar tiempos' })).toBeDisabled();
-        for (const combo of screen.getAllByRole('combobox')) expect(combo).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Cancelar', hidden: true })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Procesar tiempos', hidden: true })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Enviando/, hidden: true })).toBeDisabled();
+        for (const combo of screen.getAllByRole('combobox', { hidden: true })) expect(combo).toBeDisabled();
         expect(screen.getByText(/Hay un envío en curso o pendiente de confirmar/)).toBeInTheDocument();
         // El texto pendiente no se descarta.
         expect(textarea()).toHaveValue(SAMPLE_TEXT);
@@ -658,9 +665,9 @@ describe('ImportPage', () => {
     );
 
     it('el texto pendiente tampoco se procesa aunque se fuerce el clic', async () => {
-      const { user } = renderLocked('sending');
+      renderLocked('sending');
       await screen.findByText('2 registros en 1 día');
-      await user.click(screen.getByRole('button', { name: 'Procesar tiempos' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Procesar tiempos', hidden: true }));
       expect(stored()).toHaveLength(2);
       expect(textarea()).toHaveValue(SAMPLE_TEXT);
     });
@@ -688,5 +695,196 @@ describe('ImportPage', () => {
 
     expect(repository.getClientes.mock.calls.length).toBe(clientesCalls);
     expect(repository.getSolicitudOptions.mock.calls.length).toBe(gestionCalls);
+  });
+});
+
+describe('ImportPage · registrar todos', () => {
+  const THREE = [
+    makeDraft({ horaIni: '07:30', horaFin: '09:00', horas: '1.5' }),
+    makeDraft({ horaIni: '09:00', horaFin: '10:00', horas: '1' }),
+    makeDraft({ horaIni: '10:00', horaFin: '11:00', horas: '1' }),
+  ];
+
+  async function setupSend(drafts: TimeRecord[] = THREE, sent: ManagementReport[] | Error = [], templates?: ReturnType<typeof createFakeTemplates>) {
+    const stub = new SendAllStub();
+    const sendLogs = { createMany: vi.fn(async () => undefined) };
+    const timeManagement = { list: vi.fn(async () => { if (sent instanceof Error) throw sent; return sent; }) };
+    seedDrafts(...drafts);
+    const ctx = await setupApp({
+      templates,
+      overrides: {
+        sendAllRecords: stub as unknown as SendAllRecordsUseCase,
+        sendLogs: sendLogs as unknown as SendLogGateway,
+        timeManagement: timeManagement as unknown as TimeManagementGateway,
+      },
+    });
+    await screen.findByText(new RegExp(`^${drafts.length} registros? en 1 día$`));
+    return { ...ctx, stub, sendLogs, timeManagement };
+  }
+
+  const sendButton = () => screen.findByRole('button', { name: /Registrar todos/ });
+
+  afterEach(() => {
+    localStorage.clear();
+    act(() => void toast.dismiss());
+  });
+
+  it('muestra el conteo y registra con un diálogo de progreso que no se puede cerrar', async () => {
+    const { user, stub } = await setupSend();
+    expect(await sendButton()).toHaveTextContent('Registrar todos (3)');
+
+    await user.click(await sendButton());
+
+    const dialog = await screen.findByRole('dialog', { name: 'Registrando reportes' });
+    expect(within(dialog).getByText('0 de 3 registros procesados')).toBeInTheDocument();
+    expect(within(dialog).getByRole('progressbar', { name: 'Progreso del envío' })).toHaveAttribute('aria-valuenow', '0');
+    expect(within(dialog).queryByRole('button')).not.toBeInTheDocument();
+
+    act(() => stub.runs[0].onProgress?.(log(0)));
+    expect(within(dialog).getByText('1 de 3 registros procesados')).toBeInTheDocument();
+    expect(within(dialog).getByText('33%')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('dialog', { name: 'Registrando reportes' })).toBeInTheDocument();
+  });
+
+  it('al terminar muestra el resultado por registro y "Seguir registrando" cierra el diálogo', async () => {
+    const { user, stub, sendLogs } = await setupSend();
+    await user.click(await sendButton());
+    await screen.findByRole('dialog', { name: 'Registrando reportes' });
+
+    act(() => {
+      stub.runs[0].onProgress?.(log(0));
+      stub.runs[0].onProgress?.(log(1, false));
+      stub.runs[0].onProgress?.(log(2));
+    });
+    await act(async () => stub.runs[0].resolve(result([0, 2], [1])));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Envío finalizado' });
+    expect(within(dialog).getByText('Los registros quedaron enviados.')).toBeInTheDocument();
+    expect(within(dialog).getByText('2 correctos · 1 con error')).toBeInTheDocument();
+    const items = within(within(dialog).getByRole('list', { name: 'Resultado por registro' })).getAllByRole('listitem');
+    expect(items).toHaveLength(3);
+    // Los logs llegan en el orden del resultado: primero los correctos y después el error.
+    expect(within(items[2]).getByText('Con error')).toBeInTheDocument();
+    expect(within(items[2]).getByText('Falló')).toBeInTheDocument();
+    expect(sendLogs.createMany).toHaveBeenCalledTimes(1);
+    expect(stored().map((record) => record.horaIni)).toEqual(['09:00']);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Seguir registrando' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('log-error ofrece reintentar la confirmación del historial', async () => {
+    const { user, stub, sendLogs } = await setupSend();
+    sendLogs.createMany.mockRejectedValueOnce(new Error('sin historial'));
+    await user.click(await sendButton());
+    await screen.findByRole('dialog', { name: 'Registrando reportes' });
+    await act(async () => stub.runs[0].resolve(result([], [0, 1, 2])));
+
+    const dialog = await screen.findByRole('dialog', { name: 'El proceso necesita atención' });
+    expect(within(dialog).getByText('No se pudo confirmar el historial.')).toBeInTheDocument();
+    expect(within(dialog).getByText('sin historial')).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Ver historial/)).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Reintentar confirmación' }));
+    expect(await screen.findByRole('dialog', { name: 'Envío finalizado' })).toBeInTheDocument();
+    expect(sendLogs.createMany).toHaveBeenCalledTimes(2);
+  });
+
+  it('un fallo del envío muestra el error y "Volver a los registros" libera los borradores', async () => {
+    const { user, stub } = await setupSend();
+    await user.click(await sendButton());
+    await screen.findByRole('dialog', { name: 'Registrando reportes' });
+    await act(async () => stub.runs[0].reject(new Error('Sin conexión')));
+
+    const dialog = await screen.findByRole('dialog', { name: 'El proceso necesita atención' });
+    expect(within(dialog).getByText('No fue posible completar el envío.')).toBeInTheDocument();
+    expect(within(dialog).getByText('Sin conexión')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Volver a los registros' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await sendButton()).toBeEnabled();
+  });
+
+  it('navegar fuera y volver durante el envío conserva el bloqueo y no duplica el envío', async () => {
+    const { user, stub, router } = await setupSend();
+    await user.click(await sendButton());
+    await screen.findByRole('dialog', { name: 'Registrando reportes' });
+    act(() => stub.runs[0].onProgress?.(log(0)));
+
+    await act(() => router.navigate('/registros/dashboard'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await act(() => router.navigate(IMPORT_PATH));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Registrando reportes' });
+    expect(within(dialog).getByText('1 de 3 registros procesados')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Enviando/, hidden: true })).toBeDisabled();
+    expect(stub.runs).toHaveLength(1);
+  });
+
+  it('con exceso de jornada por lo ya enviado pide confirmar; cancelar no envía y confirmar sí', async () => {
+    const sent: ManagementReport[] = [
+      { identificador: 'RH-1', idConsultor: undefined, HoraInicio: '2026-09-09T15:00:00.000Z', HoraFin: '2026-09-09T17:00:00.000Z', tiempoRealHoras: '2', tipoHora: 'Laboral' },
+    ];
+    const { user, stub } = await setupSend([makeDraft({ horaIni: '07:00', horaFin: '14:00', horas: '7' })], sent);
+
+    await user.click(await sendButton());
+    const alert = await screen.findByRole('alertdialog', { name: 'Exceso de jornada con lo ya enviado' });
+    expect(within(alert).getByText(/9\.0h\/8\.5h \(2\.0h ya enviadas\)/)).toBeInTheDocument();
+    await user.click(within(alert).getByRole('button', { name: 'Revisar registros' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(stub.runs).toHaveLength(0);
+    expect(await sendButton()).toBeEnabled();
+
+    await user.click(await sendButton());
+    await user.click(await screen.findByRole('button', { name: 'Enviar de todos modos' }));
+    expect(await screen.findByRole('dialog', { name: 'Registrando reportes' })).toBeInTheDocument();
+    expect(stub.runs).toHaveLength(1);
+  });
+
+  it('un horario que se cruza con un registro ya enviado bloquea el envío', async () => {
+    const sent: ManagementReport[] = [
+      { identificador: 'RH-1', HoraInicio: '2026-09-09T08:00:00.000Z', HoraFin: '2026-09-09T09:30:00.000Z', tiempoRealHoras: '1.5', tipoHora: 'Laboral' },
+    ];
+    const { user, stub } = await setupSend([makeDraft()], sent);
+
+    await user.click(await sendButton());
+
+    const alert = await screen.findByRole('alertdialog', { name: 'Envío bloqueado por horario cruzado' });
+    expect(within(alert).getByText(/se cruzan con horarios que ya enviaste.*07:30-09:00 con 08:00-09:30/)).toBeInTheDocument();
+    expect(stub.runs).toHaveLength(0);
+    await user.click(within(alert).getByRole('button', { name: 'Entendido, revisar registros' }));
+    expect(await sendButton()).toBeEnabled();
+  });
+
+  it('si la consulta de lo enviado falla, avisa y envía igual', async () => {
+    const { user, stub } = await setupSend([makeDraft()], new Error('sin red'));
+
+    await user.click(await sendButton());
+
+    expect(await screen.findByRole('dialog', { name: 'Registrando reportes' })).toBeInTheDocument();
+    expect(stub.runs).toHaveLength(1);
+    expect(await screen.findByText('No se pudo verificar lo ya enviado; se continúa sin esa comprobación.')).toBeInTheDocument();
+  });
+
+  it('una plantilla obligatoria incompleta abre el diálogo de configuración en modo edición', async () => {
+    const templates = createFakeTemplates([{ ...completeTemplate('G-1', 'Gestión Uno'), completed: false }]);
+    const { user, stub } = await setupSend([makeDraft()], [], templates);
+
+    await user.click(await sendButton());
+
+    const dialog = await screen.findByRole('dialog', { name: 'Editar configuración' });
+    expect(within(dialog).getByText('Gestión Uno')).toBeInTheDocument();
+    expect(await screen.findByText('Llena la configuración avanzada de la gestión antes de enviar.')).toBeInTheDocument();
+    expect(stub.runs).toHaveLength(0);
+  });
+
+  it('sin plantilla para la gestión abre el diálogo de configuración nueva', async () => {
+    const { user, stub } = await setupSend([makeDraft()], [], createFakeTemplates([]));
+
+    await user.click(await sendButton());
+
+    expect(await screen.findByRole('dialog', { name: 'Configurar gestión' })).toBeInTheDocument();
+    expect(stub.runs).toHaveLength(0);
   });
 });

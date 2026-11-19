@@ -8,6 +8,8 @@ import { EditRecordDialog } from '../components/edit-record-dialog';
 import { ImportTextInput } from '../components/import-text-input';
 import { ManagementTemplateDialog } from '../components/management-template-dialog';
 import { RecordsPreviewTable } from '../components/records-preview-table';
+import { SendConfirmDialog } from '../components/send-confirm-dialog';
+import { SendProgressDialog } from '../components/send-progress-dialog';
 import {
   DEFAULT_ALERT_TITLE,
   ValidationAlertDialog,
@@ -24,18 +26,19 @@ interface EditingRecord {
 
 /**
  * Reportar y revisar tiempos (vista `import` de `MultipleImportPageComponent`): pegar texto, revisar los
- * borradores del shell, editarlos y configurar la plantilla obligatoria de cada gestión. El envío es F8.
+ * borradores del shell, editarlos, configurar la plantilla obligatoria de cada gestión y registrarlos todos.
  */
 export function ImportPage() {
   const drafts = useDrafts();
-  const { updateRecord, saveEdit, deleteRecord, duplicateRecord, clearRecords } = drafts;
+  const { updateRecord, saveEdit, deleteRecord, duplicateRecord, clearRecords, sendAll } = drafts;
   const { defaultProyecto, solicitudOptions } = useDefaultSelection();
   const [alert, setAlert] = useState<ValidationAlert | null>(null);
   const [editing, setEditing] = useState<EditingRecord | null>(null);
+  const [excessConfirm, setExcessConfirm] = useState<ValidationAlert | null>(null);
 
   const showError = useCallback((text: string, title = DEFAULT_ALERT_TITLE) => setAlert({ title, text }), []);
   const templates = useManagementTemplates({ defaultProyecto, onError: showError });
-  const { ensureForOption } = templates;
+  const { ensureForOption, openEdit: openTemplateEdit } = templates;
 
   // Los cambios automáticos (selección de gestión tras cargar opciones) llegan de forma asíncrona: leen la
   // selección por defecto y la función vigentes, no las del render en que se programaron.
@@ -88,6 +91,23 @@ export function ImportPage() {
     [deleteRecord, showError],
   );
 
+  /** `onSendAll`: el provider valida y envía; aquí se muestra lo que detiene el envío. */
+  const handleSendAll = useCallback(
+    async (confirmExcess = false) => {
+      const outcome = await sendAll({ confirmExcess });
+      if (outcome.status === 'blocked') {
+        showError(outcome.text, outcome.title);
+      } else if (outcome.status === 'template') {
+        if (outcome.template) openTemplateEdit(outcome.template);
+        else void ensureForOption(outcome.option);
+        toast.error(outcome.text);
+      } else if (outcome.status === 'confirm') {
+        setExcessConfirm({ title: outcome.title, text: outcome.text });
+      }
+    },
+    [sendAll, showError, openTemplateEdit, ensureForOption],
+  );
+
   const handleSaveEdit = (edited: TimeRecord) => {
     if (!editing) return;
     const result = saveEdit(editing.index, edited);
@@ -116,6 +136,7 @@ export function ImportPage() {
             onEditRecord={openEdit}
             onDuplicateRecord={handleDuplicate}
             onDeleteRecord={handleDelete}
+            onSendAll={() => void handleSendAll()}
             onCancelImport={clearRecords}
           />
         ) : (
@@ -130,12 +151,22 @@ export function ImportPage() {
       <EditRecordDialog record={editing?.record ?? null} onSave={handleSaveEdit} onCancel={() => setEditing(null)} />
       <ManagementTemplateDialog
         template={templates.dialog}
+        mode={templates.dialogMode}
         saving={templates.saving}
         onSave={templates.save}
         onInvalid={(missing) => showError(`Faltan campos obligatorios: ${missing.join(', ')}.`)}
         onClose={templates.closeDialog}
       />
       <ValidationAlertDialog alert={alert} onClose={() => setAlert(null)} />
+      <SendConfirmDialog
+        confirm={excessConfirm}
+        onCancel={() => setExcessConfirm(null)}
+        onConfirm={() => {
+          setExcessConfirm(null);
+          void handleSendAll(true);
+        }}
+      />
+      <SendProgressDialog />
     </div>
   );
 }

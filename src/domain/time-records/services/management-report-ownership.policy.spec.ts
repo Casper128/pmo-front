@@ -18,11 +18,34 @@ describe('isManagementReportOwnedBy', () => {
     expect(isManagementReportOwnedBy({ idUsuario: 7 }, rawUser)).toBe(true);
   });
 
-  it('coincide por correo o nombre normalizados cuando el id no coincide', () => {
+  it('con ids en ambos lados solo cuenta el id, aunque el correo coincida', () => {
     expect(isManagementReportOwnedBy({ idConsultor: 1, correo: 'PERSONA@example.com' }, user)).toBe(
-      true,
+      false,
     );
-    expect(isManagementReportOwnedBy({ nombreConsultor: 'Persona Prueba' }, user)).toBe(true);
+  });
+
+  it('sin id en el usuario o en el reporte exige igualdad exacta de correo o usuario', () => {
+    const withoutId: AuthUser = { ...user, id: undefined };
+    expect(isManagementReportOwnedBy({ correo: 'PERSONA@example.com' }, withoutId)).toBe(true);
+    expect(isManagementReportOwnedBy({ usuario_tiemposConsultores: { email: 'persona@example.com' } }, withoutId)).toBe(true);
+    expect(isManagementReportOwnedBy({ correo: 'persona@example.com' }, user)).toBe(true);
+    expect(isManagementReportOwnedBy({ idConsultor: 1 }, withoutId)).toBe(false);
+  });
+
+  it('no usa subcadenas como identidad', () => {
+    expect(isManagementReportOwnedBy({ correo: 'otra.persona@example.com' }, user)).toBe(false);
+    expect(isManagementReportOwnedBy({ correo: 'persona@example.com.co' }, user)).toBe(false);
+    expect(isManagementReportOwnedBy({ nombreConsultor: 'Persona Prueba Segundo' }, user)).toBe(false);
+  });
+
+  it('sin id ni correo compara el nombre del consultor por igualdad exacta', () => {
+    expect(isManagementReportOwnedBy({ nombreConsultor: 'persona prueba' }, user)).toBe(true);
+    expect(isManagementReportOwnedBy({ consultor: 'Otra Persona' }, user)).toBe(false);
+  });
+
+  it('funcional no es identidad', () => {
+    expect(isManagementReportOwnedBy({ idConsultor: 1, funcional: 'persona@example.com' }, user)).toBe(false);
+    expect(isManagementReportOwnedBy({ funcional: 'Otra Persona' }, user)).toBe(true);
   });
 
   it('rechaza registros de otra persona', () => {

@@ -81,10 +81,12 @@ export interface DraftsContainerOptions {
   readonly parameters?: Partial<FakeParametersState>;
   readonly repository?: ReturnType<typeof createFakeRepository>;
   readonly templates?: ReturnType<typeof createFakeTemplates>;
+  /** Sustituye puertos concretos del contenedor (p. ej. `sendAllRecords`, `sendLogs`, `timeManagement`). */
+  readonly overrides?: Partial<Container>;
 }
 
 /** Contenedor de pruebas con sesión iniciada, parámetros con opciones y repositorio/plantillas ficticios. */
-export function createDraftsContainer({ parameters = {}, repository, templates }: DraftsContainerOptions = {}) {
+export function createDraftsContainer({ parameters = {}, repository, templates, overrides = {} }: DraftsContainerOptions = {}) {
   const auth = new FakeAuthGateway({ user: testUser });
   const fakeParameters = new FakeAppParameters({ fields: testParameterFields(), ...parameters }, auth);
   const fakeRepository = repository ?? createFakeRepository();
@@ -101,6 +103,7 @@ export function createDraftsContainer({ parameters = {}, repository, templates }
     parameters: fakeParameters,
     timeRecordRepository: fakeRepository,
     templates: fakeTemplates,
+    ...overrides,
   });
   return { container, auth, parameters: fakeParameters, repository: fakeRepository, templates: fakeTemplates };
 }

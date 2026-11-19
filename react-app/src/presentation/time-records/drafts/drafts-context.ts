@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { DayGroup, TimeRecord } from '@domain/time-records/models/time-record.model';
 import type { SendPhase } from './send-phase';
+import type { SendAllOutcome, SendProgress } from './use-send-all-records';
 
 export type SaveEditResult =
   | { readonly status: 'saved' }
@@ -17,6 +18,15 @@ export interface DraftsContextValue {
   readonly sendPhase: SendPhase;
   /** Hay un envío o una confirmación pendiente: los borradores no se pueden modificar. */
   readonly sendLocked: boolean;
+  /** Validando lo que se va a enviar (consulta de plantillas y de lo ya enviado). */
+  readonly sendChecking: boolean;
+  readonly sendProgress: SendProgress;
+  /** Valida y envía todos los borradores. Un envío en vuelo, o uno validándose, ignora la llamada. */
+  readonly sendAll: (options?: { confirmExcess?: boolean }) => Promise<SendAllOutcome>;
+  /** Reintenta guardar el historial del envío (fase `log-error`). */
+  readonly retrySendLogs: () => void;
+  /** Cierra el diálogo de resultados (`continueAfterSend`). */
+  readonly continueAfterSend: () => void;
   /** Agrega registros parseados (`onDraftRecordsChange`). `false` si el envío bloquea los cambios. */
   readonly addRecords: (parsed: readonly TimeRecord[]) => boolean;
   /** Cambio en la vista previa (`onPreviewRecordChange`): recalcula horas. Devuelve el registro nuevo. */

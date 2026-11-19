@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/ui/collapsible';
 import { Field, FieldDescription, FieldLabel } from '@/shared/ui/field';
 import { Textarea } from '@/shared/ui/textarea';
@@ -61,12 +61,12 @@ export function ImportTextInput() {
 
   return (
     <Card>
-      <CardHeader className="border-b">
+      <CardHeader className="border-b sm:grid-cols-[1fr_auto]">
         <CardTitle>Pegar tiempos</CardTitle>
         <CardDescription>Inserta el texto y completa los selects en la vista previa antes de enviar.</CardDescription>
-        <CardAction className="col-start-1 row-start-3 justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end">
+        <div className="sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end">
           <Badge variant="outline">Borrador guardado</Badge>
-        </CardAction>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Collapsible className="rounded-lg border bg-muted/40">

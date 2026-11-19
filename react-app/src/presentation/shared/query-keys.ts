@@ -5,6 +5,10 @@ export const queryKeys = {
     /** Gestiones de un cliente para un proyecto (`''` = primer proyecto del cliente). */
     gestiones: (cliente: string, proyecto: string) => ['options', 'gestiones', cliente, proyecto] as const,
   },
+  reports: {
+    all: ['management-reports'] as const,
+    mine: (consultantId: string | number | null) => ['management-reports', consultantId] as const,
+  },
   templates: {
     all: ['templates'] as const,
     detail: (gestionId: string) => ['templates', 'detail', gestionId] as const,

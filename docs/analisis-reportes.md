@@ -47,3 +47,9 @@ Definición de "Fábrica" y "Horas extra"; metas de % facturable y cumplimiento;
 - **F10 Consolidado:** migrar como está; reutilizar la lista por día de Reportes.
 - **F9 Reportes:** sin cambios respecto al diseño.
 - **Transversal:** política de pertenencia única y revisar `record.funcional`.
+
+## 6. Decisiones del usuario (2026-11-18)
+- Audiencia confirmada: consultores y **líderes de equipo**.
+- Dashboard: **renombrar "Horas extra" a "Horas Fábrica"** y **agregar alertas por día** (faltante, exceso, sin reporte). No se agregan cumplimiento en horas ni el cambio de "Sin cliente".
+- "Estimadas vs reales": **hacerla funcional** con un atributo nuevo e independiente de horas estimadas por asignación (pendiente confirmar qué pantalla es "asignaciones").
+- Datos: el usuario decidirá qué desgloses quedan a partir de la lista de 11.

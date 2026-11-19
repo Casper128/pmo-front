@@ -92,3 +92,10 @@ export function normalizeSearch(value: string): string {
     .toLowerCase()
     .trim();
 }
+
+/** `formatFullDate` de `MultipleImportPageComponent`: `mié, 09 sept`; `Sin fecha` si falta. */
+export function formatFullDate(value: string): string {
+  if (!value) return 'Sin fecha';
+  const date = parseDateValue(value);
+  return date ? new Intl.DateTimeFormat('es-CO', { weekday: 'short', day: '2-digit', month: 'short' }).format(date) : value;
+}

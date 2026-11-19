@@ -36,6 +36,7 @@ export function useManagementTemplates({ defaultProyecto, onError }: UseManageme
   const { templates, parameters } = useContainer();
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<ManagementAdvancedTemplate | null>(null);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   // Referencia síncrona: dos selecciones seguidas no deben abrir dos diálogos.
   const dialogOpenRef = useRef(false);
 
@@ -53,10 +54,17 @@ export function useManagementTemplates({ defaultProyecto, onError }: UseManageme
     [queryClient],
   );
 
-  const openDialog = useCallback((template: ManagementAdvancedTemplate | null) => {
+  const openDialog = useCallback((template: ManagementAdvancedTemplate | null, mode: 'create' | 'edit' = 'create') => {
     dialogOpenRef.current = !!template;
+    setDialogMode(mode);
     setDialog(template);
   }, []);
+
+  /** `openTemplateEdit` de Angular: abre el diálogo con una plantilla existente. */
+  const openEdit = useCallback(
+    (template: ManagementAdvancedTemplate) => openDialog({ ...template, values: { ...template.values } }, 'edit'),
+    [openDialog],
+  );
 
   /** Registra la gestión y, si no tiene plantilla, la trae o abre el diálogo para configurarla. */
   const ensureForOption = useCallback(
@@ -122,5 +130,5 @@ export function useManagementTemplates({ defaultProyecto, onError }: UseManageme
     openDialog(null);
   }, [saving, openDialog]);
 
-  return { dialog, saving, ensureForOption, save, closeDialog };
+  return { dialog, dialogMode, saving, ensureForOption, openEdit, save, closeDialog };
 }

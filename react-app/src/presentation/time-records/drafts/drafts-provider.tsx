@@ -6,14 +6,12 @@ import { useAppParameters } from '@presentation/shared/hooks/use-app-parameters'
 import { DraftsContext, type DraftsContextValue } from './drafts-context';
 import { applyImportDefaults, findLastMatchingRecordIndex, markDuplicatedRecord, recordSaveErrors, sortRecords } from './draft-records';
 import { usePendingRecordsStorage } from './pending-records-storage';
-import { useSendPhase, type SendPhase } from './send-phase';
+import type { SendPhase } from './send-phase';
+import { useSendAllRecords } from './use-send-all-records';
 
 export interface DraftsProviderProps {
   readonly children: ReactNode;
-  /**
-   * Fase inicial del envío. Solo la usan las pruebas para montar los borradores ya bloqueados; F8 la
-   * sustituye por el estado del hook de envío, que vive en este mismo provider.
-   */
+  /** Fase inicial del envío. Solo la usan las pruebas para montar los borradores ya bloqueados. */
   readonly initialSendPhase?: SendPhase;
 }
 
@@ -28,9 +26,6 @@ export function DraftsProvider({ children, initialSendPhase = 'idle' }: DraftsPr
   const { domainService: domain, parameters } = useContainer();
   const workSettings = useAppParameters((p) => p.workSettings());
   const { restored, persist } = usePendingRecordsStorage();
-  const send = useSendPhase(initialSendPhase);
-  const { isLocked, reset: resetSendTracking } = send;
-
   const [records, setRecords] = useState<TimeRecord[]>(() => sortRecords(restored));
   const recordsRef = useRef<TimeRecord[]>(records);
 
@@ -53,6 +48,14 @@ export function DraftsProvider({ children, initialSendPhase = 'idle' }: DraftsPr
     },
     [persist],
   );
+
+  const getRecords = useCallback(() => recordsRef.current, []);
+  const removeSent = useCallback(
+    (sent: ReadonlySet<TimeRecord>) => commit(recordsRef.current.filter((record) => !sent.has(record))),
+    [commit],
+  );
+  const send = useSendAllRecords({ initialPhase: initialSendPhase, getRecords, removeSent });
+  const { isLocked, reset: resetSendTracking } = send;
 
   const defaultTipoHora = useCallback(() => parameters.defaultFor('tipoHora'), [parameters]);
 
@@ -152,6 +155,11 @@ export function DraftsProvider({ children, initialSendPhase = 'idle' }: DraftsPr
       totalGeneral,
       sendPhase: send.phase,
       sendLocked: send.locked,
+      sendChecking: send.checking,
+      sendProgress: send.progress,
+      sendAll: send.sendAll,
+      retrySendLogs: send.retrySendLogs,
+      continueAfterSend: send.continueAfterSend,
       addRecords,
       updateRecord,
       saveEdit,
@@ -159,7 +167,7 @@ export function DraftsProvider({ children, initialSendPhase = 'idle' }: DraftsPr
       duplicateRecord,
       clearRecords,
     }),
-    [records, groups, totalGeneral, send.phase, send.locked, addRecords, updateRecord, saveEdit, deleteRecord, duplicateRecord, clearRecords],
+    [records, groups, totalGeneral, send.phase, send.locked, send.checking, send.progress, send.sendAll, send.retrySendLogs, send.continueAfterSend, addRecords, updateRecord, saveEdit, deleteRecord, duplicateRecord, clearRecords],
   );
 
   return <DraftsContext.Provider value={value}>{children}</DraftsContext.Provider>;

@@ -1,4 +1,4 @@
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, Loader2 } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useMemo, useRef } from 'react';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
@@ -246,6 +246,7 @@ export interface RecordsPreviewTableProps {
   readonly onEditRecord: (index: number) => void;
   readonly onDuplicateRecord: (index: number) => void;
   readonly onDeleteRecord: (index: number) => void;
+  readonly onSendAll: () => void;
   readonly onCancelImport: () => void;
 }
 
@@ -260,6 +261,7 @@ export function RecordsPreviewTable({
   onEditRecord,
   onDuplicateRecord,
   onDeleteRecord,
+  onSendAll,
   onCancelImport,
 }: RecordsPreviewTableProps) {
   const { domainService: domain, loadSelectOptions } = useContainer();
@@ -288,7 +290,8 @@ export function RecordsPreviewTable({
         );
         const picked: { option?: ManagementDemandOption } = {};
         const updated = onRecordChange(index, (current) => {
-          if (current.cliente !== cliente) return current;
+          // Tras el await el usuario pudo cambiar el cliente o elegir la gestión a mano: no se pisa.
+          if (current.cliente !== cliente || current.gestionId) return current;
           const option = preferredGestion(options, rememberedGestion(cliente), current.gestionId);
           if (!option) return current;
           picked.option = option;
@@ -365,6 +368,24 @@ export function RecordsPreviewTable({
           ) : null}
         </CardContent>
         <CardFooter className="flex-col gap-2 border-t py-4 sm:flex-row">
+          <Button
+            type="button"
+            className="w-full sm:flex-1"
+            disabled={sendLocked || recordsToReview > 0}
+            title={recordsToReview > 0 ? 'Completa los registros por revisar antes de registrar' : 'Registrar todos los tiempos'}
+            onClick={onSendAll}
+          >
+            {sendLocked ? (
+              <>
+                <Loader2 aria-hidden="true" className="animate-spin" />
+                Enviando...
+              </>
+            ) : recordsToReview > 0 ? (
+              `Completa ${countLabel(recordsToReview, 'pendiente', 'pendientes')}`
+            ) : (
+              `Registrar todos (${recordCount})`
+            )}
+          </Button>
           <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={sendLocked} onClick={onCancelImport}>
             Cancelar
           </Button>

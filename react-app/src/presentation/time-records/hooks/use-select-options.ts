@@ -26,11 +26,9 @@ export function useManagementOptions(cliente: string, proyecto: string) {
  * plantillas nuevas y las gestiones para detectar la gestión elegida en una fila.
  */
 export function useDefaultSelection() {
-  const { clientes, loading: loadingClients } = useClientes();
+  const { clientes } = useClientes();
   const { data } = useManagementOptions(clientes[0] ?? '', '');
   return {
-    clientes,
-    loadingClients,
     defaultProyecto: data?.project ?? '',
     solicitudOptions: data?.options,
   };

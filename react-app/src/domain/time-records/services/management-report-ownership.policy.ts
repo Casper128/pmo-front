@@ -3,9 +3,12 @@ import { ManagementReport } from '../models/management-report.model';
 
 /**
  * ¿El reporte de gestión pertenece al usuario autenticado?
- * Extracción literal de `isCurrentUserRecord` (consultant-statistics-page) e
- * `isCurrentUserReport` (multiple-import-page), que hoy son equivalentes.
- * Esas páginas conservan su copia; migrarlas queda fuera de este cambio.
+ *
+ * Pertenencia estricta: si ambos lados traen id, solo cuenta la igualdad de id. Si falta el id en alguno,
+ * se exige igualdad exacta (normalizada) de correo/usuario. Solo un reporte sin id ni correo/usuario, pero
+ * con nombre del consultor, se compara por igualdad exacta de nombre. Nunca se comparan subcadenas ni se
+ * usa `funcional` como identidad. Un reporte sin ningún dato de identidad se acepta: la consulta ya viene
+ * filtrada por consultor.
  */
 export function isManagementReportOwnedBy(
   record: ManagementReport,
@@ -30,41 +33,43 @@ export function isManagementReportOwnedBy(
   ]
     .filter(hasValue)
     .map((value) => String(value).trim());
-  if (recordIds.length && userIds.some((id) => recordIds.includes(id))) return true;
+  if (userIds.length && recordIds.length) return userIds.some((id) => recordIds.includes(id));
 
-  const userNames = [
-    user.email,
-    user.username,
-    user.name,
-    rawUser('correo'),
-    rawUser('mail'),
-    rawUser('usuario'),
-    rawUser('nombre'),
-    rawUser('nombreCompleto'),
+  const recordLogins = [
+    record.email,
+    record.correo,
+    record.usuario,
+    record.usuario_tiemposConsultores?.email,
+    record.usuario_tiemposConsultores?.correo,
+    record.usuario_tiemposConsultores?.usuario,
   ]
     .filter(hasValue)
     .map(normalize);
   const recordNames = [
-    record.email,
-    record.correo,
-    record.usuario,
     record.consultor,
     record.nombreConsultor,
-    record.funcional,
-    record.usuario_tiemposConsultores?.email,
-    record.usuario_tiemposConsultores?.correo,
-    record.usuario_tiemposConsultores?.usuario,
     record.usuario_tiemposConsultores?.nombre,
-    ...collectIdentityText(record),
   ]
     .filter(hasValue)
     .map(normalize);
-  if (!recordIds.length && !recordNames.length) return true;
-  return userNames.some((name) =>
-    recordNames.some(
-      (candidate) => candidate === name || candidate.includes(name) || name.includes(candidate),
-    ),
-  );
+  if (!recordIds.length && !recordLogins.length) {
+    if (!recordNames.length) return true;
+    const userNames = [user.name, rawUser('nombre'), rawUser('nombreCompleto')]
+      .filter(hasValue)
+      .map(normalize);
+    return userNames.some((name) => recordNames.includes(name));
+  }
+
+  const userLogins = [
+    user.email,
+    user.username,
+    rawUser('correo'),
+    rawUser('mail'),
+    rawUser('usuario'),
+  ]
+    .filter(hasValue)
+    .map(normalize);
+  return userLogins.some((login) => recordLogins.includes(login));
 }
 
 function hasValue(value: unknown): boolean {
@@ -80,18 +85,6 @@ function valueFromObject(value: unknown, key: string): unknown {
     if (hasValue(found)) return found;
   }
   return undefined;
-}
-
-function collectIdentityText(value: unknown): unknown[] {
-  if (!value || typeof value !== 'object') return [];
-  const identityKey = /(consultor|usuario|user|email|correo|mail|funcional|nombre)/i;
-  const result: unknown[] = [];
-  Object.entries(value as Record<string, unknown>).forEach(([key, child]) => {
-    if (identityKey.test(key) && (typeof child === 'string' || typeof child === 'number'))
-      result.push(child);
-    if (child && typeof child === 'object') result.push(...collectIdentityText(child));
-  });
-  return result;
 }
 
 function normalize(value: unknown): string {

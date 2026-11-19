@@ -139,6 +139,7 @@ Si se regenera uno de estos archivos con `shadcn add --overwrite`, hay que repet
 | Archivo | Edición | Motivo |
 |---|---|---|
 | `sidebar.tsx` | Título y descripción del Sheet móvil: "Navegación" / "Muestra la navegación principal." (antes "Sidebar" / "Displays the mobile sidebar.") | Textos en español para lectores de pantalla |
+| `progress.tsx` | Se reenvía `value` al `Root` de Radix (el generado solo lo usa en el indicador) | Sin él no hay `aria-valuenow` en el `progressbar` |
 | `calendar.tsx` | `modifiers["focused"]` (y `selected`, `range_*`) con corchetes, y `focused` extraído a una constante para el `useEffect` | `noPropertyAccessFromIndexSignature` del tsconfig (TS4111) y `react-hooks/exhaustive-deps` |
 
 ## Kit UI (F5)
