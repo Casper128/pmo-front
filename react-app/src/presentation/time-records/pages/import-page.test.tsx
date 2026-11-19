@@ -787,6 +787,10 @@ describe('ImportPage · registrar todos', () => {
     expect(within(dialog).getByText('sin historial')).toBeInTheDocument();
     expect(within(dialog).queryByText(/Ver historial/)).not.toBeInTheDocument();
 
+    // Esc no descarta el historial pendiente: solo se puede reintentar.
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('dialog', { name: 'El proceso necesita atención' })).toBeInTheDocument();
+
     await user.click(within(dialog).getByRole('button', { name: 'Reintentar confirmación' }));
     expect(await screen.findByRole('dialog', { name: 'Envío finalizado' })).toBeInTheDocument();
     expect(sendLogs.createMany).toHaveBeenCalledTimes(2);
@@ -804,6 +808,32 @@ describe('ImportPage · registrar todos', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Volver a los registros' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(await sendButton()).toBeEnabled();
+  });
+
+  it('si el envío no puede iniciar (lanza) muestra el error en un aviso y no abre el progreso', async () => {
+    const { user, templates } = await setupSend();
+    templates.knownManagement.mockImplementation(() => {
+      throw new Error('Plantillas no disponibles');
+    });
+    await user.click(await sendButton());
+
+    expect(await screen.findByText('Plantillas no disponibles')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Registrando reportes' })).not.toBeInTheDocument();
+  });
+
+  it('guardar una edición mientras se prepara el envío avisa "Hay un envío en curso" y no cambia el borrador', async () => {
+    const { user, templates } = await setupSend();
+    await user.click(await screen.findByRole('button', { name: 'Editar registro 1' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Editar registro' });
+    fireEvent.change(within(dialog).getByLabelText('Descripción'), { target: { value: 'Cambio bloqueado' } });
+
+    // La validación previa queda pendiente: el envío está en curso aunque aún no haya fase.
+    templates.list.mockImplementation(() => new Promise(() => undefined));
+    fireEvent.click(screen.getByRole('button', { name: /Registrar todos/, hidden: true }));
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar cambios' }));
+
+    expect(await screen.findByText('Hay un envío en curso')).toBeInTheDocument();
+    expect(stored().some((record) => record.desc === 'Cambio bloqueado')).toBe(false);
   });
 
   it('navegar fuera y volver durante el envío conserva el bloqueo y no duplica el envío', async () => {

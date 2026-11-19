@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.pmo-location-admin]
 verify_jwt = false
+
+[functions.pmo-notifications]
+verify_jwt = false

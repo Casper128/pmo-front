@@ -94,15 +94,19 @@ export function ImportPage() {
   /** `onSendAll`: el provider valida y envía; aquí se muestra lo que detiene el envío. */
   const handleSendAll = useCallback(
     async (confirmExcess = false) => {
-      const outcome = await sendAll({ confirmExcess });
-      if (outcome.status === 'blocked') {
-        showError(outcome.text, outcome.title);
-      } else if (outcome.status === 'template') {
-        if (outcome.template) openTemplateEdit(outcome.template);
-        else void ensureForOption(outcome.option);
-        toast.error(outcome.text);
-      } else if (outcome.status === 'confirm') {
-        setExcessConfirm({ title: outcome.title, text: outcome.text });
+      try {
+        const outcome = await sendAll({ confirmExcess });
+        if (outcome.status === 'blocked') {
+          showError(outcome.text, outcome.title);
+        } else if (outcome.status === 'template') {
+          if (outcome.template) openTemplateEdit(outcome.template);
+          else void ensureForOption(outcome.option);
+          toast.error(outcome.text);
+        } else if (outcome.status === 'confirm') {
+          setExcessConfirm({ title: outcome.title, text: outcome.text });
+        }
+      } catch (error) {
+        toast.error(error instanceof Error && error.message ? error.message : 'No fue posible iniciar el envío.');
       }
     },
     [sendAll, showError, openTemplateEdit, ensureForOption],
@@ -116,6 +120,8 @@ export function ImportPage() {
     } else if (result.status === 'saved') {
       setEditing(null);
       toast.success('Registro actualizado');
+    } else if (result.status === 'locked') {
+      toast.error('Hay un envío en curso');
     }
   };
 

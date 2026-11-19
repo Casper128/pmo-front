@@ -40,8 +40,8 @@ function setup(rows: ManagementReport[]) {
 describe('useMyReports y useDayLedger', () => {
   afterEach(() => localStorage.clear());
 
-  it('devuelve solo los reportes del consultor (id estricto) y consulta con su id', async () => {
-    const { timeManagement, wrapper } = setup([mine(), mine({ identificador: 'RH-OTRO', idConsultor: 999, correo: testUser.email })]);
+  it('devuelve solo los reportes del consultor (id o correo exacto) y consulta con su id', async () => {
+    const { timeManagement, wrapper } = setup([mine(), mine({ identificador: 'RH-OTRO', idConsultor: 999, correo: 'otra.persona@example.test' })]);
     const { result } = renderHook(() => useMyReports(), { wrapper });
 
     await waitFor(() => expect(result.current.data).toBeDefined());

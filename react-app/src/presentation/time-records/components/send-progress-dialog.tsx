@@ -23,7 +23,8 @@ const TITLES: Record<Exclude<SendPhase, 'idle'>, string> = {
 
 /**
  * Diálogo de progreso y resultados del envío (modal de `sendPhase` de Angular). No se cierra mientras se
- * envía o se confirma el historial; en el resto de fases cerrarlo equivale a `continueAfterSend`.
+ * envía o se confirma el historial, ni con Esc en `log-error` (el historial pendiente no se descarta: solo
+ * reintentar); en el resto de fases cerrarlo equivale a `continueAfterSend`.
  */
 export function SendProgressDialog() {
   const { sendPhase: phase, sendProgress: progress, retrySendLogs, continueAfterSend } = useDrafts();
@@ -31,11 +32,11 @@ export function SendProgressDialog() {
   const active = isSendActive(phase);
 
   return (
-    <Dialog open onOpenChange={(open) => !open && !active && continueAfterSend()}>
+    <Dialog open onOpenChange={(open) => !open && !active && phase !== 'log-error' && continueAfterSend()}>
       <DialogContent
         showCloseButton={false}
         className="sm:max-w-md"
-        onEscapeKeyDown={(event) => active && event.preventDefault()}
+        onEscapeKeyDown={(event) => (active || phase === 'log-error') && event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>

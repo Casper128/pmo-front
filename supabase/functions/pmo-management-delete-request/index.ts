@@ -1,109 +1,73 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import {
+  HttpError,
+  asRecord,
+  auditEmail,
+  auditToken,
+  corsHeaders,
+  deletePmoReport,
+  errorResponse,
+  findOwnReport,
+  identifyUser,
+  isAuditUser,
+  json,
+  pmoApiBaseUrl,
+  secretClient,
+} from '../_shared/pmo-session.ts';
 
-const DEFAULT_PMO_API = 'https://wwz8sswbkh.execute-api.us-west-2.amazonaws.com/dev';
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
-  'Access-Control-Max-Age': '86400',
+type Notification = {
+  recipient_key: string;
+  kind: 'delete_request_created' | 'delete_request_approved' | 'delete_request_rejected';
+  request_id: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
 };
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : null;
-
-const findValue = (value: unknown, keys: string[]): unknown => {
-  const object = asRecord(value);
-  if (!object) return undefined;
-  for (const key of keys) {
-    const candidate = object[key];
-    if (candidate !== undefined && candidate !== null && candidate !== '') return candidate;
+// Las notificaciones son best-effort: un fallo no debe invalidar la operación principal.
+const notify = async (supabase: ReturnType<typeof secretClient>, notification: Notification) => {
+  if (!notification.recipient_key) return;
+  try {
+    const { error } = await supabase
+      .from('pmo_notifications')
+      .upsert(notification, { onConflict: 'request_id,recipient_key,kind', ignoreDuplicates: true });
+    if (error) console.error('pmo_notifications', error.message);
+  } catch (error) {
+    console.error('pmo_notifications', error);
   }
-  for (const child of Object.values(object)) {
-    const candidate = findValue(child, keys);
-    if (candidate !== undefined) return candidate;
-  }
-  return undefined;
 };
 
-const extractRows = (response: unknown): Record<string, unknown>[] => {
-  if (Array.isArray(response))
-    return response.filter((row) => asRecord(row)) as Record<string, unknown>[];
-  const root = asRecord(response);
-  const data = asRecord(root?.data);
-  const rows = [data?.rows, root?.data, root?.rows].find(Array.isArray);
-  return Array.isArray(rows)
-    ? (rows.filter((row) => asRecord(row)) as Record<string, unknown>[])
-    : [];
-};
-
-const normalizeEmail = (value: unknown): string =>
-  String(value || '')
-    .trim()
-    .toLowerCase();
-
-const identifyUser = async (authorization: string, apiBaseUrl: string) => {
-  if (!authorization.startsWith('Bearer ')) throw new Error('Sesión PMO requerida');
-  const userResponse = await fetch(`${apiBaseUrl}/home/datosusuario`, {
-    headers: { Authorization: authorization },
-  }).catch(() => null);
-  if (!userResponse) throw new Error('No fue posible contactar el API PMO para validar la sesión');
-  if (!userResponse.ok) throw new Error('La sesión PMO no es válida');
-  const user = await userResponse.json();
-  const userId = String(findValue(user, ['id', 'idUsuario', 'userId', 'codigo']) || '').trim();
-  const email = normalizeEmail(findValue(user, ['email', 'correo', 'mail', 'usuarioEmail']));
-  const role = normalizeEmail(findValue(user, ['role', 'rol', 'perfil', 'tipoUsuario']));
-  const userKey = (userId || email).toLowerCase();
-  if (!userKey) throw new Error('No fue posible identificar al usuario PMO');
-  return { userKey, userId, email, role };
-};
-
-const secretClient = () => {
-  const secretKeys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}');
-  const secretKey = secretKeys.default;
-  if (!secretKey) throw new Error('La clave secreta de Supabase no está configurada');
-  return createClient(Deno.env.get('SUPABASE_URL')!, secretKey, {
-    auth: { persistSession: false },
-  });
-};
-
-const isAuditUser = (currentEmail: string, currentRole: string, auditorEmail?: unknown): boolean => {
-  const configuredAuditor = normalizeEmail(Deno.env.get('PMO_AUDIT_EMAIL'));
-  const rowAuditor = normalizeEmail(auditorEmail);
-  return (
-    currentRole === 'admin' ||
-    currentRole.includes('auditor') ||
-    (!!currentEmail && (currentEmail === configuredAuditor || currentEmail === rowAuditor))
-  );
-};
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
     const authorization = request.headers.get('Authorization') || '';
-    const apiBaseUrl = (Deno.env.get('PMO_API_BASE_URL') || DEFAULT_PMO_API).replace(/\/$/, '');
+    const apiBaseUrl = pmoApiBaseUrl();
     const currentUser = await identifyUser(authorization, apiBaseUrl);
     const supabase = secretClient();
 
     if (request.method === 'GET') {
+      if (new URL(request.url).searchParams.get('scope') === 'mine') {
+        const { data, error } = await supabase
+          .from('pmo_management_delete_requests')
+          .select('*')
+          .eq('requester_key', currentUser.userKey)
+          .gte('requested_at', new Date(Date.now() - NINETY_DAYS_MS).toISOString())
+          .order('requested_at', { ascending: false });
+        if (error) return json({ error: error.message }, 500);
+        return json({ requests: data || [] });
+      }
+
       if (!currentUser.email && currentUser.role !== 'admin')
         return json({ error: 'Usuario de auditoría requerido' }, 403);
-      const configuredAuditor = normalizeEmail(Deno.env.get('PMO_AUDIT_EMAIL'));
       let query = supabase
         .from('pmo_management_delete_requests')
         .select('*')
         .eq('status', 'pending')
         .order('requested_at', { ascending: false });
 
-      if (currentUser.role !== 'admin' && !currentUser.role.includes('auditor') && currentUser.email !== configuredAuditor) {
-        query = query.eq('auditor_email', currentUser.email);
-      }
+      if (!isAuditUser(currentUser)) query = query.eq('auditor_email', currentUser.email);
 
       const { data, error } = await query;
       if (error) return json({ error: error.message }, 500);
@@ -128,22 +92,46 @@ Deno.serve(async (request) => {
       if (!existing.data) return json({ error: 'Solicitud no encontrada' }, 404);
       if (existing.data.status !== 'pending')
         return json({ error: 'La solicitud ya fue procesada' }, 409);
-      if (!isAuditUser(currentUser.email, currentUser.role, existing.data.auditor_email))
+      // El borrado con token técnico no acepta el auditor guardado en la fila (pudo elegirlo el cliente).
+      const serverDelete = status === 'approved' && payload?.deleteReport === true;
+      if (!isAuditUser(currentUser, serverDelete ? undefined : existing.data.auditor_email))
         return json({ error: 'Solo auditoría puede procesar la solicitud' }, 403);
 
+      // Con `deleteReport:true` el servidor borra primero en PMO (404 = ya borrado) y luego aprueba.
+      if (serverDelete) {
+        try {
+          await deletePmoReport(apiBaseUrl, await auditToken(apiBaseUrl), existing.data.identifier);
+        } catch (error) {
+          if (!(error instanceof HttpError && error.status === 404)) throw error;
+        }
+      }
+
+      const reviewNote = String(payload?.reviewNote || '').trim() || null;
       const { data, error } = await supabase
         .from('pmo_management_delete_requests')
         .update({
           status,
           reviewed_at: new Date().toISOString(),
           reviewed_by: currentUser.email || currentUser.userKey,
-          review_note: String(payload?.reviewNote || '').trim() || null,
+          review_note: reviewNote,
         })
         .eq('id', id)
+        .eq('status', 'pending')
         .select('*')
-        .single();
+        .maybeSingle();
 
       if (error) return json({ error: error.message }, 500);
+      if (!data) return json({ error: 'La solicitud ya fue procesada' }, 409);
+
+      const approved = status === 'approved';
+      await notify(supabase, {
+        recipient_key: String(existing.data.requester_key || ''),
+        kind: approved ? 'delete_request_approved' : 'delete_request_rejected',
+        request_id: id,
+        title: approved ? 'Eliminación aprobada' : 'Eliminación rechazada',
+        body: `Reporte ${existing.data.identifier}${reviewNote ? `: ${reviewNote}` : ''}`,
+        data: { identifier: existing.data.identifier, status, reviewNote },
+      });
       return json({ request: data });
     }
 
@@ -153,29 +141,19 @@ Deno.serve(async (request) => {
     const identifier = String(payload?.identifier || '').trim();
     if (!identifier) return json({ error: 'Identificador requerido' }, 400);
 
-    const reportsResponse = await fetch(`${apiBaseUrl}/tiemposConsultores/gestion`, {
-      method: 'POST',
-      headers: { Authorization: authorization, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idConsultor: currentUser.userId || currentUser.userKey }),
-    }).catch(() => null);
-    if (!reportsResponse)
-      return json({ error: 'No fue posible contactar el API PMO para validar el reporte' }, 502);
-    if (!reportsResponse.ok) return json({ error: 'No fue posible validar el reporte' }, 502);
+    if (!(await findOwnReport(authorization, apiBaseUrl, currentUser, identifier)))
+      return json({ error: 'El reporte no pertenece al usuario actual' }, 403);
 
-    const reports = extractRows(await reportsResponse.json());
-    const ownsReport = reports.some((report) => String(report.identificador || '') === identifier);
-    if (!ownsReport) return json({ error: 'El reporte no pertenece al usuario actual' }, 403);
+    const pendingColumns = 'id,identifier,status,requested_at,auditor_email';
+    const findPending = () =>
+      supabase
+        .from('pmo_management_delete_requests')
+        .select(pendingColumns)
+        .eq('identifier', identifier)
+        .eq('status', 'pending')
+        .maybeSingle();
 
-    const auditorEmail =
-      normalizeEmail(payload?.auditorEmail) || normalizeEmail(Deno.env.get('PMO_AUDIT_EMAIL'));
-    const report = asRecord(payload?.report) || {};
-    const existing = await supabase
-      .from('pmo_management_delete_requests')
-      .select('id,identifier,status,requested_at,auditor_email')
-      .eq('identifier', identifier)
-      .eq('status', 'pending')
-      .maybeSingle();
-
+    const existing = await findPending();
     if (existing.error) return json({ error: existing.error.message }, 500);
     if (existing.data) return json({ request: existing.data, duplicated: true });
 
@@ -185,16 +163,29 @@ Deno.serve(async (request) => {
         identifier,
         requester_key: currentUser.userKey,
         requester_email: currentUser.email || null,
-        auditor_email: auditorEmail || null,
-        report,
+        auditor_email: auditEmail() || null,
+        report: asRecord(payload?.report) || {},
         status: 'pending',
       })
-      .select('id,identifier,status,requested_at,auditor_email')
+      .select(pendingColumns)
       .single();
 
+    if (error?.code === '23505') {
+      const raced = await findPending();
+      if (raced.data) return json({ request: raced.data, duplicated: true });
+    }
     if (error) return json({ error: error.message }, 500);
+
+    await notify(supabase, {
+      recipient_key: auditEmail(),
+      kind: 'delete_request_created',
+      request_id: data.id,
+      title: 'Nueva solicitud de eliminación',
+      body: `${currentUser.email || currentUser.userKey} solicita eliminar el reporte ${identifier}`,
+      data: { identifier, requesterEmail: currentUser.email || null },
+    });
     return json({ request: data });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : 'Error inesperado' }, 500);
+    return errorResponse(error);
   }
 });

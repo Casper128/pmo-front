@@ -40,7 +40,13 @@ describe('layout del shell', () => {
         'Plantillas',
       ]);
       expect(screen.queryByText('Administración')).not.toBeInTheDocument();
-      expect(linkNames('Navegación móvil')).toEqual(['Reportar', 'Reportes', 'Datos', 'Ajustes']);
+      expect(linkNames('Navegación móvil')).toEqual([
+        'Dashboard',
+        'Reportar',
+        'Reportes',
+        'Datos',
+        'Ajustes',
+      ]);
     });
 
     it('el administrador ve Auditoría y Configuración (y Admin en móvil)', async () => {
@@ -51,10 +57,9 @@ describe('layout del shell', () => {
         expect.arrayContaining(['Auditoría', 'Configuración']),
       );
       expect(linkNames('Navegación móvil')).toEqual([
+        'Dashboard',
         'Reportar',
         'Reportes',
-        'Datos',
-        'Ajustes',
         'Admin',
         'Auditoría',
       ]);
@@ -66,7 +71,13 @@ describe('layout del shell', () => {
       const items = linkNames('Navegación principal');
       expect(items).toContain('Auditoría');
       expect(items).not.toContain('Configuración');
-      expect(linkNames('Navegación móvil')).not.toContain('Admin');
+      expect(linkNames('Navegación móvil')).toEqual([
+        'Dashboard',
+        'Reportar',
+        'Reportes',
+        'Datos',
+        'Auditoría',
+      ]);
     });
 
     it('el menú reacciona cuando cambian los permisos', async () => {

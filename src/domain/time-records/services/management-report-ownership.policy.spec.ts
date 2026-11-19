@@ -18,10 +18,14 @@ describe('isManagementReportOwnedBy', () => {
     expect(isManagementReportOwnedBy({ idUsuario: 7 }, rawUser)).toBe(true);
   });
 
-  it('con ids en ambos lados solo cuenta el id, aunque el correo coincida', () => {
+  it('con ids distintos acepta solo si el correo o usuario coincide exactamente', () => {
     expect(isManagementReportOwnedBy({ idConsultor: 1, correo: 'PERSONA@example.com' }, user)).toBe(
+      true,
+    );
+    expect(isManagementReportOwnedBy({ idConsultor: 1, correo: 'otra@example.com' }, user)).toBe(
       false,
     );
+    expect(isManagementReportOwnedBy({ idConsultor: 1 }, user)).toBe(false);
   });
 
   it('sin id en el usuario o en el reporte exige igualdad exacta de correo o usuario', () => {

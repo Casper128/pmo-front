@@ -30,8 +30,8 @@ La migración crea:
 Configura en Supabase el correo o los correos PMO autorizados, separados por coma:
 
 ```powershell
-npx supabase secrets set CONFIG_ADMIN_EMAILS=darwin.osorio@netwconsulting.com
-npx supabase secrets set LOCATION_ADMIN_EMAILS=1darwin.osorio@netwconsulting.com
+npx supabase secrets set CONFIG_ADMIN_EMAILS=correo@empresa.com
+npx supabase secrets set LOCATION_ADMIN_EMAILS=correo@empresa.com
 ```
 
 La Edge Function valida el JWT actual contra `/home/datosusuario` antes de permitir una escritura.
@@ -41,7 +41,10 @@ Configura también las credenciales técnicas usadas exclusivamente por la funci
 ```powershell
 npx supabase secrets set PMO_AUDIT_EMAIL="correo-tecnico" PMO_AUDIT_PASSWORD="clave-tecnica"
 npx supabase secrets set PMO_TECHNICAL_DELETE_KEY="clave-tecnica-autorizada"
+npx supabase secrets set TECHNICAL_DELETE_EMAILS="correo@empresa.com,otro@empresa.com"
 ```
+
+Secrets requeridos (solo nombres): `CONFIG_ADMIN_EMAILS` (sin él nadie es administrador: ya no hay correo por defecto en el código), `LOCATION_ADMIN_EMAILS`, `PMO_AUDIT_EMAIL`, `PMO_AUDIT_PASSWORD`, `PMO_TECHNICAL_DELETE_KEY`, `TECHNICAL_DELETE_EMAILS` (correos autorizados a la eliminación técnica; vacío = nadie). Opcional: `PMO_API_BASE_URL`.
 
 ## 4. Desplegar la función administrativa
 
@@ -54,6 +57,29 @@ npx supabase functions deploy pmo-management-delete-technical --no-verify-jwt
 npx supabase functions deploy pmo-management-delete-request --no-verify-jwt
 npx supabase functions deploy pmo-management-templates --no-verify-jwt
 npx supabase functions deploy pmo-location-admin --no-verify-jwt
+npx supabase functions deploy pmo-send-logs --no-verify-jwt
+npx supabase functions deploy pmo-notifications --no-verify-jwt
+```
+
+`pmo-notifications` (campana) lista y marca como leídas las notificaciones de solicitudes de eliminación; usa la tabla `pmo_notifications` (migración `202611180001_pmo_notifications.sql`). Las funciones comparten `supabase/functions/_shared/pmo-session.ts`, que se empaqueta automáticamente al desplegar cada función.
+
+### Despliegue seguro
+
+Las migraciones son solo aditivas (`create ... if not exists`); no se borran ni reescriben datos. Orden:
+
+```powershell
+# 1. Verificar que existan los secrets (solo aparecen los nombres)
+npx supabase secrets list
+# 2. Revisar qué migraciones faltan en remoto
+npx supabase migration list
+# 3. Aplicar migraciones pendientes
+npx supabase db push
+# 4. Desplegar solo las funciones modificadas
+npx supabase functions deploy pmo-notifications --no-verify-jwt
+npx supabase functions deploy pmo-management-delete --no-verify-jwt
+npx supabase functions deploy pmo-management-delete-technical --no-verify-jwt
+npx supabase functions deploy pmo-management-delete-request --no-verify-jwt
+npx supabase functions deploy pmo-config-admin --no-verify-jwt
 npx supabase functions deploy pmo-send-logs --no-verify-jwt
 ```
 

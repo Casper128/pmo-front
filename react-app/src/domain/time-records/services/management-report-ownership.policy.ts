@@ -4,8 +4,8 @@ import { ManagementReport } from '../models/management-report.model';
 /**
  * ¿El reporte de gestión pertenece al usuario autenticado?
  *
- * Pertenencia estricta: si ambos lados traen id, solo cuenta la igualdad de id. Si falta el id en alguno,
- * se exige igualdad exacta (normalizada) de correo/usuario. Solo un reporte sin id ni correo/usuario, pero
+ * Pertenencia estricta: la igualdad de id basta. Si los ids no coinciden (o falta alguno), se exige igualdad
+ * exacta (normalizada) de correo/usuario, para no ocultar reportes propios por espacios de id distintos. Solo un reporte sin id ni correo/usuario, pero
  * con nombre del consultor, se compara por igualdad exacta de nombre. Nunca se comparan subcadenas ni se
  * usa `funcional` como identidad. Un reporte sin ningún dato de identidad se acepta: la consulta ya viene
  * filtrada por consultor.
@@ -33,7 +33,7 @@ export function isManagementReportOwnedBy(
   ]
     .filter(hasValue)
     .map((value) => String(value).trim());
-  if (userIds.length && recordIds.length) return userIds.some((id) => recordIds.includes(id));
+  if (userIds.some((id) => recordIds.includes(id))) return true;
 
   const recordLogins = [
     record.email,

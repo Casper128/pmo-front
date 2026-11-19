@@ -75,7 +75,7 @@ Deno.serve(async (request) => {
   if (!proposedUserKey || !email)
     return json({ error: 'No fue posible identificar al usuario PMO' }, 422);
 
-  const admins = (Deno.env.get('CONFIG_ADMIN_EMAILS') || 'darwin.osorio@netwconsulting.com')
+  const admins = (Deno.env.get('CONFIG_ADMIN_EMAILS') || '')
     .split(',')
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
