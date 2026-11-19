@@ -126,15 +126,6 @@ export function ReportsPage() {
               <Label htmlFor="reports-to">Hasta</Label>
               <DatePicker id="reports-to" value={to} onChange={filters.setTo} />
             </div>
-            <div className="flex min-w-0 flex-col gap-1.5 lg:col-span-2">
-              <Label htmlFor="reports-search">Buscar</Label>
-              <SearchInput
-                id="reports-search"
-                value={filters.searchText}
-                onChange={filters.setSearchText}
-                placeholder="Gestión, cliente o ID"
-              />
-            </div>
             <div className="flex min-w-0 flex-col gap-1.5">
               <Label htmlFor="reports-client">Cliente</Label>
               <AppSelect
@@ -143,6 +134,15 @@ export function ReportsPage() {
                 value={client}
                 onValueChange={filters.setClient}
                 loading={reports.isPending}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <Label htmlFor="reports-search">Buscar</Label>
+              <SearchInput
+                id="reports-search"
+                value={filters.searchText}
+                onChange={filters.setSearchText}
+                placeholder="Gestión, cliente o ID"
               />
             </div>
           </div>

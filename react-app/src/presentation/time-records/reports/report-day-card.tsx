@@ -209,15 +209,15 @@ export function ReportDayCard({ day, expectedHours, wide, onDuplicateDay, ...row
           {day.rows.length} {day.rows.length === 1 ? 'registro' : 'registros'}
         </span>
         {dated ? (
-          <>
-            <span className="text-xs font-medium tabular-nums">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5">
+            <span className="text-sm font-semibold tabular-nums">
               {hoursText(day.computableHours)} de {hoursText(expectedHours)}
             </span>
             <DayStatusBadge day={day} expectedHours={expectedHours} />
-            <Button type="button" variant="ghost" size="sm" className="ml-auto" onClick={() => onDuplicateDay(day)}>
+            <Button type="button" variant="ghost" size="sm" onClick={() => onDuplicateDay(day)}>
               <Copy aria-hidden="true" /> Duplicar día
             </Button>
-          </>
+          </div>
         ) : (
           <span className="text-xs text-muted-foreground">No se pudo determinar el día; no suman en los totales.</span>
         )}
