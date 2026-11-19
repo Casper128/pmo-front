@@ -21,6 +21,8 @@ import { formatHours, formatSigned } from '../dashboard/dashboard-format';
 import { RequestHoursCard } from '../dashboard/request-hours-card';
 import { DayAlertsCard } from '../dashboard/day-alerts-card';
 import { buildDayAlerts } from '../dashboard/day-alerts';
+import { withEstimatedHours } from '../dashboard/request-estimates';
+import { useManagementTemplatesList } from '../hooks/use-management-templates-list';
 import { PERIOD_PRESETS, useDashboardFilters } from '../dashboard/use-dashboard-filters';
 import { buildDayLedger, toReportView } from '../reports/report-view';
 import { useMyReports } from '../reports/use-my-reports';
@@ -73,6 +75,7 @@ function DashboardSkeleton() {
 export function TimeDashboardPage() {
   const { dashboardCalculator: calculator, domainService, parameters } = useContainer();
   const reports = useMyReports();
+  const templates = useManagementTemplatesList();
   const workSettings = useAppParameters((p) => p.workSettings());
   const filters = useDashboardFilters(calculator);
   const { filter } = filters;
@@ -93,6 +96,10 @@ export function TimeDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, filter.from, filter.to, filters.dateError, filters.today, domainService, parameters, workSettings]);
 
+  const requests = useMemo(
+    () => (snapshot ? withEstimatedHours(snapshot.requests, templates.data ?? []) : []),
+    [snapshot, templates.data],
+  );
   const kpis = snapshot?.kpis;
   const variation = kpis?.variationPct ?? null;
 
@@ -248,7 +255,7 @@ export function TimeDashboardPage() {
               >
                 <MonthlyChart data={snapshot.months} />
               </ChartCard>
-              <RequestHoursCard requests={snapshot.requests} />
+              <RequestHoursCard requests={requests} />
             </section>
           ) : (
             <>

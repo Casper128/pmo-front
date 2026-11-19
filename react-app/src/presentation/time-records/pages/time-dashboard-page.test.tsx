@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { TimeManagementGateway } from '@application/time-records/ports/time-management.gateway';
 import type { ManagementReport } from '@domain/time-records/models/management-report.model';
-import { createDraftsContainer } from '@/test/fakes/drafts-fixtures';
+import { completeTemplate, createDraftsContainer, createFakeTemplates } from '@/test/fakes/drafts-fixtures';
 import { renderApp } from '@/test/fakes/render-app';
 import { setViewportWidth } from '@/test/viewport';
 import { formatHours } from '../dashboard/dashboard-format';
@@ -31,9 +31,13 @@ const ROWS: ManagementReport[] = [
   report('2026-09-11', '8', { tipoHora: 'No facturable', cliente: 'Cliente Beta' }),
 ];
 
-async function setup(list: TimeManagementGateway['list'] = vi.fn(async () => ROWS), path = PATH) {
+async function setup(
+  list: TimeManagementGateway['list'] = vi.fn(async () => ROWS),
+  path = PATH,
+  templates?: ReturnType<typeof createFakeTemplates>,
+) {
   const timeManagement = { list } as unknown as TimeManagementGateway;
-  const ctx = createDraftsContainer({ overrides: { timeManagement } });
+  const ctx = createDraftsContainer({ templates, overrides: { timeManagement } });
   const view = renderApp(ctx.container, path);
   return { ...ctx, ...view, app: ctx.container, list, user: userEvent.setup() };
 }
@@ -97,7 +101,7 @@ describe('TimeDashboardPage', () => {
     expect(rows.some((row) => /Sáb|Dom/.test(text(row)))).toBe(false);
   });
 
-  it('horas por solicitud: detalle de la seleccionada con estimadas y consumo pendientes', async () => {
+  it('horas por solicitud: detalle de la seleccionada (sin estimación en la plantilla)', async () => {
     const { app, user } = await setup();
     const heading = await screen.findByText('Horas por solicitud');
     const card = heading.closest('[data-slot="card"]') as HTMLElement;
@@ -109,14 +113,23 @@ describe('TimeDashboardPage', () => {
     expect(within(card).getByRole('combobox', { name: 'Solicitud' })).toHaveTextContent(first.client);
     expect(within(metric('Horas reales')).getByText(`${formatHours(first.hours)} h`)).toBeInTheDocument();
     expect(within(metric('Días con actividad')).getByText(String(first.activeDays))).toBeInTheDocument();
-    expect(within(metric('Estimadas')).getByText('Pendiente')).toBeInTheDocument();
-    expect(within(metric('Consumo')).getByText('Pendiente')).toBeInTheDocument();
+    expect(within(metric('Estimadas')).getByText('Sin dato')).toBeInTheDocument();
+    expect(within(metric('Consumo')).getByText('Sin dato')).toBeInTheDocument();
     expect(within(card).getByText('Clasificación de horas')).toBeInTheDocument();
     for (const item of first.billing) expect(within(card).getByText(item.label)).toBeInTheDocument();
 
     await user.click(within(card).getByRole('combobox', { name: 'Solicitud' }));
     await user.click(await screen.findByRole('option', { name: `${second.request} · ${second.client}` }));
     expect(within(metric('Horas reales')).getByText(`${formatHours(second.hours)} h`)).toBeInTheDocument();
+  });
+
+  it('horas por solicitud: estimadas y consumo salen de la plantilla de la gestión', async () => {
+    const withHours = { ...completeTemplate('G1', 'Gestión Uno'), values: { ...completeTemplate('G1', 'Gestión Uno').values, horasEstimadas: '50' } };
+    await setup(undefined, PATH, createFakeTemplates([withHours as ReturnType<typeof completeTemplate>]));
+    const card = (await screen.findByText('Horas por solicitud')).closest('[data-slot="card"]') as HTMLElement;
+    const metric = (label: string) => within(card).getByText(label).closest('[data-slot="card"]') as HTMLElement;
+    await waitFor(() => expect(within(metric('Estimadas')).getByText('50 h')).toBeInTheDocument());
+    expect(within(metric('Consumo')).getByText(/%$/)).toBeInTheDocument();
   });
 
   it('los presets y los selectores actualizan la URL y los valores', async () => {

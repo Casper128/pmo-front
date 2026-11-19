@@ -4,6 +4,20 @@ import type {
 } from '@domain/time-records/models/management-template.model';
 import type { TimeRecord } from '@domain/time-records/models/time-record.model';
 
+/**
+ * Horas estimadas de la gestión: dato propio de la plantilla (viaja en `values`, sin cambio de backend). No es un
+ * campo avanzado del registro: no se aplica al envío ni cuenta como obligatorio.
+ */
+export const ESTIMATED_HOURS_KEY = 'horasEstimadas';
+
+/** Lee las horas estimadas de la plantilla; `null` si falta o no es un número ≥ 0. */
+export function estimatedHoursOf(values: Readonly<Record<string, unknown>>): number | null {
+  const raw = String(values[ESTIMATED_HOURS_KEY] ?? '').trim().replace(',', '.');
+  if (!raw) return null;
+  const hours = Number(raw);
+  return Number.isFinite(hours) && hours >= 0 ? hours : null;
+}
+
 function isBlank(value: unknown): boolean {
   return value === undefined || value === null || String(value).trim() === '';
 }
@@ -18,7 +32,7 @@ export function applyTemplateValues(
 ): TimeRecord & AdvancedTemplateValues {
   const copy: TimeRecord & AdvancedTemplateValues = { ...record };
   Object.entries(values).forEach(([key, value]) => {
-    if (key === 'tipoHora' || isBlank(value)) return;
+    if (key === 'tipoHora' || key === ESTIMATED_HOURS_KEY || isBlank(value)) return;
     if ((key === 'funcional' || key === 'ricef') && !isBlank(copy[key])) return;
     copy[key as AdvancedTemplateFieldKey] = String(value);
   });

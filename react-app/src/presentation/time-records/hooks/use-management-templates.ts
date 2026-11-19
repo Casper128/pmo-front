@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type {
@@ -8,6 +8,7 @@ import type {
 import { useContainer } from '@presentation/providers/container-context';
 import { errorMessage } from '@presentation/shared/error-message';
 import { queryKeys } from '@presentation/shared/query-keys';
+import { useManagementTemplatesList } from './use-management-templates-list';
 import {
   buildManagementTemplateMap,
   defaultTemplateValues,
@@ -37,7 +38,7 @@ export function useManagementTemplates({ defaultProyecto, onError }: UseManageme
   const dialogOpenRef = useRef(false);
 
   // Carga la lista al montar (`loadManagementTemplates`); `ensureForOption` la lee de la caché y Plantillas la muestra.
-  const list = useQuery({ queryKey: queryKeys.templates.all, queryFn: () => templates.list() });
+  const list = useManagementTemplatesList();
 
   const storeTemplate = useCallback(
     (template: ManagementAdvancedTemplate) => {

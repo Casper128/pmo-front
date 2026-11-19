@@ -23,7 +23,7 @@ const sharePct = (part: number, total: number) => (total > 0 ? (part / total) * 
 
 /**
  * Detalle de una solicitud (gestión) del periodo: horas reales, días con actividad y clasificación de
- * facturación. Las estimadas y el consumo siguen "Pendientes": aún no existe una fuente de estimaciones.
+ * facturación. Las estimadas y el consumo vienen de la plantilla de la gestión (`withEstimatedHours`).
  */
 export function RequestHoursCard({ requests }: { readonly requests: readonly DashboardRequestSummary[] }) {
   const [selectedKey, setSelectedKey] = useState('');
@@ -72,8 +72,17 @@ export function RequestHoursCard({ requests }: { readonly requests: readonly Das
                 tone="blue"
                 description={`${request.count} ${request.count === 1 ? 'registro' : 'registros'}`}
               />
-              <MetricCard label="Estimadas" value="Pendiente" description="Sin fuente de estimaciones" />
-              <MetricCard label="Consumo" value="Pendiente" description="Reales / estimadas" />
+              <MetricCard
+                label="Estimadas"
+                value={request.estimatedHours === null ? 'Sin dato' : `${formatHours(request.estimatedHours)} h`}
+                description={request.estimatedHours === null ? 'Defínelas en Plantillas' : 'Según la plantilla de la gestión'}
+              />
+              <MetricCard
+                label="Consumo"
+                value={request.consumptionPct === null ? 'Sin dato' : `${formatHours(request.consumptionPct)} %`}
+                tone={request.consumptionPct !== null && request.consumptionPct > 100 ? 'amber' : 'slate'}
+                description={request.consumptionPct !== null && request.consumptionPct > 100 ? 'Supera lo estimado' : 'Reales / estimadas'}
+              />
               <MetricCard
                 label="Días con actividad"
                 value={request.activeDays}

@@ -90,6 +90,22 @@ describe('TemplatesPage', () => {
     expect(await screen.findByText('Configuración avanzada guardada para la gestión.')).toBeInTheDocument();
   });
 
+  it('guarda las horas estimadas (decimales) y valida que no sean negativas', async () => {
+    const { user, fake } = await setup();
+    await user.click(within(await card('Gestión Uno')).getByRole('button', { name: 'Editar' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Editar configuración' });
+    const hours = within(dialog).getByLabelText('Horas estimadas');
+    await user.type(hours, '-2');
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+    expect(await within(dialog).findByText('Ingresa un número mayor o igual a 0')).toBeInTheDocument();
+    expect(fake.save).not.toHaveBeenCalled();
+    await user.clear(hours);
+    await user.type(hours, '12.5');
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(fake.save).toHaveBeenCalled());
+    expect(fake.save.mock.calls[0][0].values).toMatchObject({ horasEstimadas: '12.5' });
+  });
+
   it('configurar una pendiente sin obligatorios no guarda y avisa cuáles faltan', async () => {
     const { user, fake } = await setup();
     await user.click(within(await card('Gestión Tres')).getByRole('button', { name: 'Configurar' }));

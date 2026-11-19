@@ -7,6 +7,7 @@ import {
   type AdvancedTemplateFieldKey,
   type ManagementAdvancedTemplate,
 } from '@domain/time-records/models/management-template.model';
+import { ESTIMATED_HOURS_KEY, estimatedHoursOf } from '@application/time-records/template-values';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import {
@@ -29,12 +30,22 @@ const REQUIRED_MESSAGE = 'Campo obligatorio';
 const VISIBLE_FIELDS = ADVANCED_TEMPLATE_FIELDS.filter((field) => field.key !== 'unity');
 const REQUIRED_FIELDS = ADVANCED_TEMPLATE_FIELDS.filter((field) => field.required);
 
-type FormValues = Partial<Record<AdvancedTemplateFieldKey, string>>;
+type FormValues = Partial<Record<AdvancedTemplateFieldKey | typeof ESTIMATED_HOURS_KEY, string>>;
+const ESTIMATED_HOURS_ID = 'template-horasEstimadas';
+const ESTIMATED_HOURS_MESSAGE = 'Ingresa un número mayor o igual a 0';
+const isInvalidEstimatedHours = (value: string | undefined) =>
+  !!value?.trim() && estimatedHoursOf({ [ESTIMATED_HOURS_KEY]: value }) === null;
 
 /** Los obligatorios no pueden quedar vacíos ni en `N/A`, `Sin valor`… (`isMissingAdvancedTemplateValue` del dominio). */
 const templateSchema = z
-  .object(Object.fromEntries(VISIBLE_FIELDS.map((field) => [field.key, z.string().optional()])))
+  .object({
+    ...Object.fromEntries(VISIBLE_FIELDS.map((field) => [field.key, z.string().optional()])),
+    [ESTIMATED_HOURS_KEY]: z.string().optional(),
+  })
   .superRefine((values: FormValues, ctx) => {
+    if (isInvalidEstimatedHours(values[ESTIMATED_HOURS_KEY])) {
+      ctx.addIssue({ code: 'custom', message: ESTIMATED_HOURS_MESSAGE, path: [ESTIMATED_HOURS_KEY] });
+    }
     REQUIRED_FIELDS.forEach((field) => {
       if (isMissingAdvancedTemplateValue(values[field.key])) {
         ctx.addIssue({ code: 'custom', message: REQUIRED_MESSAGE, path: [field.key] });
@@ -90,10 +101,14 @@ function TemplateForm({ template, mode, saving, onSave, onInvalid, onClose }: Te
   const form = useForm<FormValues>({
     resolver: zodResolver(templateSchema),
     // Angular muestra "Campo obligatorio" desde que se abre el diálogo, no solo tras tocar el campo.
-    defaultValues: Object.fromEntries(VISIBLE_FIELDS.map((field) => [field.key, template.values[field.key] || ''])),
+    defaultValues: {
+      ...Object.fromEntries(VISIBLE_FIELDS.map((field) => [field.key, template.values[field.key] || ''])),
+      [ESTIMATED_HOURS_KEY]: String((template.values as Record<string, string | undefined>)[ESTIMATED_HOURS_KEY] ?? ''),
+    },
     mode: 'onChange',
   });
-  const { control, register, handleSubmit } = form;
+  const { control, register, handleSubmit, formState } = form;
+  const hoursError = formState.errors[ESTIMATED_HOURS_KEY]?.message;
   const values: FormValues = useWatch({ control });
   const missingKeys = new Set(REQUIRED_FIELDS.filter((field) => isMissingAdvancedTemplateValue(values[field.key])).map((f) => f.key));
   const requiredCompleted = REQUIRED_FIELDS.length - missingKeys.size;
@@ -167,6 +182,20 @@ function TemplateForm({ template, mode, saving, onSave, onInvalid, onClose }: Te
               </Field>
             );
           })}
+          <Field data-invalid={!!hoursError}>
+            <FieldLabel htmlFor={ESTIMATED_HOURS_ID}>Horas estimadas</FieldLabel>
+            <Input
+              id={ESTIMATED_HOURS_ID}
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="any"
+              aria-invalid={!!hoursError}
+              aria-describedby={hoursError ? `${ESTIMATED_HOURS_ID}-error` : undefined}
+              {...register(ESTIMATED_HOURS_KEY)}
+            />
+            {hoursError ? <FieldError id={`${ESTIMATED_HOURS_ID}-error`}>{hoursError}</FieldError> : null}
+          </Field>
         </div>
       </div>
 
