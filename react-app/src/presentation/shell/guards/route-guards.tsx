@@ -24,12 +24,6 @@ function Guard({ allowed, pending }: { allowed: boolean; pending: boolean }) {
   return <Navigate to={DASHBOARD_PATH} replace />;
 }
 
-/** `locationAdminGuard` de Angular; al ser reactivo también cubre el cambio de usuario. */
-export function RequireLocationAdmin() {
-  const { locationAdmin } = usePermissions();
-  return <Guard allowed={locationAdmin} pending={false} />;
-}
-
 /** Auditoría de eliminaciones (decisión P2). */
 export function RequireAudit() {
   const { canReview, loading } = usePermissions();

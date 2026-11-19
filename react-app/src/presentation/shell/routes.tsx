@@ -1,6 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router';
 import { AuthGate } from './auth-gate';
-import { RequireAdmin, RequireAudit, RequireLocationAdmin } from './guards/route-guards';
+import { RequireAdmin, RequireAudit } from './guards/route-guards';
 import { DASHBOARD_PATH } from './nav-items';
 import { NotFoundPage, PlaceholderPage } from './placeholder-page';
 
@@ -25,12 +25,7 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'registros/importar',
-        element: (
-          <PlaceholderPage
-            title="Reportar y revisar tiempos"
-            description="Pega tus actividades, completa lo pendiente y registra con confianza."
-          />
-        ),
+        lazy: async () => ({ Component: (await import('@presentation/time-records/pages/import-page')).ImportPage }),
       },
       {
         path: 'registros/reportes',
@@ -46,15 +41,6 @@ export const appRoutes: RouteObject[] = [
           <PlaceholderPage
             title="Estadísticas del consultor"
             description="Revisa tus horas, concentración de trabajo y registros del periodo."
-          />
-        ),
-      },
-      {
-        path: 'registros/logs',
-        element: (
-          <PlaceholderPage
-            title="Historial de envíos"
-            description="Consulta envíos correctos y fallidos sin almacenar respuestas completas, contraseñas ni tokens."
           />
         ),
       },
@@ -90,20 +76,6 @@ export const appRoutes: RouteObject[] = [
               <PlaceholderPage
                 title="Configuración global de tiempos"
                 description="Administra listas, valores predeterminados y reglas operativas usadas por todos los consultores."
-              />
-            ),
-          },
-        ],
-      },
-      {
-        element: <RequireLocationAdmin />,
-        children: [
-          {
-            path: 'administracion/ubicaciones',
-            element: (
-              <PlaceholderPage
-                title="Ubicación de consultores"
-                description="Muestra la última ubicación conocida. Se actualiza al iniciar sesión y al completar un envío, sin guardar una ubicación por cada registro."
               />
             ),
           },

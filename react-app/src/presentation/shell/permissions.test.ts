@@ -1,5 +1,5 @@
 import { FakeAppParameters } from '@/test/fakes/fake-app-parameters';
-import { canReviewDeleteRequests, isLocationAdmin, userInitials } from './permissions';
+import { canReviewDeleteRequests, userInitials } from './permissions';
 import { NAV_SECTIONS, visibleNavSections } from './nav-items';
 
 describe('permisos del shell', () => {
@@ -24,12 +24,6 @@ describe('permisos del shell', () => {
   it('sin auditor configurado no concede acceso por identidad vacía', () => {
     const parameters = new FakeAppParameters({ deletionSettings: { auditorEmail: '', technicalDeleteEmails: [] } });
     expect(canReviewDeleteRequests({ name: 'x', email: '' }, parameters)).toBe(false);
-  });
-
-  it('isLocationAdmin compara el email normalizado con la lista del entorno', () => {
-    expect(isLocationAdmin({ name: 'x', email: ' Admin@Example.test' }, ['admin@example.test'])).toBe(true);
-    expect(isLocationAdmin(user, ['admin@example.test'])).toBe(false);
-    expect(isLocationAdmin(null, [])).toBe(false);
   });
 
   it('userInitials usa nombre, email o PMO', () => {

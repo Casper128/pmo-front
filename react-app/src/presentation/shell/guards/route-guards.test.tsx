@@ -1,12 +1,8 @@
 import { act, screen } from '@testing-library/react';
-import type { AuthUser } from '@domain/auth/auth-user.model';
 import { FakeAppParameters, type FakeParametersState } from '@/test/fakes/fake-app-parameters';
 import { FakeAuthGateway, testUser } from '@/test/fakes/fake-auth';
 import { renderApp } from '@/test/fakes/render-app';
 import { createTestContainer } from '@/test/fakes/test-container';
-
-/** `admin@example.test` está en `locationAdminEmails` del entorno de pruebas. */
-const locationAdmin: AuthUser = { name: 'Admin Prueba', email: 'Admin@Example.test ' };
 
 function setup(path: string, { user = testUser, parameters = {} as Partial<FakeParametersState> } = {}) {
   const auth = new FakeAuthGateway({ user });
@@ -89,30 +85,13 @@ describe('guards de ruta', () => {
     });
   });
 
-  describe('RequireLocationAdmin (/administracion/ubicaciones)', () => {
-    it('deja pasar a los emails de locationAdminEmails (normalizados)', async () => {
-      setup('/administracion/ubicaciones', { user: locationAdmin });
-
-      expect(await screen.findByRole('heading', { name: 'Ubicación de consultores' })).toBeInTheDocument();
-    });
-
-    it('redirige al resto de usuarios', async () => {
-      const { router } = setup('/administracion/ubicaciones');
-
-      expect(await dashboard()).toBeInTheDocument();
-      expect(router.state.location.pathname).toBe('/registros/dashboard');
-    });
-
-    it('redirige si cambia el usuario estando en la página', async () => {
-      const { router, auth } = setup('/administracion/ubicaciones', { user: locationAdmin });
-      await screen.findByRole('heading', { name: 'Ubicación de consultores' });
-
-      act(() => auth.setUser(testUser));
-
-      expect(await dashboard()).toBeInTheDocument();
-      expect(router.state.location.pathname).toBe('/registros/dashboard');
-    });
-  });
+  it.each(['/administracion/ubicaciones', '/registros/logs'])(
+    'la ruta retirada %s ya no existe y muestra el 404',
+    async (path) => {
+      setup(path);
+      expect(await screen.findByRole('heading', { name: 'Página no encontrada' })).toBeInTheDocument();
+    },
+  );
 
   it('la raíz redirige al dashboard y una ruta desconocida muestra 404', async () => {
     const { router } = setup('/');

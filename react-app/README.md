@@ -119,7 +119,8 @@ el proyecto.
   reintento salvo sesión expirada, sin refetch al enfocar y cierre de sesión global ante 401/403.
 - `src/presentation/shell`: `AuthGate` (restauración, login, renovación cada 4 min, auditoría de login), layout
   con Sidebar de Shadcn, cabecera, barra inferior móvil, tema (`pmo_theme` en sessionStorage, clase `.dark`) y
-  guards `RequireAdmin`, `RequireAudit` y `RequireLocationAdmin`, que esperan a que carguen los parámetros.
+  guards `RequireAdmin` y `RequireAudit`, que esperan a que carguen los parámetros. Ubicaciones y el historial de
+  envíos (`/registros/logs`) no se migran (P11, P12); `locationAdminEmails` se conserva en la configuración sin uso.
 - Shadcn `form` está vacío en el estilo `radix-nova`; los formularios usan `Field` + react-hook-form + zod.
 - Barra lateral (Shadcn `Sidebar`): el colapso se guarda en `localStorage` `pmo_sidebar_collapsed` (fuente de verdad,
   paridad con Angular). El componente generado escribe además la cookie `sidebar_state` (7 días, `path=/`) en cada
@@ -168,3 +169,14 @@ se componen fuera con `Field`/`FieldLabel htmlFor={id}`):
 
 Pruebas de zona horaria: `src/test/timezones.ts` (`useTimezone`) cambia `TZ` dentro del test, así que `npm run test`
 ya cubre UTC, America/Bogota y Asia/Tokyo en los tests de fechas; `npm run test:tz` repite toda la suite en cada zona.
+
+## Reportar: borradores (F7)
+
+- `DraftsProvider` (`presentation/time-records/drafts/`) se monta en `AuthGate`, por encima de las rutas: posee la lista
+  de borradores (`pmo_pending_time_records`, restaurada al montar) y la fase de envío (`sendLocked`, base de F8).
+  Todos los mutadores son no-op con el envío bloqueado. `initialSendPhase` solo lo usan las pruebas.
+- `/registros/importar` (lazy): `ImportTextInput` (borrador propio en `pmo_text_time_draft`), `RecordsPreviewTable`
+  (TanStack Table desde 1280 px, tarjetas por debajo), `EditRecordDialog` y `ManagementTemplateDialog` (RHF + zod, reglas
+  del dominio). Las opciones de selects salen de TanStack Query (`hooks/select-options-queries.ts`).
+- `shadcn add collapsible` y `@tanstack/react-table` (v9, API `useTable`) añadidos en F7. `--ui-hours-*` (colores de
+  `HorasAlert` del dominio) definidos en `index.css`.

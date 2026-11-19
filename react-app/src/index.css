@@ -89,13 +89,22 @@
     --sidebar-accent-foreground: #0f568c;
     --sidebar-border: #d7e0ea;
     --sidebar-ring: #1769aa;
-    /* Estados de horas (equivalentes a --ui-hours-* de Angular) */
+    /* Estados de éxito/aviso y estados de horas (--ui-hours-*, los usa HorasAlert del dominio) */
     --success: #0f766e;
     --success-foreground: #ffffff;
     --warning: #9a6700;
     --warning-foreground: #ffffff;
     --selection: #dbeafe;
     --selection-foreground: #0f172a;
+    --ui-hours-danger: #b42318;
+    --ui-hours-danger-bg: rgb(255 245 245 / 0.86);
+    --ui-hours-danger-border: #f1b8b8;
+    --ui-hours-success: #0f766e;
+    --ui-hours-success-bg: rgb(239 253 250 / 0.86);
+    --ui-hours-success-border: #99d8ce;
+    --ui-hours-pending: #9a6700;
+    --ui-hours-pending-bg: rgb(255 249 235 / 0.84);
+    --ui-hours-pending-border: #e8cf8f;
 }
 
 .dark {
@@ -136,6 +145,15 @@
     --warning-foreground: #10141d;
     --selection: #1e3a5f;
     --selection-foreground: #f4f7fb;
+    --ui-hours-danger: #fecaca;
+    --ui-hours-danger-bg: rgb(70 33 44 / 0.72);
+    --ui-hours-danger-border: #8f4b55;
+    --ui-hours-success: #9de6d9;
+    --ui-hours-success-bg: rgb(30 63 62 / 0.72);
+    --ui-hours-success-border: #467d78;
+    --ui-hours-pending: #f4d38a;
+    --ui-hours-pending-bg: rgb(68 55 34 / 0.7);
+    --ui-hours-pending-border: #8a7241;
 }
 
 @layer base {

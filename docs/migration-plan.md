@@ -499,3 +499,16 @@ Recomendación: F7 y F8 son las de mayor riesgo; QA debe revisarlas con el check
 | P8 | Apariencia: estilo Shadcn con la paleta actual de la app Angular (tokens de `src/styles.css` mapeados a variables Shadcn en `react-app/src/index.css`). |
 | P9 | El correo del auditor de eliminaciones por defecto sale del código de `react-app`. Variable opcional `VITE_DEFAULT_AUDITOR_EMAIL` (correo o vacío, validada en `config/environment.ts`, inyectada vía `Environment.defaultAuditorEmail`); si falta, `''`. En Netlify y `.env.local` se configura con el valor que hoy tiene Angular en `src/`. |
 | P10 | `DateRangePicker` eliminado (KISS): Angular usa Desde/Hasta + presets; se usan dos `DatePicker`. |
+
+### Revisión de alcance (grilling, 2026-11-18)
+
+Decisiones del usuario tras el inventario funcional y el grilling del arquitecto:
+
+- **P11. Ubicaciones no se migra.** F15 queda descartada: no se crea la página, ni la ruta `/administracion/ubicaciones`, ni `RequireLocationAdmin`, ni `react-leaflet`. Se conserva la configuración (`locationAdminEmails`) tal cual, sin usarla. El puerto/adaptador `ConsultantLocationGateway` ya portado puede retirarse en la limpieza de F16 o quedarse sin consumidor.
+- **P12. Logs de envío no se migra como pantalla.** No hay ruta `/registros/logs` ni `SendLogsPage`. El **guardado** de logs durante el envío (`SendLogGateway.createMany`, fases `saving-logs`/`log-error`, `retrySendLogs`) sí se mantiene porque es parte del flujo de envío.
+- **P13. Tarjeta "Horas estimadas vs reales" solo visual.** Se migra como representación estática (estructura y estado "Estimaciones pendientes"), sin lógica funcional ni selector operativo; fuera de alcance que funcione.
+- **P14. Código muerto no se migra** en presentation/application/infrastructure (22 computed de Estadísticas, exportación PNG, `goToSendLogs`, `onDefault*Change`, `incompleteCount`, `trackField`, `primarySections`, `otherFields`, `getMissing`, `onProyectoChange`, `show()`, `clearManagementOptionsCache`, `send-log.create()`, `valuesFor`). El dominio muerto se copia tal cual por `check:domain-sync` y se limpia en F16 si se retira `src/`.
+- **P15. Orden de fases:** F7 Reportar → F8 Envío → F6 Dashboard → F9 Reportes → F10 Consolidado → F11 Estadísticas → F12 Plantillas → F13 Auditoría → F14 Configuración → F16 paridad y corte. Mientras no exista el Dashboard, la ruta inicial mantiene el placeholder.
+- **P16. Pantallas de análisis 1:1** (Dashboard, Datos, Consolidado, Reportes) sin fusión; la fusión se reevalúa después de F16.
+- **P17. Backend sin acceso:** no hay acceso al backend. Fábrica/`fechaInicio` e idempotencia se tratan como riesgos aceptados (R11) y se mitigan solo desde el frontend: payload idéntico al de Angular tras el fix e9e7437, protecciones de envío de §1.6 y verificación manual en F8 (registro Fábrica 19:30 en entorno de prueba y comprobar el día en el listado de Reportes).
+- **Corrección:** `goToSendLogs` no tiene llamador en Angular; la referencia a "destino de Ver historial" en §3.4 queda sin efecto por P12.

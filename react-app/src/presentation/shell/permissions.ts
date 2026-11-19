@@ -24,11 +24,6 @@ export function canReviewDeleteRequests(user: AuthUser | null, parameters: AppPa
   );
 }
 
-/** Igual que `locationAdminGuard` de Angular: el email normalizado debe estar en la lista del entorno. */
-export function isLocationAdmin(user: AuthUser | null, locationAdminEmails: readonly string[]): boolean {
-  return locationAdminEmails.includes(normalizeEmail(user?.email));
-}
-
 /** Iniciales del usuario como en Angular (`initials()`): nombre, email o `PMO`; máximo 2 letras. */
 export function userInitials(user: AuthUser | null): string {
   const name = user?.name || user?.email || 'PMO';

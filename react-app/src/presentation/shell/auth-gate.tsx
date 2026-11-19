@@ -4,6 +4,7 @@ import { Outlet } from 'react-router';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useContainer } from '@presentation/providers/container-context';
 import { useAuth } from '@presentation/shared/hooks/use-auth';
+import { DraftsProvider } from '@presentation/time-records/drafts/drafts-provider';
 import { AppLayout } from './app-layout';
 import { LoginPage, type LoginValues } from './login-page';
 import { LOGIN_LOCATION_REQUEST, SESSION_REFRESH_INTERVAL_MS } from './session-config';
@@ -102,8 +103,11 @@ export function AuthGate() {
     return <LoginPage submitting={loggingIn} error={loginError} onSubmit={(values) => void login(values)} />;
   }
   return (
-    <AppLayout>
-      <Outlet />
-    </AppLayout>
+    // Los borradores viven en el shell (por encima de las rutas): sobreviven a la navegación.
+    <DraftsProvider>
+      <AppLayout>
+        <Outlet />
+      </AppLayout>
+    </DraftsProvider>
   );
 }
