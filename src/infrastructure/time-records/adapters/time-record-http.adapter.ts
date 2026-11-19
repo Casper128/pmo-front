@@ -1,94 +1,87 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { Observable, map, catchError, of } from 'rxjs';
-import { TimeRecordRepository } from '@domain/time-records/repositories/time-record.repository';
-import { AuthGateway } from '@application/auth/auth.gateway';
-import {
+import type { AuthGateway } from '@application/auth/auth.gateway';
+import type { ManagementDemandOption } from '@domain/time-records/models/management-template.model';
+import type {
   TimeRecordApiBody,
   TimeRecordRegistrationResponse,
 } from '@domain/time-records/models/time-record-api.model';
-import { ManagementDemandOption } from '@domain/time-records/models/management-template.model';
-import { environment } from '@env/environment';
+import type { TimeRecordRepository } from '@domain/time-records/repositories/time-record.repository';
+import type { Environment } from '@env/environment';
+import type { HttpClient } from '../../http/http-client';
 import { TimeRecordOptionsMapper } from '../mappers/time-record-options.mapper';
 
 type CollectionResponse =
   | unknown[]
   | { clientes?: unknown[]; proyectos?: unknown[]; solicitudes?: unknown[]; data?: unknown[] };
 
-@Injectable()
+/** Registro y opciones de selects contra la API PMO. Las consultas de opciones devuelven [] si fallan. */
 export class TimeRecordHttpAdapter implements TimeRecordRepository {
   private readonly mapper = new TimeRecordOptionsMapper();
+  private readonly http: HttpClient;
+  private readonly auth: AuthGateway;
+  private readonly env: Environment;
 
-  constructor(
-    private http: HttpClient,
-    private auth: AuthGateway,
-  ) {}
+  constructor(http: HttpClient, auth: AuthGateway, env: Environment) {
+    this.http = http;
+    this.auth = auth;
+    this.env = env;
+  }
 
-  private get headers() {
+  private get headers(): Record<string, string> {
     return { Authorization: `Bearer ${this.auth.token}` };
   }
 
-  register(body: TimeRecordApiBody): Observable<TimeRecordRegistrationResponse> {
+  register(body: TimeRecordApiBody): Promise<TimeRecordRegistrationResponse> {
     return this.http.post<TimeRecordRegistrationResponse>(
-      `${environment.apiBaseUrl}/tiemposConsultores/registrar`,
+      `${this.env.apiBaseUrl}/tiemposConsultores/registrar`,
       body,
       { headers: this.headers },
     );
   }
 
-  getClientes(): Observable<string[]> {
-    return this.http
-      .post<CollectionResponse>(
-        `${environment.apiBaseUrl}/tiemposConsultores/clientes`,
+  async getClientes(): Promise<string[]> {
+    try {
+      const d = await this.http.post<CollectionResponse>(
+        `${this.env.apiBaseUrl}/tiemposConsultores/clientes`,
         {},
         { headers: this.headers },
-      )
-      .pipe(
-        map((d) => {
-          const lista = this.mapper.collection(d, 'clientes');
-          return lista.map((c) => this.mapper.optionValue(c, ['cliente', 'nombre', 'id'])).filter(Boolean);
-        }),
-        catchError(() => of([])),
       );
+      const lista = this.mapper.collection(d, 'clientes');
+      return lista.map((c) => this.mapper.optionValue(c, ['cliente', 'nombre', 'id'])).filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 
-  getProyectos(cliente: string): Observable<string[]> {
-    return this.http
-      .post<CollectionResponse>(
-        `${environment.apiBaseUrl}/tiemposConsultores/proyectos/${encodeURIComponent(cliente)}`,
+  async getProyectos(cliente: string): Promise<string[]> {
+    try {
+      const d = await this.http.post<CollectionResponse>(
+        `${this.env.apiBaseUrl}/tiemposConsultores/proyectos/${encodeURIComponent(cliente)}`,
         {},
         { headers: this.headers },
-      )
-      .pipe(
-        map((d) => {
-          const lista = this.mapper.collection(d, 'proyectos');
-          return lista
-            .map((p) => this.mapper.optionValue(p, ['proyecto', 'nombre', 'id']))
-            .filter(Boolean);
-        }),
-        catchError(() => of([])),
       );
+      const lista = this.mapper.collection(d, 'proyectos');
+      return lista.map((p) => this.mapper.optionValue(p, ['proyecto', 'nombre', 'id'])).filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 
-  getSolicitudes(cliente: string, proyecto: string): Observable<string[]> {
-    return this.getSolicitudOptions(cliente, proyecto).pipe(
-      map((options) => options.map((s) => s.requestValue || s.name)),
-    );
+  async getSolicitudes(cliente: string, proyecto: string): Promise<string[]> {
+    const options = await this.getSolicitudOptions(cliente, proyecto);
+    return options.map((s) => s.requestValue || s.name);
   }
 
-  getSolicitudOptions(cliente: string, proyecto: string): Observable<ManagementDemandOption[]> {
-    return this.http
-      .post<CollectionResponse>(
-        `${environment.apiBaseUrl}/tiemposConsultores/solicitudes?cliente=${encodeURIComponent(cliente)}&proyecto=${encodeURIComponent(proyecto)}`,
+  async getSolicitudOptions(cliente: string, proyecto: string): Promise<ManagementDemandOption[]> {
+    try {
+      const d = await this.http.post<CollectionResponse>(
+        `${this.env.apiBaseUrl}/tiemposConsultores/solicitudes?cliente=${encodeURIComponent(cliente)}&proyecto=${encodeURIComponent(proyecto)}`,
         {},
         { headers: this.headers },
-      )
-      .pipe(
-        map((d) => {
-          const lista = this.mapper.collection(d, 'solicitudes');
-          return lista.map((s) => this.mapper.demandOption(s)).filter((s) => s.id && s.name);
-        }),
-        catchError(() => of([])),
       );
+      const lista = this.mapper.collection(d, 'solicitudes');
+      return lista.map((s) => this.mapper.demandOption(s)).filter((s) => s.id && s.name);
+    } catch {
+      return [];
+    }
   }
 }

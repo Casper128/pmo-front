@@ -1,43 +1,56 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { Observable, map } from 'rxjs';
-import { AuthGateway } from '@application/auth/auth.gateway';
+import type { AuthGateway } from '@application/auth/auth.gateway';
 import { ManagementDeleteRequestGateway } from '@application/time-records/ports/management-delete-request.gateway';
-import { ManagementDeleteRequest } from '@domain/time-records/models/management-delete-request.model';
-import { environment } from '@env/environment';
+import type { ManagementDeleteRequest } from '@domain/time-records/models/management-delete-request.model';
+import type { Environment } from '@env/environment';
+import type { HttpClient } from '../../http/http-client';
 
 type DeleteRequestRow = Record<string, unknown>;
 
-@Injectable()
+/** Solicitudes de eliminación (auditoría) en la función Supabase `pmo-management-delete-request`. */
 export class ManagementDeleteRequestAdapter extends ManagementDeleteRequestGateway {
-  private readonly endpoint = `${environment.supabaseUrl}/functions/v1/pmo-management-delete-request`;
+  private readonly endpoint: string;
+  private readonly http: HttpClient;
+  private readonly auth: AuthGateway;
+  private readonly env: Environment;
 
-  constructor(
-    private readonly http: HttpClient,
-    private readonly auth: AuthGateway,
-  ) {
+  constructor(http: HttpClient, auth: AuthGateway, env: Environment) {
     super();
+    this.http = http;
+    this.auth = auth;
+    this.env = env;
+    this.endpoint = `${env.supabaseUrl}/functions/v1/pmo-management-delete-request`;
   }
 
-  list(): Observable<ManagementDeleteRequest[]> {
-    return this.http
-      .get<{ requests?: DeleteRequestRow[] }>(this.endpoint, { headers: this.headers })
-      .pipe(map((payload) => (payload.requests || []).map((row) => this.mapRow(row))));
+  list(): Promise<ManagementDeleteRequest[]> {
+    return this.fetchRequests(this.endpoint);
   }
 
-  mark(id: string, status: 'approved' | 'rejected'): Observable<ManagementDeleteRequest> {
-    return this.http
-      .patch<{ request?: DeleteRequestRow }>(
-        this.endpoint,
-        { id, status },
-        { headers: this.headers },
-      )
-      .pipe(map((payload) => this.mapRow(payload.request || {})));
+  listMine(): Promise<ManagementDeleteRequest[]> {
+    return this.fetchRequests(`${this.endpoint}?scope=mine`);
+  }
+
+  private async fetchRequests(url: string): Promise<ManagementDeleteRequest[]> {
+    const payload = await this.http.get<{ requests?: DeleteRequestRow[] }>(url, { headers: this.headers });
+    return (payload.requests || []).map((row) => this.mapRow(row));
+  }
+
+  approve(id: string): Promise<ManagementDeleteRequest> {
+    return this.review({ id, status: 'approved', deleteReport: true });
+  }
+
+  reject(id: string, reviewNote?: string): Promise<ManagementDeleteRequest> {
+    const note = reviewNote?.trim();
+    return this.review({ id, status: 'rejected', ...(note ? { reviewNote: note } : {}) });
+  }
+
+  private async review(body: Record<string, unknown>): Promise<ManagementDeleteRequest> {
+    const payload = await this.http.patch<{ request?: DeleteRequestRow }>(this.endpoint, body, { headers: this.headers });
+    return this.mapRow(payload.request || {});
   }
 
   private get headers(): Record<string, string> {
     return {
-      apikey: environment.supabasePublishableKey,
+      apikey: this.env.supabasePublishableKey,
       Authorization: `Bearer ${this.auth.token || ''}`,
       'Content-Type': 'application/json',
     };
@@ -64,9 +77,7 @@ export class ManagementDeleteRequestAdapter extends ManagementDeleteRequestGatew
   }
 
   private status(value: unknown): ManagementDeleteRequest['status'] {
-    return value === 'approved' || value === 'rejected' || value === 'cancelled'
-      ? value
-      : 'pending';
+    return value === 'approved' || value === 'rejected' || value === 'cancelled' ? value : 'pending';
   }
 
   private optionalString(value: unknown): string | undefined {

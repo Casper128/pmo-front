@@ -1,106 +1,73 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { Observable, map } from 'rxjs';
-import { environment } from '@env/environment';
-import { AuthGateway } from '@application/auth/auth.gateway';
-import {
+import type { AuthGateway } from '@application/auth/auth.gateway';
+import type {
   DeleteRequestBody,
+  DeleteRequestResult,
   TechnicalDeleteBody,
   TimeManagementGateway,
 } from '@application/time-records/ports/time-management.gateway';
-import {
+import type {
   ManagementReport,
   ReportDownloadFilter,
   ReportDownloadResponse,
 } from '@domain/time-records/models/management-report.model';
+import type { Environment } from '@env/environment';
+import type { HttpClient } from '../../http/http-client';
 
-@Injectable()
+/** Gestión de reportes: listado y descarga en la API PMO; edición y borrados en funciones Supabase. */
 export class TimeManagementHttpAdapter implements TimeManagementGateway {
-  constructor(
-    private readonly http: HttpClient,
-    private readonly auth: AuthGateway,
-  ) {}
+  private readonly http: HttpClient;
+  private readonly auth: AuthGateway;
+  private readonly env: Environment;
 
-  list(consultantId: string | number | null): Observable<ManagementReport[]> {
-    return this.http
-      .post<unknown>(
-        `${environment.apiBaseUrl}/tiemposConsultores/gestion`,
-        { idConsultor: consultantId },
-        { headers: this.headers },
-      )
-      .pipe(map((response) => this.extractRows(response)));
+  constructor(http: HttpClient, auth: AuthGateway, env: Environment) {
+    this.http = http;
+    this.auth = auth;
+    this.env = env;
   }
 
-  update(identifier: string, body: Record<string, unknown>): Observable<void> {
-    return this.http
-      .post<unknown>(
-        `${environment.supabaseUrl}/functions/v1/pmo-management-edit`,
-        { identifier, changes: body },
-        {
-          headers: {
-            ...this.headers,
-            apikey: environment.supabasePublishableKey,
-            'Content-Type': 'application/json',
-          },
-        },
-      )
-      .pipe(map(() => undefined));
+  async list(consultantId: string | number | null): Promise<ManagementReport[]> {
+    const response = await this.http.post<unknown>(
+      `${this.env.apiBaseUrl}/tiemposConsultores/gestion`,
+      { idConsultor: consultantId },
+      { headers: this.headers },
+    );
+    return this.extractRows(response);
   }
 
-  delete(identifier: string): Observable<void> {
-    return this.http
-      .post<unknown>(
-        `${environment.supabaseUrl}/functions/v1/pmo-management-delete`,
-        { identifier },
-        {
-          headers: {
-            ...this.headers,
-            apikey: environment.supabasePublishableKey,
-            'Content-Type': 'application/json',
-          },
-        },
-      )
-      .pipe(map(() => undefined));
+  async update(identifier: string, body: Record<string, unknown>): Promise<void> {
+    await this.postSupabase('pmo-management-edit', { identifier, changes: body });
   }
 
-  requestDelete(body: DeleteRequestBody): Observable<void> {
-    return this.http
-      .post<unknown>(
-        `${environment.supabaseUrl}/functions/v1/pmo-management-delete-request`,
-        body,
-        {
-          headers: {
-            ...this.headers,
-            apikey: environment.supabasePublishableKey,
-            'Content-Type': 'application/json',
-          },
-        },
-      )
-      .pipe(map(() => undefined));
+  async delete(identifier: string): Promise<void> {
+    await this.postSupabase('pmo-management-delete', { identifier });
   }
 
-  technicalDelete(body: TechnicalDeleteBody): Observable<void> {
-    return this.http
-      .post<unknown>(
-        `${environment.supabaseUrl}/functions/v1/pmo-management-delete-technical`,
-        body,
-        {
-          headers: {
-            ...this.headers,
-            apikey: environment.supabasePublishableKey,
-            'Content-Type': 'application/json',
-          },
-        },
-      )
-      .pipe(map(() => undefined));
+  async requestDelete(body: DeleteRequestBody): Promise<DeleteRequestResult> {
+    const response = await this.postSupabase('pmo-management-delete-request', body);
+    return { duplicated: this.asRecord(response)?.['duplicated'] === true };
   }
 
-  download(filter: ReportDownloadFilter): Observable<ReportDownloadResponse> {
-    return this.http
-      .post<unknown>(`${environment.apiBaseUrl}/tiemposConsultores/filtroDownload`, filter, {
-        headers: this.headers,
-      })
-      .pipe(map((response) => this.extractDownload(response)));
+  async technicalDelete(body: TechnicalDeleteBody): Promise<void> {
+    await this.postSupabase('pmo-management-delete-technical', body);
+  }
+
+  async download(filter: ReportDownloadFilter): Promise<ReportDownloadResponse> {
+    const response = await this.http.post<unknown>(
+      `${this.env.apiBaseUrl}/tiemposConsultores/filtroDownload`,
+      filter,
+      { headers: this.headers },
+    );
+    return this.extractDownload(response);
+  }
+
+  private postSupabase(functionName: string, body: object): Promise<unknown> {
+    return this.http.post<unknown>(`${this.env.supabaseUrl}/functions/v1/${functionName}`, body, {
+      headers: {
+        ...this.headers,
+        apikey: this.env.supabasePublishableKey,
+        'Content-Type': 'application/json',
+      },
+    });
   }
 
   private get headers(): Record<string, string> {

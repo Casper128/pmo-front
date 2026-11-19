@@ -1,5 +1,4 @@
-import { Observable } from 'rxjs';
-import {
+import type {
   ManagementReport,
   ReportDownloadFilter,
   ReportDownloadResponse,
@@ -11,6 +10,11 @@ export interface DeleteRequestBody {
   report: Partial<ManagementReport>;
 }
 
+/** Respuesta de la solicitud: `duplicated` si ya existía una solicitud pendiente para el reporte. */
+export interface DeleteRequestResult {
+  duplicated: boolean;
+}
+
 export interface TechnicalDeleteBody {
   identifier: string;
   technicalKey: string;
@@ -18,10 +22,10 @@ export interface TechnicalDeleteBody {
 }
 
 export abstract class TimeManagementGateway {
-  abstract list(consultantId: string | number | null): Observable<ManagementReport[]>;
-  abstract update(identifier: string, body: Record<string, unknown>): Observable<void>;
-  abstract delete(identifier: string): Observable<void>;
-  abstract requestDelete(body: DeleteRequestBody): Observable<void>;
-  abstract technicalDelete(body: TechnicalDeleteBody): Observable<void>;
-  abstract download(filter: ReportDownloadFilter): Observable<ReportDownloadResponse>;
+  abstract list(consultantId: string | number | null): Promise<ManagementReport[]>;
+  abstract update(identifier: string, body: Record<string, unknown>): Promise<void>;
+  abstract delete(identifier: string): Promise<void>;
+  abstract requestDelete(body: DeleteRequestBody): Promise<DeleteRequestResult>;
+  abstract technicalDelete(body: TechnicalDeleteBody): Promise<void>;
+  abstract download(filter: ReportDownloadFilter): Promise<ReportDownloadResponse>;
 }

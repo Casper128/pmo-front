@@ -506,3 +506,7 @@ Decisiones del usuario tras el inventario funcional y el grilling del arquitecto
 - **P16. Pantallas de análisis 1:1** (Dashboard, Datos, Consolidado, Reportes) sin fusión; la fusión se reevalúa después de F16.
 - **P17. Backend sin acceso:** no hay acceso al backend. Fábrica/`fechaInicio` e idempotencia se tratan como riesgos aceptados (R11) y se mitigan solo desde el frontend: payload idéntico al de Angular tras el fix e9e7437, protecciones de envío de §1.6 y verificación manual en F8 (registro Fábrica 19:30 en entorno de prueba y comprobar el día en el listado de Reportes).
 - **Corrección:** `goToSendLogs` no tiene llamador en Angular; la referencia a "destino de Ver historial" en §3.4 queda sin efecto por P12.
+
+## Corte a React (2026-11-19)
+
+La app React pasó a la raíz del repositorio y Angular quedó como referencia en `legacy-angular/` (sin build ni deploy). `check:domain-sync` se retiró: `src/domain` es ahora la única fuente de reglas. Netlify despliega la raíz (`netlify.toml`, publish `dist`) con los valores públicos de `.env.production`.

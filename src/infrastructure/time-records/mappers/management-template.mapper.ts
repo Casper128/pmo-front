@@ -1,4 +1,4 @@
-import { ManagementAdvancedTemplate } from '@domain/time-records/models/management-template.model';
+import type { ManagementAdvancedTemplate } from '@domain/time-records/models/management-template.model';
 
 export interface TemplatePayload {
   templates?: ManagementAdvancedTemplate[];

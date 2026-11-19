@@ -1,4 +1,4 @@
-import {
+import type {
   AdvancedFieldConfiguration,
   AdvancedFieldKey,
   DeletionSettings,
@@ -28,4 +28,9 @@ export abstract class AppParametersFacade {
     deletionSettings: DeletionSettings,
   ): Promise<void>;
   abstract resetLocal(): void;
+  /**
+   * Notifica cualquier cambio de estado (para `useSyncExternalStore`). Devuelve la función para
+   * cancelar la suscripción. Sustituye a los signals de Angular.
+   */
+  abstract subscribe(listener: () => void): () => void;
 }

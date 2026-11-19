@@ -1,10 +1,12 @@
+# Netlify: la app React vive en la raíz del repo (Angular quedó como referencia en legacy-angular/, sin deploy).
 [build]
   command = "npm run build"
-  publish = "dist/pmo-app/browser"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "24.15.0"
 
+# SPA: cualquier ruta sirve index.html y React Router resuelve la URL.
 [[redirects]]
   from = "/*"
   to = "/index.html"

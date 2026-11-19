@@ -1,5 +1,4 @@
-import { Observable } from 'rxjs';
-import { WorkLocation, LocationRequest } from '@domain/audit/work-location.model';
+import type { WorkLocation, LocationRequest } from '@domain/audit/work-location.model';
 
 export interface ReportAuditContext {
   reference: string;
@@ -12,10 +11,10 @@ export abstract class LocationGateway {
 }
 
 export abstract class UserAuditGateway {
-  abstract recordLogin(location: WorkLocation): Observable<void>;
+  abstract recordLogin(location: WorkLocation): Promise<void>;
   abstract recordTimeReport(
     location: WorkLocation,
     report: ReportAuditContext,
     successful: boolean,
-  ): Observable<void>;
+  ): Promise<void>;
 }

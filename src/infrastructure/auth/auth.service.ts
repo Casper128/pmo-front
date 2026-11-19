@@ -1,176 +1,182 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, map, of, switchMap, tap, throwError } from 'rxjs';
-import { environment } from '@env/environment';
-import { AuthUser } from '@domain/auth/auth-user.model';
 import { AuthGateway } from '@application/auth/auth.gateway';
+import type { AuthUser } from '@domain/auth/auth-user.model';
+import type { Environment } from '@env/environment';
+import type { HttpClient } from '../http/http-client';
 
-@Injectable()
+/** Claves de localStorage (las mismas que la app Angular). */
+export const AUTH_STORAGE_KEYS = {
+  token: 'pmo_token',
+  refreshToken: 'pmo_refresh_token',
+  user: 'pmo_user',
+} as const;
+
+/**
+ * Port de `AuthService` (Angular) sin signals: estado privado + listeners para `useSyncExternalStore`.
+ * Mismos endpoints, cabeceras, claves de almacenamiento, mensajes y reglas de sesión expirada.
+ */
 export class AuthService extends AuthGateway {
-  private http = inject(HttpClient);
-  private _token = signal<string | null>(null);
-  private _refreshToken = signal<string | null>(null);
-  private _user = signal<AuthUser | null>(null);
+  private readonly http: HttpClient;
+  private readonly env: Environment;
+  private readonly listeners = new Set<() => void>();
+  private _token: string | null = null;
+  private _refreshToken: string | null = null;
+  private _user: AuthUser | null = null;
 
-  readonly user = this._user.asReadonly();
-  readonly isLoggedIn = computed(() => !!this._token());
+  readonly user = (): AuthUser | null => this._user;
+  readonly isLoggedIn = (): boolean => !!this._token;
 
-  constructor() {
+  constructor(http: HttpClient, env: Environment) {
     super();
-    const token = localStorage.getItem('pmo_token');
-    const refreshToken = localStorage.getItem('pmo_refresh_token');
-    const userRaw = localStorage.getItem('pmo_user');
-    if (token) this._token.set(token);
-    if (refreshToken) this._refreshToken.set(refreshToken);
+    this.http = http;
+    this.env = env;
+    const token = localStorage.getItem(AUTH_STORAGE_KEYS.token);
+    const refreshToken = localStorage.getItem(AUTH_STORAGE_KEYS.refreshToken);
+    const userRaw = localStorage.getItem(AUTH_STORAGE_KEYS.user);
+    if (token) this._token = token;
+    if (refreshToken) this._refreshToken = refreshToken;
     if (userRaw) {
       try {
-        this._user.set(JSON.parse(userRaw));
+        this._user = JSON.parse(userRaw) as AuthUser;
       } catch {
-        localStorage.removeItem('pmo_user');
+        localStorage.removeItem(AUTH_STORAGE_KEYS.user);
       }
     }
   }
 
   get token(): string | null {
-    return this._token();
+    return this._token;
   }
 
   get refreshToken(): string | null {
-    return this._refreshToken();
+    return this._refreshToken;
   }
 
-  login(email: string, password: string): Observable<AuthUser> {
-    return this.http
-      .post<unknown>(`${environment.apiBaseUrl}/cuentas/authenticate`, { email, password })
-      .pipe(
-        switchMap((response) => {
-          const token = this.stringFrom(response, ['token', 'jwtToken', 'key', 'accessToken']);
-          if (!token) {
-            throw new Error(
-              this.stringFrom(response, ['mensaje', 'message']) || 'Credenciales incorrectas',
-            );
-          }
-          this.setTokens(token, this.stringFrom(response, ['refreshToken']) || undefined);
-          const responseRecord = this.asRecord(response);
-          const user = this.mapUser(
-            responseRecord?.['usuario'] || responseRecord?.['user'] || response,
-            email,
-          );
-          this.setUser(user);
-          return this.loadUser(user.email).pipe(catchError(() => of(user)));
-        }),
-      );
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
-  loadUser(fallbackEmail: string): Observable<AuthUser> {
-    return this.http
-      .get<unknown>(`${environment.apiBaseUrl}/home/datosusuario`, {
-        headers: { Authorization: `Bearer ${this.token}` },
-      })
-      .pipe(
-        map((response) => this.mapUser(response, fallbackEmail)),
-        tap((user) => this.setUser(user)),
-      );
+  async login(email: string, password: string): Promise<AuthUser> {
+    const response = await this.http.post<unknown>(`${this.env.apiBaseUrl}/cuentas/authenticate`, {
+      email,
+      password,
+    });
+    const token = this.stringFrom(response, ['token', 'jwtToken', 'key', 'accessToken']);
+    if (!token) {
+      throw new Error(this.stringFrom(response, ['mensaje', 'message']) || 'Credenciales incorrectas');
+    }
+    this.setTokens(token, this.stringFrom(response, ['refreshToken']) || undefined);
+    const responseRecord = this.asRecord(response);
+    const user = this.mapUser(responseRecord?.['usuario'] || responseRecord?.['user'] || response, email);
+    this.setUser(user);
+    try {
+      return await this.loadUser(user.email);
+    } catch {
+      return user;
+    }
   }
 
-  refreshSession(): Observable<string | null> {
+  async loadUser(fallbackEmail: string): Promise<AuthUser> {
+    const response = await this.http.get<unknown>(`${this.env.apiBaseUrl}/home/datosusuario`, {
+      headers: { Authorization: `Bearer ${this.token}` },
+    });
+    const user = this.mapUser(response, fallbackEmail);
+    this.setUser(user);
+    return user;
+  }
+
+  async refreshSession(): Promise<string | null> {
     if (!this.token || !this.refreshToken) {
-      return throwError(() => new Error('No hay sesion para renovar'));
+      throw new Error('No hay sesion para renovar');
     }
 
-    return this.http
-      .post<unknown>(
-        `${environment.apiBaseUrl}/cuentas/validarSesion`,
-        {
-          refreshToken: this.refreshToken,
-          jwtToken: this.token,
+    const response = await this.http.post<unknown>(
+      `${this.env.apiBaseUrl}/cuentas/validarSesion`,
+      {
+        refreshToken: this.refreshToken,
+        jwtToken: this.token,
+      },
+      {
+        headers: {
+          accept: '*/*',
+          'accept-language': 'es',
+          Authorization: `Bearer ${this.token}`,
         },
-        {
-          headers: {
-            accept: '*/*',
-            'accept-language': 'es',
-            Authorization: `Bearer ${this.token}`,
-          },
-        },
-      )
-      .pipe(
-        map((response) => {
-          const token = this.stringFrom(response, ['key', 'token', 'jwtToken', 'accessToken']);
-          const status = this.numberFrom(response, ['status']);
-          const message =
-            this.stringFrom(response, ['mensajee', 'mensaje', 'message']) || 'Sesion invalida';
-          if (status !== null && status !== 200) {
-            throw new Error(message);
-          }
-          if (!token) {
-            throw new Error(message);
-          }
-          return token as string;
-        }),
-        tap((token) => {
-          if (token) this.setTokens(token, this.refreshToken ?? undefined);
-        }),
-      );
+      },
+    );
+    const token = this.stringFrom(response, ['key', 'token', 'jwtToken', 'accessToken']);
+    const status = this.numberFrom(response, ['status']);
+    const message = this.stringFrom(response, ['mensajee', 'mensaje', 'message']) || 'Sesion invalida';
+    if (status !== null && status !== 200) throw new Error(message);
+    if (!token) throw new Error(message);
+    this.setTokens(token, this.refreshToken ?? undefined);
+    return token;
   }
 
-  restoreSession(): Observable<AuthUser | null> {
-    if (!this.token) return of(null);
+  async restoreSession(): Promise<AuthUser | null> {
+    if (!this.token) return null;
     const fallbackEmail = this.user()?.email || 'Usuario PMO';
     const loadCurrentUser = () => this.loadUser(fallbackEmail);
 
     if (!this.refreshToken) {
-      return loadCurrentUser().pipe(
-        catchError((error) => {
-          if (this.isSessionExpiredError(error)) this.clearTokens();
-          return of(this.user());
-        }),
-      );
+      try {
+        return await loadCurrentUser();
+      } catch (error) {
+        if (this.isSessionExpiredError(error)) this.clearTokens();
+        return this.user();
+      }
     }
 
-    return this.refreshSession().pipe(
-      switchMap(() => loadCurrentUser()),
-      catchError((error) => {
-        if (this.isSessionExpiredError(error)) {
+    try {
+      await this.refreshSession();
+      return await loadCurrentUser();
+    } catch (error) {
+      if (this.isSessionExpiredError(error)) {
+        this.clearTokens();
+        return null;
+      }
+      try {
+        return await loadCurrentUser();
+      } catch (loadError) {
+        if (this.isSessionExpiredError(loadError)) {
           this.clearTokens();
-          return of(null);
+          return null;
         }
-
-        return loadCurrentUser().pipe(
-          catchError((loadError) => {
-            if (this.isSessionExpiredError(loadError)) {
-              this.clearTokens();
-              return of(null);
-            }
-            return of(this.user());
-          }),
-        );
-      }),
-    );
+        return this.user();
+      }
+    }
   }
 
-  setTokens(token: string, refreshToken?: string) {
-    this._token.set(token);
-    localStorage.setItem('pmo_token', token);
-    if (refreshToken) this._refreshToken.set(refreshToken);
-    if (refreshToken) localStorage.setItem('pmo_refresh_token', refreshToken);
+  setTokens(token: string, refreshToken?: string): void {
+    this._token = token;
+    localStorage.setItem(AUTH_STORAGE_KEYS.token, token);
+    if (refreshToken) {
+      this._refreshToken = refreshToken;
+      localStorage.setItem(AUTH_STORAGE_KEYS.refreshToken, refreshToken);
+    }
+    this.notify();
   }
 
-  setUser(user: AuthUser) {
-    this._user.set(user);
-    localStorage.setItem('pmo_user', JSON.stringify(user));
+  setUser(user: AuthUser): void {
+    this._user = user;
+    localStorage.setItem(AUTH_STORAGE_KEYS.user, JSON.stringify(user));
+    this.notify();
   }
 
-  clearTokens() {
-    this._token.set(null);
-    this._refreshToken.set(null);
-    this._user.set(null);
-    localStorage.removeItem('pmo_token');
-    localStorage.removeItem('pmo_refresh_token');
-    localStorage.removeItem('pmo_user');
+  clearTokens(): void {
+    this._token = null;
+    this._refreshToken = null;
+    this._user = null;
+    localStorage.removeItem(AUTH_STORAGE_KEYS.token);
+    localStorage.removeItem(AUTH_STORAGE_KEYS.refreshToken);
+    localStorage.removeItem(AUTH_STORAGE_KEYS.user);
+    this.notify();
   }
 
   isAuthenticated(): boolean {
-    return !!this._token();
+    return !!this._token;
   }
 
   isSessionExpiredError(error: unknown): boolean {
@@ -190,18 +196,15 @@ export class AuthService extends AuthGateway {
     );
   }
 
+  private notify(): void {
+    for (const listener of [...this.listeners]) listener();
+  }
+
   private mapUser(response: unknown, fallbackEmail: string): AuthUser {
-    const email =
-      this.stringFrom(response, ['email', 'correo', 'mail', 'usuarioEmail']) || fallbackEmail;
+    const email = this.stringFrom(response, ['email', 'correo', 'mail', 'usuarioEmail']) || fallbackEmail;
     const name =
-      this.stringFrom(response, [
-        'nombre',
-        'name',
-        'nombres',
-        'nombreCompleto',
-        'fullName',
-        'usuario',
-      ]) || email;
+      this.stringFrom(response, ['nombre', 'name', 'nombres', 'nombreCompleto', 'fullName', 'usuario']) ||
+      email;
 
     return {
       name,

@@ -1,39 +1,37 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { Observable, map } from 'rxjs';
-import { environment } from '@env/environment';
-import { AuthGateway } from '@application/auth/auth.gateway';
-import { ReportAuditContext, UserAuditGateway } from '@application/audit/audit.gateways';
-import { WorkLocation } from '@domain/audit/work-location.model';
+import type { ReportAuditContext, UserAuditGateway } from '@application/audit/audit.gateways';
+import type { AuthGateway } from '@application/auth/auth.gateway';
+import type { WorkLocation } from '@domain/audit/work-location.model';
+import type { Environment } from '@env/environment';
+import type { HttpClient } from '../http/http-client';
 
-@Injectable()
+/** Auditoría de login y de reporte en la función Supabase `pmo-user-audit`. */
 export class SupabaseUserAuditAdapter implements UserAuditGateway {
-  constructor(
-    private readonly http: HttpClient,
-    private readonly auth: AuthGateway,
-  ) {}
+  private readonly http: HttpClient;
+  private readonly auth: AuthGateway;
+  private readonly env: Environment;
 
-  recordLogin(location: WorkLocation): Observable<void> {
+  constructor(http: HttpClient, auth: AuthGateway, env: Environment) {
+    this.http = http;
+    this.auth = auth;
+    this.env = env;
+  }
+
+  recordLogin(location: WorkLocation): Promise<void> {
     return this.post(location);
   }
 
-  recordTimeReport(
-    location: WorkLocation,
-    report: ReportAuditContext,
-    successful: boolean,
-  ): Observable<void> {
+  recordTimeReport(location: WorkLocation, report: ReportAuditContext, successful: boolean): Promise<void> {
     return this.post({ ...location, eventType: 'time_report', successful, report });
   }
 
-  private post(body: object): Observable<void> {
+  private async post(body: object): Promise<void> {
     const token = this.auth.token;
-    const headers = new HttpHeaders({
-      apikey: environment.supabasePublishableKey,
-      Authorization: `Bearer ${token || ''}`,
-      'Content-Type': 'application/json',
+    await this.http.post<unknown>(`${this.env.supabaseUrl}/functions/v1/pmo-user-audit`, body, {
+      headers: {
+        apikey: this.env.supabasePublishableKey,
+        Authorization: `Bearer ${token || ''}`,
+        'Content-Type': 'application/json',
+      },
     });
-    return this.http
-      .post<unknown>(`${environment.supabaseUrl}/functions/v1/pmo-user-audit`, body, { headers })
-      .pipe(map(() => undefined));
   }
 }

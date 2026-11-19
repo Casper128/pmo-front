@@ -1,4 +1,4 @@
-import { ManagementDemandOption } from '@domain/time-records/models/management-template.model';
+import type { ManagementDemandOption } from '@domain/time-records/models/management-template.model';
 
 type CollectionResponse =
   | unknown[]

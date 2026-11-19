@@ -1,15 +1,13 @@
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { Observable, map } from 'rxjs';
-import { AuthGateway } from '@application/auth/auth.gateway';
-import { SendLogGateway } from '@application/time-records/ports/send-log.gateway';
-import {
+import type { AuthGateway } from '@application/auth/auth.gateway';
+import type { SendLogGateway } from '@application/time-records/ports/send-log.gateway';
+import type {
   CreateSendLog,
   SendLog,
   SendLogCollection,
   SendLogQuery,
 } from '@domain/time-records/models/send-log.model';
-import { environment } from '@env/environment';
+import type { Environment } from '@env/environment';
+import type { HttpClient } from '../../http/http-client';
 
 interface SendLogRow {
   id: string;
@@ -31,47 +29,46 @@ interface SendLogResponse {
   retentionDays?: number;
 }
 
-@Injectable()
+/** Historial de envíos en la función Supabase `pmo-send-logs`. */
 export class SupabaseSendLogAdapter implements SendLogGateway {
-  private readonly endpoint = `${environment.supabaseUrl}/functions/v1/pmo-send-logs`;
+  private readonly endpoint: string;
+  private readonly http: HttpClient;
+  private readonly auth: AuthGateway;
+  private readonly env: Environment;
 
-  constructor(
-    private readonly http: HttpClient,
-    private readonly auth: AuthGateway,
-  ) {}
-
-  create(log: CreateSendLog): Observable<void> {
-    return this.http
-      .post<unknown>(this.endpoint, log, { headers: this.headers() })
-      .pipe(map(() => undefined));
+  constructor(http: HttpClient, auth: AuthGateway, env: Environment) {
+    this.http = http;
+    this.auth = auth;
+    this.env = env;
+    this.endpoint = `${env.supabaseUrl}/functions/v1/pmo-send-logs`;
   }
 
-  createMany(logs: CreateSendLog[]): Observable<void> {
-    return this.http
-      .post<unknown>(this.endpoint, { logs }, { headers: this.headers() })
-      .pipe(map(() => undefined));
+  async create(log: CreateSendLog): Promise<void> {
+    await this.http.post<unknown>(this.endpoint, log, { headers: this.headers() });
   }
 
-  list(query: SendLogQuery): Observable<SendLogCollection> {
-    const params = new HttpParams()
-      .set('from', query.dateFrom)
-      .set('to', query.dateTo)
-      .set('scope', query.scope ?? 'own');
-    return this.http.get<SendLogResponse>(this.endpoint, { headers: this.headers(), params }).pipe(
-      map((response) => ({
-        logs: (response.logs ?? []).map((row) => this.toDomain(row)),
-        isAdmin: response.isAdmin === true,
-        retentionDays: response.retentionDays ?? 90,
-      })),
-    );
+  async createMany(logs: CreateSendLog[]): Promise<void> {
+    await this.http.post<unknown>(this.endpoint, { logs }, { headers: this.headers() });
   }
 
-  private headers(): HttpHeaders {
-    return new HttpHeaders({
-      apikey: environment.supabasePublishableKey,
+  async list(query: SendLogQuery): Promise<SendLogCollection> {
+    const response = await this.http.get<SendLogResponse>(this.endpoint, {
+      headers: this.headers(),
+      params: { from: query.dateFrom, to: query.dateTo, scope: query.scope ?? 'own' },
+    });
+    return {
+      logs: (response.logs ?? []).map((row) => this.toDomain(row)),
+      isAdmin: response.isAdmin === true,
+      retentionDays: response.retentionDays ?? 90,
+    };
+  }
+
+  private headers(): Record<string, string> {
+    return {
+      apikey: this.env.supabasePublishableKey,
       Authorization: `Bearer ${this.auth.token ?? ''}`,
       'Content-Type': 'application/json',
-    });
+    };
   }
 
   private toDomain(row: SendLogRow): SendLog {

@@ -1,8 +1,7 @@
-import { Injectable } from '@angular/core';
-import { LocationGateway } from '@application/audit/audit.gateways';
-import { LocationRequest, WorkLocation } from '@domain/audit/work-location.model';
+import type { LocationGateway } from '@application/audit/audit.gateways';
+import type { LocationRequest, WorkLocation } from '@domain/audit/work-location.model';
 
-@Injectable()
+/** Ubicación del navegador; nunca rechaza: los fallos se informan en `locationStatus`. */
 export class BrowserGeolocationAdapter implements LocationGateway {
   capture(request: LocationRequest): Promise<WorkLocation> {
     if (!navigator.geolocation) {

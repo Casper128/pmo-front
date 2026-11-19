@@ -1,12 +1,11 @@
-import { Observable } from 'rxjs';
-import {
+import type {
   CreateSendLog,
   SendLogCollection,
   SendLogQuery,
 } from '@domain/time-records/models/send-log.model';
 
 export abstract class SendLogGateway {
-  abstract create(log: CreateSendLog): Observable<void>;
-  abstract createMany(logs: CreateSendLog[]): Observable<void>;
-  abstract list(query: SendLogQuery): Observable<SendLogCollection>;
+  abstract create(log: CreateSendLog): Promise<void>;
+  abstract createMany(logs: CreateSendLog[]): Promise<void>;
+  abstract list(query: SendLogQuery): Promise<SendLogCollection>;
 }
