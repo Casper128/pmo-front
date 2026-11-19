@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+    --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
     --font-heading: var(--font-sans);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -51,113 +52,98 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/*
- * Paleta de la app Angular (src/styles.css, variables --ui-*) mapeada a los tokens de Shadcn.
- * Claro:  fondo #edf3f8, texto #152033, apagado #53657a, acento #1769aa, teal #0f766e, ámbar #b7791f.
- * Oscuro: fondo #10141d, texto #f4f7fb, apagado #b4c0cf, acento #7cb8ee, teal #5fd0c2, ámbar #f4c66b.
- * Las superficies translúcidas (glass) de Angular se sustituyen por superficies opacas al estilo Shadcn.
- */
+/* Tokens "Minimalista operativo" (docs/rediseno-minimalista-operativo.md): neutros zinc y un acento azul. */
 :root {
-    --background: #edf3f8;
-    --foreground: #152033;
+    --background: #fafafa;
+    --foreground: #18181b;
     --card: #ffffff;
-    --card-foreground: #152033;
+    --card-foreground: #18181b;
     --popover: #ffffff;
-    --popover-foreground: #152033;
-    --primary: #1769aa;
+    --popover-foreground: #18181b;
+    --primary: #2457c5;
     --primary-foreground: #ffffff;
-    --secondary: #f2f6fa;
-    --secondary-foreground: #152033;
-    --muted: #f2f6fa;
-    --muted-foreground: #53657a;
-    --accent: #e3eef8;
-    --accent-foreground: #0f568c;
-    --destructive: #b42318;
+    --secondary: #f4f4f5;
+    --secondary-foreground: #18181b;
+    --muted: #f4f4f5;
+    --muted-foreground: #5b5b66;
+    --accent: #eef3fd;
+    --accent-foreground: #1b469e;
+    --destructive: #c42b1c;
     --destructive-foreground: #ffffff;
-    --border: #d7e0ea;
-    --input: #b9c6d4;
-    --ring: #1769aa;
-    --chart-1: #1769aa;
-    --chart-2: #0f766e;
+    --border: #e4e4e7;
+    --input: #8c8c97;
+    --ring: #2457c5;
+    --chart-1: #2457c5;
+    --chart-2: #12794f;
     --chart-3: #b7791f;
-    --chart-4: #53657a;
-    --chart-5: #b42318;
-    --radius: 0.625rem;
-    --sidebar: #f7fafc;
-    --sidebar-foreground: #152033;
-    --sidebar-primary: #1769aa;
+    --chart-4: #71717a;
+    --chart-5: #c42b1c;
+    --radius: 0.5rem;
+    --sidebar: #fafafa;
+    --sidebar-foreground: #18181b;
+    --sidebar-primary: #2457c5;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #e3eef8;
-    --sidebar-accent-foreground: #0f568c;
-    --sidebar-border: #d7e0ea;
-    --sidebar-ring: #1769aa;
+    --sidebar-accent: #f4f4f5;
+    --sidebar-accent-foreground: #18181b;
+    --sidebar-border: #e4e4e7;
+    --sidebar-ring: #2457c5;
     /* Estados de éxito/aviso y estados de horas (--ui-hours-*, los usa HorasAlert del dominio) */
-    --success: #0f766e;
+    --success: #12794f;
     --success-foreground: #ffffff;
-    --warning: #9a6700;
+    --warning: #8a5a00;
     --warning-foreground: #ffffff;
-    --selection: #dbeafe;
-    --selection-foreground: #0f172a;
-    --ui-hours-danger: #b42318;
-    --ui-hours-danger-bg: rgb(255 245 245 / 0.86);
-    --ui-hours-danger-border: #f1b8b8;
-    --ui-hours-success: #0f766e;
-    --ui-hours-success-bg: rgb(239 253 250 / 0.86);
-    --ui-hours-success-border: #99d8ce;
-    --ui-hours-pending: #9a6700;
-    --ui-hours-pending-bg: rgb(255 249 235 / 0.84);
-    --ui-hours-pending-border: #e8cf8f;
+    --selection: #dbe6fb;
+    --selection-foreground: #18181b;
+    --ui-hours-danger: var(--destructive);
+    --ui-hours-danger-bg: color-mix(in oklab, var(--destructive) 10%, var(--card));
+    --ui-hours-danger-border: color-mix(in oklab, var(--destructive) 30%, var(--card));
+    --ui-hours-success: var(--success);
+    --ui-hours-success-bg: color-mix(in oklab, var(--success) 10%, var(--card));
+    --ui-hours-success-border: color-mix(in oklab, var(--success) 30%, var(--card));
+    --ui-hours-pending: var(--warning);
+    --ui-hours-pending-bg: color-mix(in oklab, var(--warning) 10%, var(--card));
+    --ui-hours-pending-border: color-mix(in oklab, var(--warning) 30%, var(--card));
 }
 
 .dark {
-    --background: #10141d;
-    --foreground: #f4f7fb;
-    --card: #182131;
-    --card-foreground: #f4f7fb;
-    --popover: #202b3d;
-    --popover-foreground: #f4f7fb;
-    --primary: #7cb8ee;
-    --primary-foreground: #10141d;
-    --secondary: #243047;
-    --secondary-foreground: #f4f7fb;
-    --muted: #243047;
-    --muted-foreground: #b4c0cf;
-    --accent: #243047;
-    --accent-foreground: #a8d1f7;
-    /* AA del botón destructivo (texto sobre bg-destructive/20 y /30) en card, fondo y popover oscuros */
-    --destructive: #fecaca;
-    --destructive-foreground: #10141d;
-    --border: #3a4659;
-    --input: #526176;
-    --ring: #7cb8ee;
-    --chart-1: #7cb8ee;
-    --chart-2: #5fd0c2;
-    --chart-3: #f4c66b;
-    --chart-4: #b4c0cf;
-    --chart-5: #fca5a5;
-    --sidebar: #141a26;
-    --sidebar-foreground: #f4f7fb;
-    --sidebar-primary: #7cb8ee;
-    --sidebar-primary-foreground: #10141d;
-    --sidebar-accent: #243047;
-    --sidebar-accent-foreground: #a8d1f7;
-    --sidebar-border: #3a4659;
-    --sidebar-ring: #7cb8ee;
-    --success: #5fd0c2;
-    --success-foreground: #10141d;
-    --warning: #f4d38a;
-    --warning-foreground: #10141d;
-    --selection: #1e3a5f;
-    --selection-foreground: #f4f7fb;
-    --ui-hours-danger: #fecaca;
-    --ui-hours-danger-bg: rgb(70 33 44 / 0.72);
-    --ui-hours-danger-border: #8f4b55;
-    --ui-hours-success: #9de6d9;
-    --ui-hours-success-bg: rgb(30 63 62 / 0.72);
-    --ui-hours-success-border: #467d78;
-    --ui-hours-pending: #f4d38a;
-    --ui-hours-pending-bg: rgb(68 55 34 / 0.7);
-    --ui-hours-pending-border: #8a7241;
+    --background: #0c0c0e;
+    --foreground: #ededef;
+    --card: #141417;
+    --card-foreground: #ededef;
+    --popover: #141417;
+    --popover-foreground: #ededef;
+    --primary: #7aa2f7;
+    --primary-foreground: #0c0c0e;
+    --secondary: #1c1c21;
+    --secondary-foreground: #ededef;
+    --muted: #1c1c21;
+    --muted-foreground: #a1a1aa;
+    --accent: #1c2438;
+    --accent-foreground: #c3d4fb;
+    --destructive: #f87171;
+    --destructive-foreground: #0c0c0e;
+    --border: #27272d;
+    --input: #6b6b76;
+    --ring: #7aa2f7;
+    --chart-1: #7aa2f7;
+    --chart-2: #4ade80;
+    --chart-3: #fbbf24;
+    --chart-4: #a1a1aa;
+    --chart-5: #f87171;
+    --sidebar: #0c0c0e;
+    --sidebar-foreground: #ededef;
+    --sidebar-primary: #7aa2f7;
+    --sidebar-primary-foreground: #0c0c0e;
+    --sidebar-accent: #1c1c21;
+    --sidebar-accent-foreground: #ededef;
+    --sidebar-border: #27272d;
+    --sidebar-ring: #7aa2f7;
+    --success: #4ade80;
+    --success-foreground: #0c0c0e;
+    --warning: #fbbf24;
+    --warning-foreground: #0c0c0e;
+    --selection: #1e2a4a;
+    --selection-foreground: #ededef;
 }
 
 /* Alto de la barra inferior móvil (con la zona segura del dispositivo); 0 donde no se muestra (md+). */

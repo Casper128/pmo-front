@@ -1,5 +1,6 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { useIsMobile } from '@/shared/hooks/use-mobile';
 import { Toaster } from '@/shared/ui/sonner';
 import { TooltipProvider } from '@/shared/ui/tooltip';
 import { useTheme } from '@presentation/shell/theme-context';
@@ -8,7 +9,8 @@ import { ContainerContext, type Container } from './container-context';
 
 function AppToaster() {
   const { theme } = useTheme();
-  return <Toaster theme={theme} position="top-right" />;
+  const isMobile = useIsMobile();
+  return <Toaster theme={theme} position={isMobile ? 'top-center' : 'bottom-right'} duration={4000} />;
 }
 
 export interface AppProvidersProps {
