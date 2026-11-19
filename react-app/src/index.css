@@ -95,13 +95,13 @@
     --selection: #e5e5e5;
     --selection-foreground: #18181b;
     --ui-hours-danger: var(--destructive);
-    --ui-hours-danger-bg: color-mix(in oklab, var(--destructive) 10%, var(--card));
+    --ui-hours-danger-bg: color-mix(in oklab, var(--destructive) 4%, var(--card));
     --ui-hours-danger-border: color-mix(in oklab, var(--destructive) 30%, var(--card));
     --ui-hours-success: var(--success);
-    --ui-hours-success-bg: color-mix(in oklab, var(--success) 10%, var(--card));
+    --ui-hours-success-bg: color-mix(in oklab, var(--success) 4%, var(--card));
     --ui-hours-success-border: color-mix(in oklab, var(--success) 30%, var(--card));
     --ui-hours-pending: var(--warning);
-    --ui-hours-pending-bg: color-mix(in oklab, var(--warning) 10%, var(--card));
+    --ui-hours-pending-bg: color-mix(in oklab, var(--warning) 4%, var(--card));
     --ui-hours-pending-border: color-mix(in oklab, var(--warning) 30%, var(--card));
 }
 
