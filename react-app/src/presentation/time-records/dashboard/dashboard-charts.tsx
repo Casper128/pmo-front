@@ -134,11 +134,11 @@ export function ClientHoursChart({ data, label = 'Horas por cliente' }: { readon
         <YAxis
           type="category"
           dataKey="label"
-          width={104}
+          width={120}
           tickLine={false}
           axisLine={false}
           interval={0}
-          tickFormatter={(value: string) => (value.length > 16 ? `${value.slice(0, 15)}…` : value)}
+          tickFormatter={(value: string) => (value.length > 18 ? `${value.slice(0, 17)}…` : value)}
         />
         <ChartTooltip content={<ChartTooltipContent hideLabel formatter={(value, _name, item) => <span className="tabular-nums">{String(item.payload.label)}: {formatHours(Number(value))} h</span>} />} />
         <Bar isAnimationActive={false} dataKey="hours" radius={4}>
@@ -202,7 +202,7 @@ export function DonutChart({
           <span className="text-xs text-muted-foreground">horas</span>
         </div>
       </div>
-      <ul className="grid gap-1.5 text-xs sm:grid-cols-2" aria-label={`${label}: detalle`}>
+      <ul className="grid gap-2 text-xs" aria-label={`${label}: detalle`}>
         {slices.map((item, index) => (
           <li key={item.key} className="flex min-w-0 items-center gap-2">
             <span aria-hidden="true" className="size-2.5 shrink-0 rounded-sm" style={{ background: colorOf(item, index) }} />

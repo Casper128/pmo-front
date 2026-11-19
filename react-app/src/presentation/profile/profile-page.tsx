@@ -75,8 +75,9 @@ export function ProfilePage() {
       <PageHeader title="Mi perfil" description="Tu sesión, el resumen del mes y tus preferencias." />
 
       <Card aria-label="Datos de la sesión" role="region">
-        <CardContent className="flex flex-wrap items-center gap-4">
-          <Avatar className="size-16" aria-hidden="true">
+        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+          <Avatar className="size-16 shrink-0" aria-hidden="true">
             <AvatarFallback className="text-xl font-semibold">{userInitials(user)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
@@ -85,13 +86,14 @@ export function ProfilePage() {
               {user?.role ? <Badge variant="secondary">{user.role}</Badge> : null}
             </div>
             {identity.map((value) => (
-              <p key={value} className="text-sm break-all text-muted-foreground">
+              <p key={value} className="truncate text-sm text-muted-foreground">
                 {value}
               </p>
             ))}
             {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
           </div>
-          <Button type="button" variant="outline" onClick={() => auth.clearTokens()}>
+          </div>
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => auth.clearTokens()}>
             <LogOut aria-hidden="true" />
             Cerrar sesión
           </Button>
