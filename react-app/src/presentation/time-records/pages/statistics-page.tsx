@@ -41,7 +41,6 @@ export function StatisticsPage() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
       <PageHeader
-        eyebrow="Analítica personal"
         title="Datos del consultor"
         description="Revisa en qué módulos, actividades, gestiones y categorías se concentran tus horas."
         aside={

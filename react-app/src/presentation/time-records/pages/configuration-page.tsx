@@ -55,7 +55,6 @@ function ConfigurationEditor() {
   return (
     <>
       <PageHeader
-        eyebrow="Administración"
         title="Configuración global de tiempos"
         description="Administra listas, valores predeterminados y reglas operativas usadas por todos los consultores."
         meta={

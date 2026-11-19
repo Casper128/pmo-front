@@ -101,7 +101,6 @@ export function ConsolidatedPage() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-6 md:px-6 md:py-8">
       <PageHeader
-        eyebrow="Reporte de tiempos"
         title="Reporte consolidado"
         description="Consulta actividades por cliente y periodo para revisar horas facturables, de Fábrica y no facturables."
       />
@@ -152,7 +151,7 @@ export function ConsolidatedPage() {
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" className="max-sm:flex-1" disabled={report.isPending || !!filters.dateError} onClick={generate}>
+            <Button type="button" variant={report.data ? 'outline' : 'default'} className="max-sm:flex-1" disabled={report.isPending || !!filters.dateError} onClick={generate}>
               {report.isPending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
               {report.isPending ? 'Consultando reporte...' : 'Generar reporte'}
             </Button>
@@ -184,14 +183,14 @@ export function ConsolidatedPage() {
         <section className="flex flex-col gap-4" aria-labelledby="consolidated-result-title">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0">
-              <h2 id="consolidated-result-title" className="text-lg font-semibold tracking-tight">
+              <h2 id="consolidated-result-title" className="text-base font-semibold tracking-tight">
                 Actividad del consultor
               </h2>
               <p className="text-sm text-muted-foreground" aria-live="polite">
                 {report.data.rows.length} registros procesados en pantalla. Los indicadores y las tablas se actualizan con los filtros.
               </p>
             </div>
-            <Button type="button" variant="outline" onClick={download}>
+            <Button type="button" onClick={download}>
               <Download aria-hidden="true" />
               Descargar Excel
             </Button>
@@ -245,7 +244,7 @@ export function ConsolidatedPage() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <MetricCard label="Horas totales" value={`${formatHours(totals.hours, 2)} h`} description="Según los filtros activos" tone="blue" />
             <MetricCard label="Días trabajados" value={totals.days} description="Días con horas registradas" />
             <MetricCard label="Clientes atendidos" value={totals.clients} description="Clientes distintos" />

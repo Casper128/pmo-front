@@ -23,7 +23,7 @@ import { usePendingDeleteRequests, useReviewDeleteRequest } from '../audit/use-d
 
 function Summary({ label, value }: { readonly label: string; readonly value: string }) {
   return (
-    <div className="min-w-0 rounded-lg border bg-muted/40 px-3 py-2">
+    <div className="min-w-0 rounded-md bg-muted/40 px-3 py-2">
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 text-sm font-medium">
         <OverflowText>{value}</OverflowText>
@@ -39,7 +39,7 @@ function RequestCard({ request, busy, onReview }: { readonly request: Management
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
           <CardTitle className="min-w-0 break-words">{requestTitle(request)}</CardTitle>
-          <Badge variant="secondary">
+          <Badge variant="warning">
             <Clock aria-hidden="true" /> Pendiente
           </Badge>
         </div>
@@ -78,7 +78,7 @@ function RequestCard({ request, busy, onReview }: { readonly request: Management
         <Button type="button" variant="outline" disabled={busy} onClick={() => onReview({ request, action: 'reject' })}>
           Rechazar
         </Button>
-        <Button type="button" variant="destructive" disabled={busy} onClick={() => onReview({ request, action: 'approve' })}>
+        <Button type="button" disabled={busy} onClick={() => onReview({ request, action: 'approve' })}>
           Eliminar y aprobar
         </Button>
       </CardFooter>
@@ -95,12 +95,11 @@ export function AuditDeleteRequestsPage() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-6 md:px-6 md:py-8">
       <PageHeader
-        eyebrow="Auditoría"
         title="Solicitudes de eliminación"
         description="Revisa los reportes enviados a auditoría y ejecuta el borrado solo cuando corresponda. La solicitud no elimina el reporte: el borrado real ocurre cuando auditoría aprueba."
         aside={
           <>
-            <Badge variant="secondary" className="h-9 px-3 text-sm tabular-nums" aria-live="polite">
+            <Badge variant="secondary" className="h-8 px-3 text-sm tabular-nums" aria-live="polite">
               {requests.pending.length} {requests.pending.length === 1 ? 'pendiente' : 'pendientes'}
             </Badge>
             <Button type="button" variant="outline" disabled={requests.isFetching} onClick={() => void requests.refetch()}>

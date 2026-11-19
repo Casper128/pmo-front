@@ -121,7 +121,6 @@ export function TemplatesPage() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-6 md:px-6 md:py-8">
       <PageHeader
-        eyebrow="Preferencias"
         title="Mis plantillas por gestión"
         description="Configura los campos avanzados que se aplican automáticamente al registrar o editar tiempos."
         meta={

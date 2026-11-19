@@ -128,7 +128,6 @@ export function ImportPage() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
       <PageHeader
-        eyebrow="Tiempos"
         title="Reportar y revisar tiempos"
         description="Pega tus actividades, completa lo pendiente y registra con confianza."
       />
