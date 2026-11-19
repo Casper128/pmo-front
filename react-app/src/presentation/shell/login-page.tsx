@@ -37,20 +37,20 @@ export function LoginPage({ submitting, error, onSubmit }: LoginPageProps) {
   const message = errors.email?.message ?? errors.password?.message ?? error;
 
   return (
-    <main className="grid min-h-svh place-items-center bg-muted/40 px-4 py-8">
-      <Card className="w-full max-w-md">
+    <main className="grid min-h-svh place-items-center bg-background px-4 py-8">
+      <Card className="w-full max-w-sm">
         <CardHeader className="gap-4">
           <div className="flex items-center gap-3">
             <span
               aria-hidden="true"
-              className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground"
+              className="grid size-9 shrink-0 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground"
             >
               PM
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold">PMO</p>
               <CardTitle>
-                <h1 className="text-2xl font-semibold tracking-tight">Registro de tiempos</h1>
+                <h1 className="text-xl font-semibold tracking-tight">Registro de tiempos</h1>
               </CardTitle>
             </div>
           </div>

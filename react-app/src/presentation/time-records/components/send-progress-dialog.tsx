@@ -110,7 +110,7 @@ export function SendProgressDialog() {
 
         {phase === 'log-error' ? (
           <div className="flex flex-col gap-3">
-            <div className="rounded-xl border border-warning/40 bg-warning/10 p-3">
+            <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
               <p className="flex items-center gap-2 font-semibold">
                 <CircleAlert aria-hidden="true" className="size-4 shrink-0" />
                 No se pudo confirmar el historial.
@@ -124,7 +124,7 @@ export function SendProgressDialog() {
         ) : null}
 
         {phase === 'failed' ? (
-          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3">
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
             <p className="flex items-center gap-2 font-semibold">
               <CircleX aria-hidden="true" className="size-4 shrink-0" />
               No fue posible completar el envío.

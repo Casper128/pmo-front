@@ -14,7 +14,7 @@ function SessionRestoring() {
   return (
     <main className="grid min-h-svh place-items-center px-4" aria-busy="true">
       <div className="flex w-full max-w-xs flex-col items-center gap-3">
-        <Skeleton className="size-11 rounded-xl" />
+        <Skeleton className="size-9 rounded-md" />
         <Skeleton className="h-4 w-40" />
         <p className="text-sm font-medium text-muted-foreground">Validando sesion...</p>
       </div>

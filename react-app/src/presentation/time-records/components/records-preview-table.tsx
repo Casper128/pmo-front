@@ -150,7 +150,7 @@ function WideTable({ rows }: { readonly rows: PreviewRow[] }) {
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id} className="bg-muted/60 hover:bg-muted/60">
             {headerGroup.headers.map((header) => (
-              <TableHead key={header.id} className={`h-10 text-xs font-semibold uppercase ${columnWidths[header.column.id] ?? ''}`}>
+              <TableHead key={header.id} className={`text-xs font-medium ${columnWidths[header.column.id] ?? ''}`}>
                 {header.isPlaceholder ? null : <table.FlexRender header={header} />}
               </TableHead>
             ))}
@@ -181,7 +181,7 @@ function WideTable({ rows }: { readonly rows: PreviewRow[] }) {
               <TableRow className={errors.length ? 'bg-destructive/5 hover:bg-destructive/10' : ''}>
                 <TableCell colSpan={columns.length} className="pt-0 pb-3 whitespace-normal">
                   <div className="flex flex-col gap-1 rounded-md bg-muted/60 px-3 py-2">
-                    <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Descripción</span>
+                    <span className="text-xs font-medium text-muted-foreground">Descripción</span>
                     <OverflowText lines={3} className="text-sm">
                       {record.desc}
                     </OverflowText>
@@ -203,7 +203,7 @@ function CardList({ groups }: { readonly groups: readonly DayGroup[] }) {
   return (
     <div className="flex flex-col gap-3 p-2 sm:p-4">
       {groups.map((group) => (
-        <section key={group.fecha} aria-label={formatFechaEsp(group.fecha)} className="overflow-hidden rounded-xl border bg-card">
+        <section key={group.fecha} aria-label={formatFechaEsp(group.fecha)} className="overflow-hidden rounded-lg border bg-card">
           <DayBand group={group} />
           <ul className="divide-y">
             {group.records.map(({ record, index }) => {

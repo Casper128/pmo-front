@@ -77,7 +77,7 @@ function ConfigurationEditor() {
           <WorkRulesSection disabled={!canManage} />
           <AdvancedFieldsSection disabled={!canManage} />
           {canManage ? (
-            <div className="flex flex-wrap justify-end gap-2 sm:sticky sm:bottom-0 sm:rounded-lg sm:border sm:bg-background/95 sm:p-3 sm:backdrop-blur">
+            <div className="flex flex-wrap justify-end gap-2 sm:sticky sm:bottom-0 sm:border-t sm:bg-background sm:py-3">
               <Button type="button" variant="outline" disabled={saving} onClick={() => setRestoring(true)}>
                 <RotateCcw aria-hidden="true" /> Restaurar originales
               </Button>
