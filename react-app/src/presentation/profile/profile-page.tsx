@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/toggle-group';
 import { WorkdayHoursPolicy } from '@domain/time-records/services/workday-hours.policy';
