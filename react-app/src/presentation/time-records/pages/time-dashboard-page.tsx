@@ -4,7 +4,6 @@ import { cn } from 'cn';
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { WorkdayHoursPolicy } from '@domain/time-records/services/workday-hours.policy';
 import { useContainer } from '@presentation/providers/container-context';
 import { MetricCard } from '@presentation/shared/components/metric-card';
 import { PageHeader } from '@presentation/shared/components/page-header';
@@ -15,12 +14,9 @@ import { BillingChart, ClientHoursChart, DailyHoursChart, MonthlyChart } from '.
 import { formatHours, formatSigned } from '../dashboard/dashboard-format';
 import { DashboardFiltersCard } from '../dashboard/dashboard-filters-card';
 import { RequestHoursCard } from '../dashboard/request-hours-card';
-import { DayAlertsCard } from '../dashboard/day-alerts-card';
-import { buildDayAlerts } from '../dashboard/day-alerts';
 import { withEstimatedHours } from '../dashboard/request-estimates';
 import { useManagementTemplatesList } from '../hooks/use-management-templates-list';
 import { useDashboardFilters } from '../dashboard/use-dashboard-filters';
-import { buildDayLedger, toReportView } from '../reports/report-view';
 import { useMyReports } from '../reports/use-my-reports';
 
 function ChartCard({
@@ -62,9 +58,9 @@ function DashboardSkeleton() {
   );
 }
 
-/** Dashboard de tiempos del consultor (F6): filtros en la URL, KPIs, gráficas y alertas por día. */
+/** Dashboard de tiempos del consultor (F6): filtros en la URL, KPIs y gráficas. */
 export function TimeDashboardPage() {
-  const { dashboardCalculator: calculator, domainService, parameters } = useContainer();
+  const { dashboardCalculator: calculator } = useContainer();
   const reports = useMyReports();
   const templates = useManagementTemplatesList();
   const workSettings = useAppParameters((p) => p.workSettings());
@@ -79,18 +75,14 @@ export function TimeDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [calculator, rows, filter.from, filter.to, filter.client, filter.hourType, filters.dateError, workSettings],
   );
-  const alerts = useMemo(() => {
-    if (!rows || filters.dateError) return [];
-    const isCountable = (tipoHora: string) => domainService.isCountableHour(tipoHora);
-    const ledger = buildDayLedger(rows.map((report) => toReportView(report, isCountable)), [], isCountable);
-    return buildDayAlerts(ledger, filter, new WorkdayHoursPolicy(parameters), filters.today);
+  // Horas por solicitud usa los últimos 6 meses, sin importar el periodo ni los filtros del resto del dashboard.
+  const requests = useMemo(() => {
+    if (!rows) return [];
+    const { from, to } = calculator.presetRange('6m', filters.today);
+    const { requests: recent } = calculator.build(rows, { from, to, client: '', hourType: '' });
+    return withEstimatedHours(recent, templates.data ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, filter.from, filter.to, filters.dateError, filters.today, domainService, parameters, workSettings]);
-
-  const requests = useMemo(
-    () => (snapshot ? withEstimatedHours(snapshot.requests, templates.data ?? []) : []),
-    [snapshot, templates.data],
-  );
+  }, [calculator, rows, filters.today, templates.data, workSettings]);
   const kpis = snapshot?.kpis;
   const variation = kpis?.variationPct ?? null;
 
@@ -106,6 +98,8 @@ export function TimeDashboardPage() {
           </Button>
         }
       />
+
+      {requests.length > 0 ? <RequestHoursCard requests={requests} estimatesError={templates.isError} /> : null}
 
       <DashboardFiltersCard
         filters={filters}
@@ -167,7 +161,9 @@ export function TimeDashboardPage() {
 
           {snapshot.rowCount ? (
             <section className="grid gap-4 xl:grid-cols-2">
-              <DayAlertsCard alerts={alerts} />
+              <ChartCard title="Horas por cliente" description="Distribución del esfuerzo por cliente, de mayor a menor.">
+                <ClientHoursChart data={snapshot.byClient} />
+              </ChartCard>
               <ChartCard title="Facturable vs. no facturable" description="Clasificación según el tipo de hora de cada registro.">
                 <BillingChart data={snapshot.billing} />
               </ChartCard>
@@ -178,27 +174,21 @@ export function TimeDashboardPage() {
               >
                 <DailyHoursChart data={snapshot.daily} />
               </ChartCard>
-              <ChartCard title="Horas por cliente" description="Distribución del esfuerzo por cliente, de mayor a menor.">
-                <ClientHoursChart data={snapshot.byClient} />
-              </ChartCard>
               <ChartCard
+                className="xl:col-span-2"
                 title="Comparativo mes a mes"
                 description="Horas por mes calendario y variación frente al mes anterior. Los meses parciales no se prorratean."
               >
                 <MonthlyChart data={snapshot.months} />
               </ChartCard>
-              <RequestHoursCard requests={requests} />
             </section>
           ) : (
-            <>
-              <StateMessage
-                title="Sin registros en el periodo"
-                description="No hay horas reportadas para el rango y los filtros seleccionados. Amplía el periodo o restablece los filtros."
-                actionLabel="Restablecer filtros"
-                onAction={filters.reset}
-              />
-              <DayAlertsCard alerts={alerts} />
-            </>
+            <StateMessage
+              title="Sin registros en el periodo"
+              description="No hay horas reportadas para el rango y los filtros seleccionados. Amplía el periodo o restablece los filtros."
+              actionLabel="Restablecer filtros"
+              onAction={filters.reset}
+            />
           )}
         </>
       ) : null}

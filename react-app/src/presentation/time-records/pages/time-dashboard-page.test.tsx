@@ -89,16 +89,31 @@ describe('TimeDashboardPage', () => {
     expect(screen.queryByText('Horas extra')).not.toBeInTheDocument();
   });
 
-  it('alertas por día: faltante, exceso y sin reporte; el fin de semana vacío no aparece', async () => {
+  it('ya no muestra "Alertas por día"; "Horas por cliente" ocupa su lugar y "Horas por solicitud" va primero', async () => {
     await setup();
-    const card = (await screen.findByText('Alertas por día')).closest('[data-slot="card"]') as HTMLElement;
-    const rows = within(card).getAllByRole('row').slice(1);
-    const text = (row: HTMLElement) => row.textContent ?? '';
-    expect(rows.find((row) => text(row).includes('18 Sep'))).toHaveTextContent('Sin reporte');
-    expect(rows.find((row) => text(row).includes('17 Sep'))).toHaveTextContent('Sin reporte');
-    expect(rows.find((row) => text(row).includes('16 Sep'))).toHaveTextContent('Excede 8,5 h');
-    expect(rows.find((row) => text(row).includes('15 Sep'))).toHaveTextContent('Faltan 4,5 h');
-    expect(rows.some((row) => /Sáb|Dom/.test(text(row)))).toBe(false);
+    const requestTitle = await screen.findByText('Horas por solicitud');
+    expect(screen.queryByText('Alertas por día')).not.toBeInTheDocument();
+    const clients = screen.getByText('Horas por cliente');
+    const filters = screen.getByRole('radio', { name: '7 días' });
+    expect(requestTitle.compareDocumentPosition(filters) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(requestTitle.compareDocumentPosition(clients) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('horas por solicitud: usa los últimos 6 meses aunque el periodo filtrado esté vacío', async () => {
+    await setup(vi.fn(async () => [report('2026-05-20', '2', { solicitud: 'Gestión Vieja' })]));
+    expect(await screen.findByText('Sin registros en el periodo')).toBeInTheDocument();
+    const card = screen.getByText('Horas por solicitud').closest('[data-slot="card"]') as HTMLElement;
+    expect(within(card).getByRole('combobox', { name: 'Solicitud' })).toHaveTextContent('Gestión Vieja');
+  });
+
+  it('horas por solicitud: si fallan las plantillas avisa en vez de "Sin dato"', async () => {
+    const templates = createFakeTemplates();
+    templates.list.mockRejectedValue(new Error('Plantillas caídas'));
+    await setup(undefined, PATH, templates);
+    const card = (await screen.findByText('Horas por solicitud')).closest('[data-slot="card"]') as HTMLElement;
+    expect(await within(card).findByText('No se pudieron cargar las estimaciones.')).toBeInTheDocument();
+    expect(within(card).queryByText('Sin dato')).not.toBeInTheDocument();
+    expect(within(card).queryByText('Defínelas en Plantillas')).not.toBeInTheDocument();
   });
 
   it('horas por solicitud: detalle de la seleccionada (sin estimación en la plantilla)', async () => {
