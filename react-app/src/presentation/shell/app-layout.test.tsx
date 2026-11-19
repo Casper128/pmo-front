@@ -56,13 +56,19 @@ describe('layout del shell', () => {
       expect(linkNames('Navegación principal')).toEqual(
         expect.arrayContaining(['Auditoría', 'Configuración']),
       );
-      expect(linkNames('Navegación móvil')).toEqual([
-        'Dashboard',
-        'Reportar',
-        'Reportes',
-        'Admin',
-        'Auditoría',
-      ]);
+      // Más de 5 accesos: 4 en la barra y el resto en "Más".
+      expect(linkNames('Navegación móvil')).toEqual(['Dashboard', 'Reportar', 'Reportes', 'Datos']);
+      expect(screen.getByRole('button', { name: 'Más' })).toBeInTheDocument();
+    });
+
+    it('"Más" abre un Sheet con los accesos restantes', async () => {
+      const user = userEvent.setup();
+      await renderShell({ parameters: { canManage: true } });
+
+      await user.click(screen.getByRole('button', { name: 'Más' }));
+
+      const sheet = await screen.findByRole('dialog', { name: 'Más' });
+      expect(within(sheet).getAllByRole('link').map((l) => l.textContent?.trim())).toEqual(['Ajustes', 'Admin', 'Auditoría']);
     });
 
     it('el auditor ve Auditoría pero no Configuración', async () => {
@@ -71,13 +77,8 @@ describe('layout del shell', () => {
       const items = linkNames('Navegación principal');
       expect(items).toContain('Auditoría');
       expect(items).not.toContain('Configuración');
-      expect(linkNames('Navegación móvil')).toEqual([
-        'Dashboard',
-        'Reportar',
-        'Reportes',
-        'Datos',
-        'Auditoría',
-      ]);
+      expect(linkNames('Navegación móvil')).toEqual(['Dashboard', 'Reportar', 'Reportes', 'Datos']);
+      expect(screen.getByRole('button', { name: 'Más' })).toBeInTheDocument();
     });
 
     it('el menú reacciona cuando cambian los permisos', async () => {

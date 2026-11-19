@@ -27,14 +27,11 @@ export function AppHeader() {
   const userName = user?.name || '';
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/95 px-3 backdrop-blur supports-backdrop-filter:bg-background/80 sm:px-4">
+    <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b bg-background px-3 sm:px-4">
       <SidebarTrigger className="md:hidden" aria-label="Abrir navegación" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold tracking-tight">Gestión de tiempos</p>
-        <p className="truncate text-xs text-muted-foreground">Reportes y avances</p>
-      </div>
+      <p className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight">Gestión de tiempos</p>
       <NotificationBell />
-      <div role="group" aria-label="Tema de la aplicación" className="flex items-center rounded-lg border p-0.5">
+      <div role="group" aria-label="Tema de la aplicación" className="flex items-center rounded-md border p-0.5">
         {themeOptions.map(({ value, label, Icon }) => (
           <Button
             key={value}
@@ -54,7 +51,7 @@ export function AppHeader() {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="h-9 gap-2 px-1.5"
+            className="h-8 gap-2 px-1.5"
             aria-label={userName ? `Menú de usuario de ${userName}` : 'Menú de usuario'}
           >
             <Avatar>

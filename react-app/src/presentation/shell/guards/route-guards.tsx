@@ -5,7 +5,7 @@ import { usePermissions } from '../use-permissions';
 
 function PermissionsPending() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6" aria-busy="true">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-6 md:px-6 md:py-8" aria-busy="true">
       <span className="sr-only">Verificando permisos…</span>
       <Skeleton className="h-8 w-64 max-w-full" />
       <Skeleton className="h-4 w-96 max-w-full" />

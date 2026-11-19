@@ -48,30 +48,19 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-3 p-1 group-data-[collapsible=icon]:p-0">
-          <span
-            aria-hidden="true"
-            className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground"
-          >
-            PM
-          </span>
-          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="text-sm font-semibold">PMO</p>
-            <p className="truncate text-xs text-muted-foreground">Tiempos</p>
-          </div>
-        </div>
+        <p className="px-2 py-1 text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">PMO</p>
       </SidebarHeader>
       <SidebarContent>
         <nav aria-label="Navegación principal">
           {sections.map((section) => (
             <SidebarGroup key={section.label}>
-              <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+              <SidebarGroupLabel className="text-xs font-medium">{section.label}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {section.items.map((item) => (
                     <SidebarMenuItem key={item.route}>
                       <SidebarMenuButton asChild isActive={isActiveRoute(pathname, item.route)} tooltip={item.label}>
-                        <NavLink to={item.route} onClick={() => isMobile && setOpenMobile(false)}>
+                        <NavLink className="group-data-[active=true]/menu-button:[&>svg]:text-primary" to={item.route} onClick={() => isMobile && setOpenMobile(false)}>
                           <item.icon aria-hidden="true" />
                           <span>{item.label}</span>
                         </NavLink>

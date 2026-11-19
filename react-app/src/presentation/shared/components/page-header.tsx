@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 export interface PageHeaderProps {
   readonly title: string;
-  /** Texto pequeño atenuado sobre el título (`eyebrow` de `ui-page-header`). */
+  /** Texto pequeño atenuado sobre el título . */
   readonly eyebrow?: string;
   readonly description?: string;
   /** Contenido a la derecha del título (acciones), como `[pageHeaderAside]`. */
@@ -21,9 +21,9 @@ export function PageHeader({ title, eyebrow, description, aside, meta }: PageHea
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 space-y-1">
           {eyebrow ? (
-            <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">{eyebrow}</p>
+            <p className="text-xs text-muted-foreground">{eyebrow}</p>
           ) : null}
-          <h1 className="text-2xl font-semibold tracking-tight break-words text-balance">{title}</h1>
+          <h1 className="text-xl font-semibold tracking-tight break-words text-balance">{title}</h1>
           {description ? (
             <p className="max-w-prose text-sm text-pretty text-muted-foreground">{description}</p>
           ) : null}

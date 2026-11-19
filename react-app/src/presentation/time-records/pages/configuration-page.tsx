@@ -16,7 +16,7 @@ import { PageHeader } from '@presentation/shared/components/page-header';
 import { errorMessage } from '@presentation/shared/error-message';
 import { useAppParameters } from '@presentation/shared/hooks/use-app-parameters';
 
-const pageClassName = 'mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6';
+const pageClassName = 'mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-6 md:px-6 md:py-8';
 
 function ConfigurationEditor() {
   const { parameters } = useContainer();

@@ -3,7 +3,7 @@ import { Button } from '@/shared/ui/button';
 import { PageHeader } from '@presentation/shared/components/page-header';
 import { DASHBOARD_PATH } from './nav-items';
 
-const pageClassName = 'mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6';
+const pageClassName = 'mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8';
 
 export function NotFoundPage() {
   return (

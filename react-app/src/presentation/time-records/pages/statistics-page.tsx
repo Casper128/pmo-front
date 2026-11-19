@@ -39,7 +39,7 @@ export function StatisticsPage() {
   const totalHours = breakdowns[0].groups.reduce((sum, group) => sum + group.hours, 0);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
       <PageHeader
         eyebrow="Analítica personal"
         title="Datos del consultor"

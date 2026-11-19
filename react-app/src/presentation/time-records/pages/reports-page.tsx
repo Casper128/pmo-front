@@ -85,7 +85,7 @@ export function ReportsPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-6 md:px-6 md:py-8">
       <PageHeader
         title="Reportes"
         description="Consulta, edita y gestiona tus reportes enviados."

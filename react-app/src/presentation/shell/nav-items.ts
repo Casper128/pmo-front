@@ -29,6 +29,7 @@ export interface NavSection {
 export interface MobileNavItem {
   readonly label: string;
   readonly route: string;
+  readonly icon: LucideIcon;
   readonly adminOnly?: boolean;
   readonly auditOnly?: boolean;
 }
@@ -76,17 +77,14 @@ export const MOBILE_NAV_MAX_ITEMS = 5;
 
 /** Ítems de la barra inferior en orden de visualización; Admin y Auditoría solo con permisos. */
 export const MOBILE_NAV_ITEMS: readonly MobileNavItem[] = [
-  { label: 'Dashboard', route: DASHBOARD_PATH },
-  { label: 'Reportar', route: '/registros/importar' },
-  { label: 'Reportes', route: '/registros/reportes' },
-  { label: 'Datos', route: '/registros/estadisticas' },
-  { label: 'Ajustes', route: '/registros/plantillas' },
-  { label: 'Admin', route: '/configuracion', adminOnly: true },
-  { label: 'Auditoría', route: '/auditoria/eliminaciones', auditOnly: true },
+  { label: 'Dashboard', route: DASHBOARD_PATH, icon: LayoutDashboard },
+  { label: 'Reportar', route: '/registros/importar', icon: SendHorizontal },
+  { label: 'Reportes', route: '/registros/reportes', icon: ClipboardList },
+  { label: 'Datos', route: '/registros/estadisticas', icon: BarChart3 },
+  { label: 'Ajustes', route: '/registros/plantillas', icon: LayoutTemplate },
+  { label: 'Admin', route: '/configuracion', icon: Settings, adminOnly: true },
+  { label: 'Auditoría', route: '/auditoria/eliminaciones', icon: ShieldCheck, auditOnly: true },
 ];
-
-/** Rutas que salen primero de la barra cuando hay más de 5 ítems (siguen en "Abrir navegación"). */
-const MOBILE_DROP_ORDER = ['/registros/plantillas', '/registros/estadisticas'];
 
 const canShow = (item: { adminOnly?: boolean; auditOnly?: boolean }, permissions: NavPermissions) =>
   !(item.adminOnly && !permissions.canManage) && !(item.auditOnly && !permissions.canReview);
@@ -103,20 +101,19 @@ export function visibleNavSections(
 }
 
 /**
- * Ítems visibles según permisos, máximo `MOBILE_NAV_MAX_ITEMS`. Si Admin/Auditoría hacen superar el máximo,
- * se retiran primero Ajustes y luego Datos; lo retirado queda en "Abrir navegación" (menú lateral).
+ * Ítems de la barra inferior según permisos. Hasta `MOBILE_NAV_MAX_ITEMS` todos van en la barra; con más,
+ * la barra lleva los primeros `MAX - 1` y el resto queda en `overflow` (botón "Más").
  */
-export function visibleMobileNavItems(
+export function splitMobileNavItems(
   items: readonly MobileNavItem[],
   permissions: NavPermissions,
-): MobileNavItem[] {
+): { primary: MobileNavItem[]; overflow: MobileNavItem[] } {
   const visible = items.filter((item) => canShow(item, permissions));
-  for (const route of MOBILE_DROP_ORDER) {
-    if (visible.length <= MOBILE_NAV_MAX_ITEMS) break;
-    const index = visible.findIndex((item) => item.route === route);
-    if (index >= 0) visible.splice(index, 1);
-  }
-  return visible;
+  if (visible.length <= MOBILE_NAV_MAX_ITEMS) return { primary: visible, overflow: [] };
+  return {
+    primary: visible.slice(0, MOBILE_NAV_MAX_ITEMS - 1),
+    overflow: visible.slice(MOBILE_NAV_MAX_ITEMS - 1),
+  };
 }
 
 /** Ruta activa: la misma o una subruta (equivale a `routerLinkActive`). */
