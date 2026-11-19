@@ -57,8 +57,8 @@ describe('ImportPage', () => {
   });
 
   it('muestra el encabezado y el estado vacío de la vista previa con los textos de Angular', async () => {
+    await setupApp();
     expect(screen.getByRole('heading', { name: 'Reportar y revisar tiempos' })).toBeInTheDocument();
-    const header = screen.getByRole('heading', { name: 'Reportar y revisar tiempos' }).closest('header') as HTMLElement;
     expect(
       screen.getByText('Pega tus actividades, completa lo pendiente y registra con confianza.'),
     ).toBeInTheDocument();
