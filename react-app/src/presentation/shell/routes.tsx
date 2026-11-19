@@ -2,11 +2,10 @@ import { Navigate, type RouteObject } from 'react-router';
 import { AuthGate } from './auth-gate';
 import { RequireAdmin, RequireAudit } from './guards/route-guards';
 import { DASHBOARD_PATH } from './nav-items';
-import { NotFoundPage, PlaceholderPage } from './placeholder-page';
+import { NotFoundPage } from './not-found-page';
 
 /**
- * Rutas del plan §3.2. Las páginas aún no migradas usan `PlaceholderPage`; al migrarlas se cambian por
- * `lazy: () => import(...)`. `AuthGate` es el layout raíz: login, restauración de sesión y shell.
+ * Rutas del plan §3.2. Cada página se carga con `lazy` (code splitting por ruta). `AuthGate` es el layout raíz: login, restauración de sesión y shell.
  */
 export const appRoutes: RouteObject[] = [
   {
@@ -38,12 +37,9 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'registros/estadisticas',
-        element: (
-          <PlaceholderPage
-            title="Estadísticas del consultor"
-            description="Revisa tus horas, concentración de trabajo y registros del periodo."
-          />
-        ),
+        lazy: async () => ({
+          Component: (await import('@presentation/time-records/pages/statistics-page')).StatisticsPage,
+        }),
       },
       {
         path: 'registros/plantillas',

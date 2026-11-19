@@ -3,14 +3,9 @@ import { useMemo, type ReactNode } from 'react';
 import { cn } from 'cn';
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Label } from '@/shared/ui/label';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/toggle-group';
-import type { TimeDashboardPeriodPreset } from '@domain/time-records/models/time-dashboard.model';
 import { WorkdayHoursPolicy } from '@domain/time-records/services/workday-hours.policy';
 import { useContainer } from '@presentation/providers/container-context';
-import { AppSelect, type AppSelectOption } from '@presentation/shared/components/app-select';
-import { DatePicker } from '@presentation/shared/components/date-picker';
 import { MetricCard } from '@presentation/shared/components/metric-card';
 import { PageHeader } from '@presentation/shared/components/page-header';
 import { StateMessage } from '@presentation/shared/components/state-message';
@@ -18,19 +13,15 @@ import { useAppParameters } from '@presentation/shared/hooks/use-app-parameters'
 import { errorMessage } from '@presentation/shared/error-message';
 import { BillingChart, ClientHoursChart, DailyHoursChart, MonthlyChart } from '../dashboard/dashboard-charts';
 import { formatHours, formatSigned } from '../dashboard/dashboard-format';
+import { DashboardFiltersCard } from '../dashboard/dashboard-filters-card';
 import { RequestHoursCard } from '../dashboard/request-hours-card';
 import { DayAlertsCard } from '../dashboard/day-alerts-card';
 import { buildDayAlerts } from '../dashboard/day-alerts';
 import { withEstimatedHours } from '../dashboard/request-estimates';
 import { useManagementTemplatesList } from '../hooks/use-management-templates-list';
-import { PERIOD_PRESETS, useDashboardFilters } from '../dashboard/use-dashboard-filters';
+import { useDashboardFilters } from '../dashboard/use-dashboard-filters';
 import { buildDayLedger, toReportView } from '../reports/report-view';
 import { useMyReports } from '../reports/use-my-reports';
-
-const asOptions = (values: readonly string[], emptyLabel: string): AppSelectOption[] => [
-  { value: '', label: emptyLabel },
-  ...values.map((value) => ({ value, label: value })),
-];
 
 function ChartCard({
   title,
@@ -116,72 +107,13 @@ export function TimeDashboardPage() {
         }
       />
 
-      <Card aria-labelledby="dashboard-filters-title" role="region">
-        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle id="dashboard-filters-title">Periodo y filtros</CardTitle>
-          <ToggleGroup
-            type="single"
-            variant="outline"
-            size="sm"
-            className="w-full sm:w-auto"
-            aria-label="Periodo rápido"
-            value={filters.activePreset}
-            onValueChange={(value) => value && filters.applyPreset(value as TimeDashboardPeriodPreset)}
-          >
-            {PERIOD_PRESETS.map((preset) => (
-              <ToggleGroupItem key={preset.value} value={preset.value} className="max-sm:flex-1">
-                {preset.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <Label htmlFor="dashboard-from">Desde</Label>
-              <DatePicker id="dashboard-from" value={filter.from} onChange={filters.setFrom} />
-            </div>
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <Label htmlFor="dashboard-to">Hasta</Label>
-              <DatePicker id="dashboard-to" value={filter.to} onChange={filters.setTo} />
-            </div>
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <Label htmlFor="dashboard-client">Cliente</Label>
-              <AppSelect
-                id="dashboard-client"
-                options={asOptions(options.clients, 'Todos los clientes')}
-                value={filter.client}
-                onValueChange={filters.setClient}
-                loading={reports.isPending}
-              />
-            </div>
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <Label htmlFor="dashboard-hour-type">Tipo de hora</Label>
-              <AppSelect
-                id="dashboard-hour-type"
-                options={asOptions(options.hourTypes, 'Todos los tipos de hora')}
-                value={filter.hourType}
-                onValueChange={filters.setHourType}
-                loading={reports.isPending}
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {filters.dateError ? (
-              <p className="text-sm font-medium text-destructive" role="alert">
-                {filters.dateError}
-              </p>
-            ) : (
-              <p className="text-xs font-medium text-muted-foreground">
-                {snapshot?.rowCount ?? 0} de {rows?.length ?? 0} registros incluidos.
-              </p>
-            )}
-            <Button type="button" variant="link" size="sm" onClick={filters.reset}>
-              Restablecer filtros
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <DashboardFiltersCard
+        filters={filters}
+        options={options}
+        loading={reports.isPending}
+        included={snapshot?.rowCount ?? 0}
+        total={rows?.length ?? 0}
+      />
 
       {reports.isPending ? (
         <DashboardSkeleton />

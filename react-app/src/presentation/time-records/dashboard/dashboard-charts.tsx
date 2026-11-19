@@ -44,14 +44,14 @@ export function DailyHoursChart({ data }: { readonly data: readonly DashboardDai
   );
 }
 
-/** Horas por cliente, de mayor a menor; la altura crece con el número de clientes. */
-export function ClientHoursChart({ data }: { readonly data: readonly DashboardBreakdownItem[] }) {
+/** Horas por grupo (cliente por defecto), de mayor a menor; la altura crece con el número de grupos. */
+export function ClientHoursChart({ data, label = 'Horas por cliente' }: { readonly data: readonly DashboardBreakdownItem[]; readonly label?: string }) {
   return (
     <ChartContainer
       config={hoursConfig}
       className="aspect-auto w-full"
       style={{ height: Math.max(180, data.length * BAR_ROW_HEIGHT + 24) }}
-      aria-label="Horas por cliente"
+      aria-label={label}
     >
       <BarChart accessibilityLayer data={[...data]} layout="vertical" margin={{ left: 0, right: 16 }}>
         <CartesianGrid horizontal={false} />
