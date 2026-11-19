@@ -48,6 +48,10 @@ export const appRoutes: RouteObject[] = [
         }),
       },
       {
+        path: 'perfil',
+        lazy: async () => ({ Component: (await import('@presentation/profile/profile-page')).ProfilePage }),
+      },
+      {
         element: <RequireAudit />,
         children: [
           {

@@ -7,10 +7,12 @@ import {
   SendHorizontal,
   Settings,
   ShieldCheck,
+  UserRound,
   type LucideIcon,
 } from 'lucide-react';
 
 export const DASHBOARD_PATH = '/registros/dashboard';
+export const PROFILE_PATH = '/perfil';
 
 export interface NavItem {
   readonly label: string;
@@ -84,6 +86,7 @@ export const MOBILE_NAV_ITEMS: readonly MobileNavItem[] = [
   { label: 'Ajustes', route: '/registros/plantillas', icon: LayoutTemplate },
   { label: 'Admin', route: '/configuracion', icon: Settings, adminOnly: true },
   { label: 'Auditoría', route: '/auditoria/eliminaciones', icon: ShieldCheck, auditOnly: true },
+  { label: 'Perfil', route: PROFILE_PATH, icon: UserRound },
 ];
 
 const canShow = (item: { adminOnly?: boolean; auditOnly?: boolean }, permissions: NavPermissions) =>

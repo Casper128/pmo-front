@@ -40,13 +40,9 @@ describe('layout del shell', () => {
         'Plantillas',
       ]);
       expect(screen.queryByText('Administración')).not.toBeInTheDocument();
-      expect(linkNames('Navegación móvil')).toEqual([
-        'Dashboard',
-        'Reportar',
-        'Reportes',
-        'Datos',
-        'Ajustes',
-      ]);
+      // Con Perfil son 6 accesos: 4 en la barra y Ajustes y Perfil en "Más".
+      expect(linkNames('Navegación móvil')).toEqual(['Dashboard', 'Reportar', 'Reportes', 'Datos']);
+      expect(screen.getByRole('button', { name: 'Más' })).toBeInTheDocument();
     });
 
     it('el administrador ve Auditoría y Configuración (y Admin en móvil)', async () => {
@@ -68,7 +64,7 @@ describe('layout del shell', () => {
       await user.click(screen.getByRole('button', { name: 'Más' }));
 
       const sheet = await screen.findByRole('dialog', { name: 'Más' });
-      expect(within(sheet).getAllByRole('link').map((l) => l.textContent?.trim())).toEqual(['Ajustes', 'Admin', 'Auditoría']);
+      expect(within(sheet).getAllByRole('link').map((l) => l.textContent?.trim())).toEqual(['Ajustes', 'Admin', 'Auditoría', 'Perfil']);
     });
 
     it('el auditor ve Auditoría pero no Configuración', async () => {

@@ -1,4 +1,5 @@
-import { LogOut, Moon, Sun } from 'lucide-react';
+import { LogOut, Moon, Sun, UserRound } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar';
 import { Button } from '@/shared/ui/button';
 import {
@@ -12,6 +13,7 @@ import {
 import { SidebarTrigger } from '@/shared/ui/sidebar';
 import { NotificationBell } from '@presentation/notifications/notification-bell';
 import { useAuth } from '@presentation/shared/hooks/use-auth';
+import { PROFILE_PATH } from './nav-items';
 import { userInitials } from './permissions';
 import { useTheme, type AppTheme } from './theme-context';
 
@@ -25,6 +27,7 @@ export function AppHeader() {
   const { auth, user } = useAuth();
   const { theme, setTheme } = useTheme();
   const userName = user?.name || '';
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b bg-background px-3 sm:px-4">
@@ -66,6 +69,10 @@ export function AppHeader() {
             <span className="text-xs font-normal text-muted-foreground">Sesión activa</span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => void navigate(PROFILE_PATH)}>
+            <UserRound aria-hidden="true" />
+            Mi perfil
+          </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onSelect={() => auth.clearTokens()}>
             <LogOut aria-hidden="true" />
             Salir
