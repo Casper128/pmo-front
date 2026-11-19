@@ -25,7 +25,7 @@ export interface MetricCardProps {
 
 const toneClasses: Record<MetricTone, string> = {
   slate: 'text-foreground',
-  blue: 'text-primary',
+  blue: 'text-foreground', // neutro: el color del valor solo comunica estado (amber/red)
   amber: 'text-warning',
   red: 'text-destructive',
 };
@@ -36,15 +36,15 @@ const trendIcons = { up: TrendingUp, down: TrendingDown, neutral: Minus } as con
 export function MetricCard({ label, value, description, tone = 'slate', delta, className }: MetricCardProps) {
   const TrendIcon = trendIcons[delta?.trend ?? 'neutral'];
   return (
-    <Card className={cn('min-w-0', className)}>
+    <Card size="sm" className={cn('min-w-0', className)}>
       <CardHeader>
-        <CardDescription className="font-medium">{label}</CardDescription>
-        <CardTitle className={cn('text-2xl font-semibold tabular-nums break-words', toneClasses[tone])}>
+        <CardDescription className="text-xs font-medium">{label}</CardDescription>
+        <CardTitle className={cn('text-2xl leading-tight font-semibold tabular-nums break-words', toneClasses[tone])}>
           {value}
         </CardTitle>
       </CardHeader>
       {description || delta ? (
-        <CardContent className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <CardContent className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           {delta ? (
             <Badge variant="secondary" className="tabular-nums">
               <TrendIcon aria-hidden="true" />

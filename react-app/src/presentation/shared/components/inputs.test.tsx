@@ -68,7 +68,7 @@ describe('MetricCard', () => {
       />,
     );
     expect(screen.getByText('Horas registradas')).toBeInTheDocument();
-    expect(screen.getByText('42,5')).toHaveClass('text-primary');
+    expect(screen.getByText('42,5')).toHaveClass('text-foreground');
     expect(screen.getByText('Semana actual')).toBeInTheDocument();
     expect(screen.getByText('+2,5 h')).toHaveTextContent('+2,5 h frente a la semana anterior');
   });

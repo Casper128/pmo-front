@@ -23,7 +23,7 @@ const toneIcons: Record<StateTone, LucideIcon> = {
 };
 
 const toneClasses: Record<StateTone, string> = {
-  info: 'text-primary',
+  info: 'text-muted-foreground',
   warning: 'text-warning',
   error: 'text-destructive',
   success: 'text-success',
@@ -43,7 +43,7 @@ export function StateMessage({
 }: StateMessageProps) {
   const Icon = toneIcons[tone];
   return (
-    <Empty role={tone === 'error' ? 'alert' : 'status'} className={cn('border border-dashed', className)}>
+    <Empty role={tone === 'error' ? 'alert' : 'status'} className={cn('rounded-lg border border-dashed p-6', className)}>
       <EmptyHeader>
         <EmptyMedia variant="icon" className={toneClasses[tone]}>
           <Icon aria-hidden="true" />
@@ -53,7 +53,7 @@ export function StateMessage({
       </EmptyHeader>
       {actionLabel ? (
         <EmptyContent>
-          <Button type="button" variant={tone === 'error' ? 'destructive' : 'default'} onClick={onAction}>
+          <Button type="button" variant={tone === 'error' ? 'outline' : 'default'} onClick={onAction}>
             {actionLabel}
           </Button>
         </EmptyContent>
