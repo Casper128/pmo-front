@@ -96,10 +96,12 @@ export function TimeDashboardPage() {
   // La jornada esperada por fecha sale de la configuración; `workSettings` invalida el cálculo al cambiar.
   const compliance = useMemo(() => {
     if (!snapshot) return null;
-    const expectedFor = (date: string) => new WorkdayHoursPolicy(parameters).expectedHoursForDate(date);
+    // Días futuros (rango personalizado) aún no exigen reporte.
+    const expectedFor = (date: string) =>
+      date > filters.today ? 0 : new WorkdayHoursPolicy(parameters).expectedHoursForDate(date);
     return { summary: complianceSummary(snapshot.daily, expectedFor), trend: lastDays(snapshot.daily, 7) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot, parameters, workSettings]);
+  }, [snapshot, parameters, workSettings, filters.today]);
   const dailySpark = useMemo(
     () => snapshot?.daily.map(({ shortLabel, hours }) => ({ label: shortLabel, hours })) ?? [],
     [snapshot],

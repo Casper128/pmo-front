@@ -129,7 +129,7 @@ describe('ReportsPage', () => {
     await user.type(screen.getByRole('searchbox', { name: /Buscar/ }), 'migracion');
     await waitFor(() => expect(router.state.location.search).toBe('?q=migracion'), { timeout: 3000 });
     expect(screen.getByRole('region', { name: 'Mar 15 Sep 2026' })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Vie 18 Sep 2026' })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Vie 18 Sep 2026' })).not.toBeInTheDocument(), { timeout: 3000 });
 
     await user.clear(screen.getByRole('searchbox', { name: /Buscar/ }));
     await user.type(screen.getByRole('searchbox', { name: /Buscar/ }), 'zzz');
