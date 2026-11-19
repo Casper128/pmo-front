@@ -37,6 +37,17 @@ Para desarrollo local:
 
 `src/config/environment.ts` valida estas variables con zod y lanza un error claro si falta alguna obligatoria.
 
+## Despliegue en Netlify
+
+`netlify.toml` (esta carpeta) define build `npm run build`, publish `dist` y el redirect SPA `/* → /index.html` (200).
+Crea un sitio aparte con "Base directory" = `react-app` y las variables `VITE_*`; el `netlify.toml` de la raíz sigue
+sirviendo Angular. Sin desplegar hasta que se autorice.
+
+## Bundle
+
+Cada página se carga con `lazy` por ruta y `vite.config.ts` separa los vendors (react, router, UI, datos) en chunks
+propios; recharts solo se descarga con las gráficas (Dashboard y Datos). El build no debe mostrar el aviso de chunks > 500 kB.
+
 ## Scripts
 
 | Script | Uso |

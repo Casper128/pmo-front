@@ -1,6 +1,7 @@
 # Plan maestro de migración: pmo-front Angular 22 → React + TypeScript
 
-> Estado: propuesta de arquitectura (sin implementar). Autor: kiro-architect. Fecha: 2026-11-18.
+> Estado (2026-11-19): F0–F14 implementadas en `react-app/`; F15 descartada (P11); F16 en cierre (bundle dividido,
+> `react-app/netlify.toml` listo, docs actualizadas) y pendiente de paridad visual lado a lado e informe QA. Autor: kiro-architect. Fecha: 2026-11-18.
 > Reglas de stack: `.claude/skills/react-dashboard-architect/SKILL.md`.
 > Ejecución: `kiro-developer` implementa una fase por vez; `kiro-qa` valida cada fase antes de la siguiente.
 
@@ -108,7 +109,7 @@ presentation/providers/app-providers.tsx    QueryClientProvider + ContainerProvi
 
 - `createContainer` reproduce exactamente el grafo de `app.config.ts` + `TIME_RECORDS_PROVIDERS`:
   `auth`, `parameters`, `timeRecordRepository`, `timeManagement`, `sendLogs`, `templates`, `deleteRequests`,
-  `location`, `userAudit`, `consultantLocations`, `domainService`, `dashboardCalculator`, `apiBodyBuilder`,
+  `location`, `userAudit`, `domainService`, `dashboardCalculator`, `apiBodyBuilder`,
   `registerTimeRecord`, `sendAllRecords`, `loadSelectOptions`.
 - Es el **único** archivo de presentación autorizado a importar `@infrastructure/*` (lo verifica el script de capas).
 - Se crea una vez en `main.tsx` (fuera del árbol React, para no duplicarse con StrictMode).
@@ -199,9 +200,8 @@ Regla: nada de primitivos hechos a mano. Las "composiciones" permitidas se lista
 | `import-text-input` | Shadcn `Textarea` + `Button` + `Alert`; parseo con `domain.parseText/validateImportText` | |
 | `management-report-detail-modal` + `management-report-detail.presenter.ts` | `Sheet` o `Dialog`; el presenter (TS puro) se copia tal cual | |
 | `management-template-dialog` + `management-template-form` | `Dialog` + formulario RHF + zod con `AppSelect` | |
-| Mapa Leaflet en ubicaciones | `react-leaflet` (`MapContainer`, `TileLayer`, `Circle`, `Marker`) | Carga perezosa. |
 | Iconos `@ng-icons/lucide` | `lucide-react` | |
-| Tablas manuales en logs, auditoría, reportes, ubicaciones, plantillas, consolidado | TanStack Table + Shadcn `Table` (+ `Pagination` en logs) | |
+| Tablas manuales en logs, auditoría, reportes, plantillas, consolidado | TanStack Table + Shadcn `Table` (+ `Pagination` en logs) | |
 | Barra de progreso del envío | Shadcn `Progress` con `aria-valuenow` limitado | |
 | Skeletons de carga | Shadcn `Skeleton` | |
 
@@ -233,7 +233,6 @@ superficie. Lazy loading con `lazy: () => import(...)` por ruta.
 | `/registros/plantillas` | `ManagementTemplatesPageComponent` | `ManagementTemplatesPage` | sesión |
 | `/auditoria/eliminaciones` | `AuditDeleteRequestsPageComponent` | `AuditDeleteRequestsPage` | sesión + `canReviewDeleteRequests` |
 | `/configuracion` | `ConfigurationPageComponent` | `ConfigurationPage` | sesión + `canManage` |
-| `/administracion/ubicaciones` | `ConsultantLocationsPageComponent` + `locationAdminGuard` | `ConsultantLocationsPage` | sesión + `locationAdminEmails` |
 | `*` | (no existe) | `NotFoundPage` (404 con enlace al dashboard) | sesión |
 
 El god component se divide en **3 páginas** que comparten hooks (`useManagementReports`, `useDrafts`,
@@ -244,9 +243,6 @@ helpers de fecha). Duplicar un reporte a borradores usa `DraftsProvider`, igual 
 
 - `AuthGate` en el shell: muestra skeleton mientras `restoreSession`, el formulario de login si no hay sesión y el
   layout con `<Outlet>` si la hay (paridad: no existe ruta `/login`).
-- `RequireLocationAdmin`: wrapper de ruta que lee `useAuthUser()`; si el email normalizado no está en
-  `environment.locationAdminEmails` → `<Navigate to="/registros/dashboard" replace>`. Al ser reactivo cubre también la
-  redirección del shell cuando cambia el usuario.
 - Auditoría y Configuración: **paridad por defecto** = ocultar en navegación (`canShowNavItem`) + comprobación dentro
   de la página. `canReviewDeleteRequests` se extrae a una función pura compartida por shell y página (hoy está duplicada).
   Pasar a redirección es la decisión abierta P2 (cuidado: `canManage` depende de `parameters.load()` asíncrono; un
@@ -263,9 +259,8 @@ helpers de fecha). Duplicar un reporte a borradores usa `DraftsProvider`, igual 
 7. Plantillas.
 8. Auditoría de eliminaciones.
 9. Configuración.
-10. Ubicaciones (mapa).
 
-Hasta que una página exista, su ruta muestra un placeholder "En migración" para que la navegación funcione.
+Todas las páginas están migradas (cada ruta se carga con `lazy`); no quedan placeholders, solo `NotFoundPage`.
 
 ---
 
@@ -400,7 +395,6 @@ Componentes (RTL):
   computa contra el tope diario (`getDailyLaborHoursExceeded` vacío con 9 h laborales + Fábrica).
 - `DatePicker`: seleccionar un día devuelve exactamente `YYYY-MM-DD` en cualquier TZ; min/max respetados.
 - `AppSelect`: Select simple < 8 opciones, combobox con búsqueda ≥ 8.
-- `RequireLocationAdmin`: redirige a dashboard si el email no está en la lista y reacciona al cambio de usuario.
 - Navegación: ítems de Auditoría/Configuración visibles solo con permiso.
 - `AuthGate`: restauración de sesión, login con error, auditoría de login invocada, intervalo de refresh 4 min y
   logout en 401/403 (fake timers).
@@ -421,18 +415,18 @@ no se toca (`git diff --stat src/` vacío); QA revisa solo lo cambiado en la fas
 | **F1 Domain** | Copia de `src/domain`; repositorio a `Promise`; `check-domain-sync.mjs` | Las 4 specs de dominio pasan sin cambios; `check:domain-sync` en verde |
 | **F2 Application** | Ports a `Promise` + `subscribe` en Auth/Parameters; casos de uso async; `runWithConcurrency` | Spec de load-select-options portada + tests nuevos de send-all y register |
 | **F3 Infrastructure** | `HttpClient`/`HttpError`, Auth, AppParameters store, todos los adaptadores y mappers | Tests de http-client, auth y app-parameters; compilación sin `@angular`/`rxjs` |
-| **F4 Shell** | `createContainer`, providers, QueryClient, router con placeholders, `AuthGate` + login + restore + refresh 4 min + auditoría de login, sidebar/header/nav móvil, tema claro/oscuro, `RequireLocationAdmin` | Tests de AuthGate y guard; prueba manual de login contra API dev (requiere credenciales del usuario) |
+| **F4 Shell** | `createContainer`, providers, QueryClient, router con placeholders, `AuthGate` + login + restore + refresh 4 min + auditoría de login, sidebar/header/nav móvil, tema claro/oscuro | Tests de AuthGate y guard; prueba manual de login contra API dev (requiere credenciales del usuario) |
 | **F5 Kit UI** | `shadcn add` (button, input, textarea, label, form, dialog, sheet, alert-dialog, select, command, popover, calendar, table, card, badge, tooltip, progress, skeleton, sonner, toggle-group, dropdown-menu, avatar, sidebar, chart, empty, pagination, tabs, alert); composiciones `AppSelect`, `DatePicker`, `PageHeader`, `MetricCard`, `StateMessage`, `OverflowText`, `SearchInput`, `formatFechaEsp` | Tests de DatePicker, AppSelect, formatFechaEsp |
 | **F6 Dashboard** | `TimeDashboardPage` con `TimeDashboardCalculator`, KPIs, gráfica semanal, filtros/presets | Test de estados + cálculo mostrado coincide con el calculator |
 | **F7 Reportar (borradores)** | `DraftsProvider`, `usePendingRecordsStorage`, `ImportTextInput`, `RecordsPreviewTable`, `EditRecordDialog`, selects por fila, plantilla obligatoria (dialog), duplicar/eliminar/cancelar | Restaurar borradores tras recarga; validaciones con mensajes idénticos |
 | **F8 Envío + Logs** | `useSendAllRecords`, `validateBeforeSend`, `Progress`, fases, `retrySendLogs`, `SendLogsPage` | 6 casos portados + pruebas de envío sin duplicación, progreso y Fábrica |
 | **F9 Reportes** | `ManagementReportsPage`: lista, filtros y rango, edición, eliminación (normal/solicitud/técnica), detalle, duplicar a borradores | Tests de ownership en UI y mutaciones con invalidación |
 | **F10 Consolidado** | `ConsolidatedPage`: filtros, descarga, lectura Excel (`read-excel-file/browser`), resumen diario | Parseo Excel con fichero de ejemplo |
-| **F11 Estadísticas** | `ConsultantStatisticsPage` + gráficas Recharts configurables | Estados + cambio de tipo de gráfica |
+| **F11 Datos** (hecha, alcance reducido) | `StatisticsPage`: horas, registros y % por módulo, actividad, gestión y categoría (gráfica de barras Shadcn Chart + tabla); filtros del Dashboard | Pruebas de agregación y de la página (datos, vacío, error) |
 | **F12 Plantillas** | `ManagementTemplatesPage` + formulario RHF/zod | Guardar/eliminar con toasts |
 | **F13 Auditoría** | `AuditDeleteRequestsPage` (aprobar/rechazar) | Permiso `canReview` y mensajes de error del backend |
 | **F14 Configuración** | `ConfigurationPage` (campos avanzados, workSettings, deletionSettings) | Solo `canManage` puede guardar; restablecer local |
-| **F15 Ubicaciones** | `ConsultantLocationsPage` con react-leaflet (lazy) | Guard + mapa renderiza con datos falsos |
+| ~~F15 Ubicaciones~~ | Descartada (P11) | — |
 | **F16 Paridad y corte** | Checklist UX (360 px, dark mode, skeleton/empty/error), comparación lado a lado por ruta, tamaño de bundle, configuración Netlify para `react-app` (sin desplegar sin autorización), actualización de `ARCHITECTURE.md`/README | Informe QA formal (`qa-audit-report.md`) |
 
 Recomendación: F7 y F8 son las de mayor riesgo; QA debe revisarlas con el checklist de los ~70 métodos de
@@ -451,7 +445,7 @@ Recomendación: F7 y F8 son las de mayor riesgo; QA debe revisarlas con el check
 | R5 | Deriva de reglas de negocio entre `src/domain` y `react-app/src/domain` | `check-domain-sync` en `verify`; congelar cambios de dominio o aplicarlos en ambos |
 | R6 | `canManage` asíncrono provoca redirecciones falsas | Paridad con comprobación en página; si se añade guard, esperar a `loading=false` |
 | R7 | Paridad visual/UX (Shadcn por defecto ≠ estilos actuales) | Mapear la paleta actual a variables CSS de Shadcn en F0; revisión lado a lado en F16 |
-| R8 | Peso del bundle (Recharts, Leaflet, read-excel-file) | Lazy por ruta; import dinámico de `read-excel-file` |
+| R8 | Peso del bundle (Recharts, read-excel-file) | Lazy por ruta + chunks de vendors (`vite.config.ts`); el build ya no avisa de chunks > 500 kB |
 | R9 | Las claves de `localStorage` compartidas si ambas apps comparten origen | Mantener las mismas claves (facilita el corte); no ejecutar ambas apps en el mismo origen simultáneamente con usuarios reales |
 | R10 | Coste del time picker si se exige el popover actual | Decisión P5 antes de F5 |
 
@@ -476,7 +470,7 @@ Recomendación: F7 y F8 son las de mayor riesgo; QA debe revisarlas con el check
   convivencia por rutas? ¿Se elimina `src/` después?
 - **P2. Guards de Auditoría y Configuración:** ¿mantener la paridad (ocultar en navegación + verificación en página)
   o redirigir al dashboard?
-- **P3. `locationAdminEmails = ['1darwin.osorio@...']`:** ¿el `1` es intencional (ubicaciones deshabilitada) o un error?
+- **P3. `locationAdminEmails`:** irrelevante tras P11 (Ubicaciones descartada); la variable se conserva sin usarla.
   Se copiará tal cual salvo indicación.
 - **P4. Variables de entorno:** ¿versionar `.env.development/.env.production` (los valores ya están en el repo) o
   configurarlas en Netlify?
@@ -506,9 +500,9 @@ Decisiones del usuario tras el inventario funcional y el grilling del arquitecto
 
 - **P11. Ubicaciones no se migra.** F15 queda descartada: no se crea la página, ni la ruta `/administracion/ubicaciones`, ni `RequireLocationAdmin`, ni `react-leaflet`. Se conserva la configuración (`locationAdminEmails`) tal cual, sin usarla. El puerto/adaptador `ConsultantLocationGateway` ya portado puede retirarse en la limpieza de F16 o quedarse sin consumidor.
 - **P12. Logs de envío no se migra como pantalla.** No hay ruta `/registros/logs` ni `SendLogsPage`. El **guardado** de logs durante el envío (`SendLogGateway.createMany`, fases `saving-logs`/`log-error`, `retrySendLogs`) sí se mantiene porque es parte del flujo de envío.
-- **P13. Tarjeta "Horas estimadas vs reales" solo visual.** Se migra como representación estática (estructura y estado "Estimaciones pendientes"), sin lógica funcional ni selector operativo; fuera de alcance que funcione.
+- **P13. Horas estimadas (actualizada).** Ya no es solo visual: "Horas estimadas" es un campo opcional (≥ 0, decimales) de la plantilla de gestión, guardado en `values.horasEstimadas` (sin cambio de backend ni de `src/domain`). No se aplica al envío ni cuenta como obligatorio. El Dashboard une plantilla y solicitud por id o nombre de gestión exacto (`presentation/time-records/dashboard/request-estimates.ts`) para mostrar estimadas y consumo.
 - **P14. Código muerto no se migra** en presentation/application/infrastructure (22 computed de Estadísticas, exportación PNG, `goToSendLogs`, `onDefault*Change`, `incompleteCount`, `trackField`, `primarySections`, `otherFields`, `getMissing`, `onProyectoChange`, `show()`, `clearManagementOptionsCache`, `send-log.create()`, `valuesFor`). El dominio muerto se copia tal cual por `check:domain-sync` y se limpia en F16 si se retira `src/`.
-- **P15. Orden de fases:** F7 Reportar → F8 Envío → F6 Dashboard → F9 Reportes → F10 Consolidado → F11 Estadísticas → F12 Plantillas → F13 Auditoría → F14 Configuración → F16 paridad y corte. Mientras no exista el Dashboard, la ruta inicial mantiene el placeholder.
+- **P15. Orden de fases:** F7 Reportar → F8 Envío → F6 Dashboard → F9 Reportes → F10 Consolidado → F11 Datos → F12 Plantillas → F13 Auditoría → F14 Configuración → F16 paridad y corte (ejecutado en ese orden).
 - **P16. Pantallas de análisis 1:1** (Dashboard, Datos, Consolidado, Reportes) sin fusión; la fusión se reevalúa después de F16.
 - **P17. Backend sin acceso:** no hay acceso al backend. Fábrica/`fechaInicio` e idempotencia se tratan como riesgos aceptados (R11) y se mitigan solo desde el frontend: payload idéntico al de Angular tras el fix e9e7437, protecciones de envío de §1.6 y verificación manual en F8 (registro Fábrica 19:30 en entorno de prueba y comprobar el día en el listado de Reportes).
 - **Corrección:** `goToSendLogs` no tiene llamador en Angular; la referencia a "destino de Ver historial" en §3.4 queda sin efecto por P12.
