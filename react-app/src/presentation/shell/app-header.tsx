@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu';
 import { SidebarTrigger } from '@/shared/ui/sidebar';
+import { NotificationBell } from '@presentation/notifications/notification-bell';
 import { useAuth } from '@presentation/shared/hooks/use-auth';
 import { userInitials } from './permissions';
 import { useTheme, type AppTheme } from './theme-context';
@@ -32,6 +33,7 @@ export function AppHeader() {
         <p className="truncate text-sm font-semibold tracking-tight">Gestión de tiempos</p>
         <p className="truncate text-xs text-muted-foreground">Reportes y avances</p>
       </div>
+      <NotificationBell />
       <div role="group" aria-label="Tema de la aplicación" className="flex items-center rounded-lg border p-0.5">
         {themeOptions.map(({ value, label, Icon }) => (
           <Button

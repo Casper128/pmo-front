@@ -257,12 +257,15 @@ describe('ReportsPage', () => {
       expect(await screen.findByRole('menuitem', { name: 'Solicitar eliminación' })).not.toHaveAttribute('aria-disabled', 'true');
     });
 
-    it('si falla listMine no hay badges y la lista sigue funcionando', async () => {
-      const { listMine } = await setup({ requests: new Error('Sin servicio') });
+    it('si falla listMine avisa con reintento, sin badges y la lista sigue funcionando', async () => {
+      const { listMine, user } = await setup({ requests: new Error('Sin servicio') });
       await day('Vie 18 Sep 2026');
-      await waitFor(() => expect(listMine).toHaveBeenCalled());
+      expect(await screen.findByText(/No se pudo consultar el estado de tus solicitudes/)).toBeInTheDocument();
       expect(screen.queryByText('Eliminación solicitada')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Acciones del reporte RH-1' })).toBeEnabled();
+      const calls = listMine.mock.calls.length;
+      await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+      await waitFor(() => expect(listMine.mock.calls.length).toBeGreaterThan(calls));
     });
   });
 

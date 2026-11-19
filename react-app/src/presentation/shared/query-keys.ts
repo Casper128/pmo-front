@@ -10,7 +10,12 @@ export const queryKeys = {
     mine: (consultantId: string | number | null) => ['management-reports', consultantId] as const,
   },
   deleteRequests: {
+    all: ['delete-requests'] as const,
     mine: ['delete-requests', 'mine'] as const,
+    pending: ['delete-requests', 'pending'] as const,
+  },
+  notifications: {
+    unread: ['notifications', 'unread'] as const,
   },
   templates: {
     all: ['templates'] as const,

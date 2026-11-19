@@ -32,7 +32,9 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'registros/consolidado',
-        element: <PlaceholderPage title="Consolidado" description="Descarga y revisa el consolidado de tus tiempos." />,
+        lazy: async () => ({
+          Component: (await import('@presentation/time-records/pages/consolidated-page')).ConsolidatedPage,
+        }),
       },
       {
         path: 'registros/estadisticas',
@@ -57,12 +59,9 @@ export const appRoutes: RouteObject[] = [
         children: [
           {
             path: 'auditoria/eliminaciones',
-            element: (
-              <PlaceholderPage
-                title="Solicitudes de eliminación"
-                description="Revisa los reportes enviados a auditoría y ejecuta el borrado solo cuando corresponda."
-              />
-            ),
+            lazy: async () => ({
+              Component: (await import('@presentation/time-records/pages/audit-delete-requests-page')).AuditDeleteRequestsPage,
+            }),
           },
         ],
       },

@@ -100,18 +100,27 @@ describe('Adaptadores Supabase y de gestión (paridad de peticiones con Angular)
     });
   });
 
-  it('ManagementDeleteRequestAdapter.mark: PATCH { id, status } y mapeo de la fila', async () => {
+  it('ManagementDeleteRequestAdapter.approve: PATCH con deleteReport y mapeo de la fila', async () => {
     const { http, auth, fetchMock } = setup(
       jsonResponse({ request: { id: 5, identifier: 'R1', status: 'approved', review_note: '  ' } }),
     );
-    const result = await new ManagementDeleteRequestAdapter(http, auth, testEnvironment).mark('5', 'approved');
+    const result = await new ManagementDeleteRequestAdapter(http, auth, testEnvironment).approve('5');
     expect(requestAt(fetchMock)).toEqual({
       url: `${FUNCTIONS}/pmo-management-delete-request`,
       method: 'PATCH',
       headers: SUPABASE_HEADERS,
-      body: { id: '5', status: 'approved' },
+      body: { id: '5', status: 'approved', deleteReport: true },
     });
     expect(result).toMatchObject({ id: '5', identifier: 'R1', status: 'approved', reviewNote: undefined, report: {} });
+  });
+
+  it('ManagementDeleteRequestAdapter.reject: PATCH con la nota recortada (o sin ella)', async () => {
+    const { http, auth, fetchMock } = setup(jsonResponse({ request: { id: '6', status: 'rejected' } }));
+    const adapter = new ManagementDeleteRequestAdapter(http, auth, testEnvironment);
+    await adapter.reject('6', '  Falta soporte ');
+    await adapter.reject('6', '   ');
+    expect(requestAt(fetchMock, 0).body).toEqual({ id: '6', status: 'rejected', reviewNote: 'Falta soporte' });
+    expect(requestAt(fetchMock, 1).body).toEqual({ id: '6', status: 'rejected' });
   });
 
   it('ManagementDeleteRequestAdapter.listMine: GET con scope=mine y mapeo de filas', async () => {

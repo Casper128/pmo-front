@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useDebouncedValue } from '@presentation/shared/hooks/use-debounced-value';
-import { colombiaToday, parseDateValue } from '@presentation/shared/format';
+import { parseDateValue } from '@presentation/shared/format';
+import { useColombiaToday } from '@presentation/shared/hooks/use-colombia-today';
 import { DEFAULT_REPORT_PRESET, REPORT_PRESETS, reportPresetRange, type ReportPreset } from './report-list';
 
 const PARAM = { preset: 'preset', from: 'from', to: 'to', q: 'q', client: 'cliente', report: 'report', mode: 'mode' } as const;
@@ -18,7 +19,7 @@ const validDate = (value: string | null) => (parseDateValue(value) ? (value as s
  */
 export function useReportFilters() {
   const [params, setParams] = useSearchParams();
-  const today = colombiaToday();
+  const today = useColombiaToday();
 
   const presetParam = params.get(PARAM.preset);
   const preset = isPreset(presetParam) ? presetParam : DEFAULT_REPORT_PRESET;

@@ -1,5 +1,6 @@
 import { RefreshCw } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Label } from '@/shared/ui/label';
@@ -52,7 +53,7 @@ export function ReportsPage() {
   const { domainService } = useContainer();
   const filters = useReportFilters();
   const reports = useMyReports();
-  const { byIdentifier: requests } = useMyDeleteRequests();
+  const { byIdentifier: requests, isError: requestsFailed, refetch: refetchRequests } = useMyDeleteRequests();
   const policy = useWorkdayPolicy();
   const wide = useMediaQuery(WIDE_QUERY);
   const [duplicate, setDuplicate] = useState<DuplicateTarget | null>(null);
@@ -164,6 +165,15 @@ export function ReportsPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      {requestsFailed ? (
+        <Alert role="status" className="flex flex-wrap items-center justify-between gap-2 py-2">
+          <AlertDescription>No se pudo consultar el estado de tus solicitudes de eliminación.</AlertDescription>
+          <Button type="button" size="sm" variant="outline" onClick={() => void refetchRequests()}>
+            Reintentar
+          </Button>
+        </Alert>
+      ) : null}
 
       {reports.isPending ? (
         <ReportsSkeleton />

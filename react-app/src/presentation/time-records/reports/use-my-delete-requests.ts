@@ -26,5 +26,5 @@ export function useMyDeleteRequests() {
   const { deleteRequests } = useContainer();
   const query = useQuery({ queryKey: queryKeys.deleteRequests.mine, queryFn: () => deleteRequests.listMine() });
   const byIdentifier = useMemo(() => relevantRequests(query.data ?? []), [query.data]);
-  return { byIdentifier, isError: query.isError };
+  return { byIdentifier, isError: query.isError, refetch: query.refetch };
 }

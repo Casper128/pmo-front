@@ -51,6 +51,12 @@ export function createTestContainer(overrides: Partial<Container> = {}): Contain
     sendLogs: unavailable('sendLogs'),
     templates,
     deleteRequests: unavailable('deleteRequests'),
+    // Sin avisos por defecto: la campana del header consulta en todos los tests que montan la app.
+    notifications: {
+      listUnread: vi.fn(async () => ({ notifications: [], unreadCount: 0 })),
+      markRead: vi.fn(async () => undefined),
+      markAllRead: vi.fn(async () => undefined),
+    },
     location,
     userAudit,
     domainService: new TimeRecordDomainService(parameters),

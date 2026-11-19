@@ -34,12 +34,17 @@ export class ManagementDeleteRequestAdapter extends ManagementDeleteRequestGatew
     return (payload.requests || []).map((row) => this.mapRow(row));
   }
 
-  async mark(id: string, status: 'approved' | 'rejected'): Promise<ManagementDeleteRequest> {
-    const payload = await this.http.patch<{ request?: DeleteRequestRow }>(
-      this.endpoint,
-      { id, status },
-      { headers: this.headers },
-    );
+  approve(id: string): Promise<ManagementDeleteRequest> {
+    return this.review({ id, status: 'approved', deleteReport: true });
+  }
+
+  reject(id: string, reviewNote?: string): Promise<ManagementDeleteRequest> {
+    const note = reviewNote?.trim();
+    return this.review({ id, status: 'rejected', ...(note ? { reviewNote: note } : {}) });
+  }
+
+  private async review(body: Record<string, unknown>): Promise<ManagementDeleteRequest> {
+    const payload = await this.http.patch<{ request?: DeleteRequestRow }>(this.endpoint, body, { headers: this.headers });
     return this.mapRow(payload.request || {});
   }
 

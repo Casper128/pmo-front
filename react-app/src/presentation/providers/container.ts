@@ -11,6 +11,7 @@ import { SupabaseUserAuditAdapter } from '@infrastructure/audit/supabase-user-au
 import { AuthService } from '@infrastructure/auth/auth.service';
 import { AppParametersService } from '@infrastructure/configuration/app-parameters.service';
 import { HttpClient } from '@infrastructure/http/http-client';
+import { SupabaseNotificationAdapter } from '@infrastructure/notifications/supabase-notification.adapter';
 import { ManagementDeleteRequestAdapter } from '@infrastructure/time-records/adapters/management-delete-request.adapter';
 import { ManagementTemplateAdapter } from '@infrastructure/time-records/adapters/management-template.adapter';
 import { SupabaseSendLogAdapter } from '@infrastructure/time-records/adapters/supabase-send-log.adapter';
@@ -47,6 +48,7 @@ export function createContainer(environment: Environment, overrides: Partial<Con
     sendLogs: overrides.sendLogs ?? new SupabaseSendLogAdapter(http, auth, environment),
     templates,
     deleteRequests: overrides.deleteRequests ?? new ManagementDeleteRequestAdapter(http, auth, environment),
+    notifications: overrides.notifications ?? new SupabaseNotificationAdapter(http, auth, environment),
     location,
     userAudit,
     domainService: overrides.domainService ?? new TimeRecordDomainService(parameters),

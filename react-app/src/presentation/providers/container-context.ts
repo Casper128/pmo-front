@@ -3,6 +3,7 @@ import type { LocationGateway, UserAuditGateway } from '@application/audit/audit
 import type { AuthGateway } from '@application/auth/auth.gateway';
 import type { LoginUseCase } from '@application/auth/login.use-case';
 import type { AppParametersFacade } from '@application/configuration/app-parameters.facade';
+import type { NotificationGateway } from '@application/notifications/notification.gateway';
 import type { ManagementDeleteRequestGateway } from '@application/time-records/ports/management-delete-request.gateway';
 import type { ManagementTemplateGateway } from '@application/time-records/ports/management-template.gateway';
 import type { SendLogGateway } from '@application/time-records/ports/send-log.gateway';
@@ -29,6 +30,7 @@ export interface Container {
   readonly sendLogs: SendLogGateway;
   readonly templates: ManagementTemplateGateway;
   readonly deleteRequests: ManagementDeleteRequestGateway;
+  readonly notifications: NotificationGateway;
   readonly location: LocationGateway;
   readonly userAudit: UserAuditGateway;
   readonly domainService: TimeRecordDomainService;
