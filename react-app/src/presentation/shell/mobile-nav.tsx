@@ -11,7 +11,7 @@ export function MobileNav() {
   return (
     <nav
       aria-label="Navegación móvil"
-      className="fixed inset-x-0 bottom-0 z-30 grid auto-cols-fr grid-flow-col gap-1 border-t bg-background/95 px-2 py-2 backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid h-(--mobile-nav-h) auto-cols-fr grid-flow-col gap-1 border-t bg-background/95 px-2 pt-2 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden"
     >
       {items.map((item) => (
         <NavLink

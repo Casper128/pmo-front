@@ -99,3 +99,8 @@ export function formatFullDate(value: string): string {
   const date = parseDateValue(value);
   return date ? new Intl.DateTimeFormat('es-CO', { weekday: 'short', day: '2-digit', month: 'short' }).format(date) : value;
 }
+
+/** Hoy en Colombia (`YYYY-MM-DD`), el día que cuenta para borrar o duplicar reportes sea cual sea la zona del navegador. */
+export function colombiaToday(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}

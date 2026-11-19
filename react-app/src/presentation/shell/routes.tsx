@@ -26,7 +26,9 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'registros/reportes',
-        element: <PlaceholderPage title="Reportes" description="Consulta, edita y gestiona tus reportes enviados." />,
+        lazy: async () => ({
+          Component: (await import('@presentation/time-records/pages/reports-page')).ReportsPage,
+        }),
       },
       {
         path: 'registros/consolidado',

@@ -67,14 +67,14 @@ describe('TimeDashboardPage', () => {
   it('vacío: "Sin registros en el periodo" con restablecer', async () => {
     await setup(vi.fn(async () => []));
     expect(await screen.findByText('Sin registros en el periodo')).toBeInTheDocument();
-    expect(screen.queryByText('Estimaciones pendientes')).not.toBeInTheDocument();
+    expect(screen.queryByText('Horas por solicitud')).not.toBeInTheDocument();
   });
 
   it('los KPIs coinciden con el calculator y "Horas extra" pasó a "Horas Fábrica"', async () => {
     const { app } = await setup();
     await screen.findByText('Horas reportadas');
     const { kpis } = app.dashboardCalculator.build(ROWS, { from: '2026-06-19', to: '2026-09-18', client: '', hourType: '' });
-    const kpiCard = (label: string) => screen.getByText(label).closest('[data-slot="card"]') as HTMLElement;
+    const kpiCard = (label: string) => within(screen.getByRole('region', { name: 'Indicadores del periodo' })).getByText(label).closest('[data-slot="card"]') as HTMLElement;
 
     expect(kpis.totalHours).toBe(33.5);
     expect(within(kpiCard('Horas reportadas')).getByText(`${formatHours(kpis.totalHours)} h`)).toBeInTheDocument();
@@ -83,7 +83,6 @@ describe('TimeDashboardPage', () => {
     expect(within(kpiCard('Horas Fábrica')).getByText(`${formatHours(kpis.extraHours)} h`)).toBeInTheDocument();
     expect(within(kpiCard('Días reportados')).getByText(`${kpis.reportedDays} / ${kpis.expectedDays}`)).toBeInTheDocument();
     expect(screen.queryByText('Horas extra')).not.toBeInTheDocument();
-    expect(screen.getByText('Estimaciones pendientes')).toBeInTheDocument();
   });
 
   it('alertas por día: faltante, exceso y sin reporte; el fin de semana vacío no aparece', async () => {
@@ -93,9 +92,31 @@ describe('TimeDashboardPage', () => {
     const text = (row: HTMLElement) => row.textContent ?? '';
     expect(rows.find((row) => text(row).includes('18 Sep'))).toHaveTextContent('Sin reporte');
     expect(rows.find((row) => text(row).includes('17 Sep'))).toHaveTextContent('Sin reporte');
-    expect(rows.find((row) => text(row).includes('16 Sep'))).toHaveTextContent('Excede 8.5h');
-    expect(rows.find((row) => text(row).includes('15 Sep'))).toHaveTextContent('Faltan 4.5h');
+    expect(rows.find((row) => text(row).includes('16 Sep'))).toHaveTextContent('Excede 8,5 h');
+    expect(rows.find((row) => text(row).includes('15 Sep'))).toHaveTextContent('Faltan 4,5 h');
     expect(rows.some((row) => /Sáb|Dom/.test(text(row)))).toBe(false);
+  });
+
+  it('horas por solicitud: detalle de la seleccionada con estimadas y consumo pendientes', async () => {
+    const { app, user } = await setup();
+    const heading = await screen.findByText('Horas por solicitud');
+    const card = heading.closest('[data-slot="card"]') as HTMLElement;
+    const { requests } = app.dashboardCalculator.build(ROWS, { from: '2026-06-19', to: '2026-09-18', client: '', hourType: '' });
+    expect(requests).toHaveLength(2);
+    const metric = (label: string) => within(card).getByText(label).closest('[data-slot="card"]') as HTMLElement;
+
+    const [first, second] = requests;
+    expect(within(card).getByRole('combobox', { name: 'Solicitud' })).toHaveTextContent(first.client);
+    expect(within(metric('Horas reales')).getByText(`${formatHours(first.hours)} h`)).toBeInTheDocument();
+    expect(within(metric('Días con actividad')).getByText(String(first.activeDays))).toBeInTheDocument();
+    expect(within(metric('Estimadas')).getByText('Pendiente')).toBeInTheDocument();
+    expect(within(metric('Consumo')).getByText('Pendiente')).toBeInTheDocument();
+    expect(within(card).getByText('Clasificación de horas')).toBeInTheDocument();
+    for (const item of first.billing) expect(within(card).getByText(item.label)).toBeInTheDocument();
+
+    await user.click(within(card).getByRole('combobox', { name: 'Solicitud' }));
+    await user.click(await screen.findByRole('option', { name: `${second.request} · ${second.client}` }));
+    expect(within(metric('Horas reales')).getByText(`${formatHours(second.hours)} h`)).toBeInTheDocument();
   });
 
   it('los presets y los selectores actualizan la URL y los valores', async () => {

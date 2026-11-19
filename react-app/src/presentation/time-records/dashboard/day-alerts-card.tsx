@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table';
 import { StateMessage } from '@presentation/shared/components/state-message';
 import { formatFechaEsp } from '@presentation/shared/format';
-import { formatHours } from './dashboard-format';
+import { dayAlertLabel, formatHours } from './dashboard-format';
 import type { DayAlert, DayAlertKind } from './day-alerts';
 
 const badgeVariant: Record<DayAlertKind, 'destructive' | 'secondary' | 'outline'> = {
@@ -46,7 +46,7 @@ export function DayAlertsCard({ alerts }: { readonly alerts: readonly DayAlert[]
                       <span className="sm:hidden">{formatFechaEsp(alert.date).replace(/ \d{4}$/, '')}</span>
                     </TableCell>
                     <TableCell className="max-sm:px-1">
-                      <Badge variant={badgeVariant[alert.kind]}>{alert.label}</Badge>
+                      <Badge variant={badgeVariant[alert.kind]}>{dayAlertLabel(alert)}</Badge>
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap tabular-nums max-sm:px-2">
                       {formatHours(alert.reportedHours)}

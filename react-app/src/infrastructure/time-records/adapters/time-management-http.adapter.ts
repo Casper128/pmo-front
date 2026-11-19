@@ -1,6 +1,7 @@
 import type { AuthGateway } from '@application/auth/auth.gateway';
 import type {
   DeleteRequestBody,
+  DeleteRequestResult,
   TechnicalDeleteBody,
   TimeManagementGateway,
 } from '@application/time-records/ports/time-management.gateway';
@@ -41,8 +42,9 @@ export class TimeManagementHttpAdapter implements TimeManagementGateway {
     await this.postSupabase('pmo-management-delete', { identifier });
   }
 
-  async requestDelete(body: DeleteRequestBody): Promise<void> {
-    await this.postSupabase('pmo-management-delete-request', body);
+  async requestDelete(body: DeleteRequestBody): Promise<DeleteRequestResult> {
+    const response = await this.postSupabase('pmo-management-delete-request', body);
+    return { duplicated: this.asRecord(response)?.['duplicated'] === true };
   }
 
   async technicalDelete(body: TechnicalDeleteBody): Promise<void> {

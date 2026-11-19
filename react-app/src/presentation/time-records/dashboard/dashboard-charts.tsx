@@ -13,7 +13,7 @@ import type {
   DashboardMonthPoint,
 } from '@domain/time-records/models/time-dashboard.model';
 import { DASHBOARD_BILLING_LABELS } from '@domain/time-records/models/time-dashboard.model';
-import { formatHours, formatSigned } from './dashboard-format';
+import { BILLING_COLORS, billingKey, formatHours, formatSigned } from './dashboard-format';
 
 const hoursConfig = { hours: { label: 'Horas', color: 'var(--chart-1)' } } satisfies ChartConfig;
 const BAR_ROW_HEIGHT = 32;
@@ -75,14 +75,10 @@ export function ClientHoursChart({ data }: { readonly data: readonly DashboardBr
 }
 
 const billingConfig = {
-  billable: { label: DASHBOARD_BILLING_LABELS.billable, color: 'var(--chart-1)' },
-  factory: { label: DASHBOARD_BILLING_LABELS.factory, color: 'var(--chart-3)' },
-  nonBillable: { label: DASHBOARD_BILLING_LABELS.non_billable, color: 'var(--chart-4)' },
+  billable: { label: DASHBOARD_BILLING_LABELS.billable, color: BILLING_COLORS.billable },
+  factory: { label: DASHBOARD_BILLING_LABELS.factory, color: BILLING_COLORS.factory },
+  nonBillable: { label: DASHBOARD_BILLING_LABELS.non_billable, color: BILLING_COLORS.nonBillable },
 } satisfies ChartConfig;
-
-/** Clave de color de `billingConfig` según la etiqueta del dominio (los nombres de variable CSS no admiten espacios). */
-const billingKey = (label: string): keyof typeof billingConfig =>
-  label === DASHBOARD_BILLING_LABELS.factory ? 'factory' : label === DASHBOARD_BILLING_LABELS.non_billable ? 'nonBillable' : 'billable';
 
 /** Dona de facturable, Fábrica y no facturable. */
 export function BillingChart({ data }: { readonly data: readonly DashboardBreakdownItem[] }) {
@@ -114,9 +110,9 @@ export function BillingChart({ data }: { readonly data: readonly DashboardBreakd
 }
 
 const monthsConfig = {
-  billable: { label: DASHBOARD_BILLING_LABELS.billable, color: 'var(--chart-1)' },
-  factory: { label: DASHBOARD_BILLING_LABELS.factory, color: 'var(--chart-3)' },
-  nonBillable: { label: DASHBOARD_BILLING_LABELS.non_billable, color: 'var(--chart-4)' },
+  billable: { label: DASHBOARD_BILLING_LABELS.billable, color: BILLING_COLORS.billable },
+  factory: { label: DASHBOARD_BILLING_LABELS.factory, color: BILLING_COLORS.factory },
+  nonBillable: { label: DASHBOARD_BILLING_LABELS.non_billable, color: BILLING_COLORS.nonBillable },
 } satisfies ChartConfig;
 
 /** Comparativo mes a mes apilado; la variación frente al mes anterior va en el título del tooltip. */

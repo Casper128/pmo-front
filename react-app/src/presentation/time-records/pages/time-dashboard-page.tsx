@@ -18,6 +18,7 @@ import { useAppParameters } from '@presentation/shared/hooks/use-app-parameters'
 import { errorMessage } from '@presentation/shared/error-message';
 import { BillingChart, ClientHoursChart, DailyHoursChart, MonthlyChart } from '../dashboard/dashboard-charts';
 import { formatHours, formatSigned } from '../dashboard/dashboard-format';
+import { RequestHoursCard } from '../dashboard/request-hours-card';
 import { DayAlertsCard } from '../dashboard/day-alerts-card';
 import { buildDayAlerts } from '../dashboard/day-alerts';
 import { PERIOD_PRESETS, useDashboardFilters } from '../dashboard/use-dashboard-filters';
@@ -247,13 +248,7 @@ export function TimeDashboardPage() {
               >
                 <MonthlyChart data={snapshot.months} />
               </ChartCard>
-              <ChartCard
-                className="xl:col-span-2"
-                title="Horas estimadas vs. reales"
-                description="Comparación de las horas estimadas con las reales de cada gestión."
-              >
-                <StateMessage tone="warning" title="Estimaciones pendientes" description="Aún no hay fuente de datos para horas estimadas." />
-              </ChartCard>
+              <RequestHoursCard requests={snapshot.requests} />
             </section>
           ) : (
             <>

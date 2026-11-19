@@ -156,6 +156,16 @@
     --ui-hours-pending-border: #8a7241;
 }
 
+/* Alto de la barra inferior móvil (con la zona segura del dispositivo); 0 donde no se muestra (md+). */
+:root {
+  --mobile-nav-h: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  :root {
+    --mobile-nav-h: 0px;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -168,6 +178,10 @@
   }
   html.dark {
     color-scheme: dark;
+  }
+  /* Con un pie fijo en pantalla, el foco y el scroll a un elemento no lo dejan oculto detrás del pie. */
+  html:has([data-sticky-footer]) {
+    scroll-padding-bottom: calc(5rem + var(--mobile-nav-h));
   }
   body {
     @apply bg-background text-foreground antialiased;

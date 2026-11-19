@@ -23,7 +23,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <AppSidebar />
       <SidebarInset className="min-w-0">
         <AppHeader />
-        <div className="flex-1 pb-20 md:pb-0">{children}</div>
+        <div className="flex-1 pb-(--mobile-nav-h)">{children}</div>
       </SidebarInset>
       <MobileNav />
     </SidebarProvider>

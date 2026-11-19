@@ -136,7 +136,7 @@ export function RecordActions({ index, compact = false }: { readonly index: numb
     { name: 'Eliminar', icon: Trash2, variant: 'destructive' as const, run: onDelete },
   ];
   return (
-    <div className={compact ? 'flex flex-nowrap items-center gap-1' : 'flex flex-nowrap items-center gap-2'}>
+    <div className={compact ? 'flex flex-nowrap items-center gap-1' : 'flex flex-nowrap items-center gap-1'}>
       {actions.map(({ name, icon: Icon, variant, run }) => {
         const button = (
           <Button

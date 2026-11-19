@@ -114,6 +114,31 @@ describe('Adaptadores Supabase y de gestión (paridad de peticiones con Angular)
     expect(result).toMatchObject({ id: '5', identifier: 'R1', status: 'approved', reviewNote: undefined, report: {} });
   });
 
+  it('ManagementDeleteRequestAdapter.listMine: GET con scope=mine y mapeo de filas', async () => {
+    const { http, auth, fetchMock } = setup(
+      jsonResponse({ requests: [{ id: '7', identifier: 'R2', status: 'rejected', review_note: 'Falta soporte' }] }),
+    );
+
+    const result = await new ManagementDeleteRequestAdapter(http, auth, testEnvironment).listMine();
+
+    expect(requestAt(fetchMock)).toEqual({
+      url: `${FUNCTIONS}/pmo-management-delete-request?scope=mine`,
+      method: 'GET',
+      headers: SUPABASE_HEADERS,
+      body: null,
+    });
+    expect(result).toMatchObject([{ id: '7', identifier: 'R2', status: 'rejected', reviewNote: 'Falta soporte' }]);
+  });
+
+  it('TimeManagementHttpAdapter.requestDelete: devuelve duplicated según la respuesta', async () => {
+    const { http, auth } = setup(jsonResponse({ request: {}, duplicated: true }), jsonResponse({ request: {} }));
+    const adapter = new TimeManagementHttpAdapter(http, auth, testEnvironment);
+    const body = { identifier: 'R1', auditorEmail: 'auditor@example.test', report: {} };
+
+    expect(await adapter.requestDelete(body)).toEqual({ duplicated: true });
+    expect(await adapter.requestDelete(body)).toEqual({ duplicated: false });
+  });
+
   it('SupabaseUserAuditAdapter.recordTimeReport: POST con eventType time_report', async () => {
     const { http, auth, fetchMock } = setup(jsonResponse({}));
     const location = { latitude: 4.6, longitude: -74.1, accuracy: 20, locationStatus: 'granted' as const };

@@ -201,7 +201,7 @@ function WideTable({ rows }: { readonly rows: PreviewRow[] }) {
 function CardList({ groups }: { readonly groups: readonly DayGroup[] }) {
   const { domainService: domain } = useContainer();
   return (
-    <div className="flex flex-col gap-3 p-3 sm:p-4">
+    <div className="flex flex-col gap-3 p-2 sm:p-4">
       {groups.map((group) => (
         <section key={group.fecha} aria-label={formatFechaEsp(group.fecha)} className="overflow-hidden rounded-xl border bg-card">
           <DayBand group={group} />
@@ -209,12 +209,12 @@ function CardList({ groups }: { readonly groups: readonly DayGroup[] }) {
             {group.records.map(({ record, index }) => {
               const errors = recordErrors(domain, record);
               return (
-                <li key={index} className={`flex flex-col gap-3 p-4 ${errors.length ? 'bg-destructive/5' : ''}`}>
-                  <div className="flex items-center justify-between gap-3">
+                <li key={index} className={`flex flex-col gap-3 p-3 sm:p-4 ${errors.length ? 'bg-destructive/5' : ''}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                     <div>
                       <p className="font-mono text-sm font-semibold whitespace-nowrap">
-                        {record.horaIni} - {record.horaFin}
-                        <span className="ml-2 font-sans text-primary">{record.horas}h</span>
+                        {record.horaIni}–{record.horaFin}
+                        <span className="ml-1.5 font-sans text-primary">{record.horas}h</span>
                       </p>
                     </div>
                     <RecordActions index={index} />
@@ -367,7 +367,7 @@ export function RecordsPreviewTable({
             </div>
           ) : null}
         </CardContent>
-        <CardFooter className="sticky bottom-16 z-10 flex-row-reverse gap-2 border-t bg-card py-3 md:bottom-0">
+        <CardFooter data-sticky-footer className="sticky bottom-(--mobile-nav-h) z-10 flex-row-reverse gap-2 border-t bg-card py-3">
           <Button
             type="button"
             className="flex-1 sm:flex-none"

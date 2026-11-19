@@ -48,6 +48,12 @@ function minutesFromText(value: unknown): number | null {
   return hour <= 23 && minute <= 59 ? hour * 60 + minute : null;
 }
 
+/** `HH:mm` de `HoraInicio`/`HoraFin` (hora de pared, sin convertir zona); `''` si falta o no es válida. */
+export function reportTime(value: unknown): string {
+  const minutes = minutesFromText(value);
+  return minutes === null ? '' : `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
 export interface TimeInterval {
   readonly startMin: number;
   readonly endMin: number;

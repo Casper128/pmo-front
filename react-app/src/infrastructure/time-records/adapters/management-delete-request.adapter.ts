@@ -21,10 +21,16 @@ export class ManagementDeleteRequestAdapter extends ManagementDeleteRequestGatew
     this.endpoint = `${env.supabaseUrl}/functions/v1/pmo-management-delete-request`;
   }
 
-  async list(): Promise<ManagementDeleteRequest[]> {
-    const payload = await this.http.get<{ requests?: DeleteRequestRow[] }>(this.endpoint, {
-      headers: this.headers,
-    });
+  list(): Promise<ManagementDeleteRequest[]> {
+    return this.fetchRequests(this.endpoint);
+  }
+
+  listMine(): Promise<ManagementDeleteRequest[]> {
+    return this.fetchRequests(`${this.endpoint}?scope=mine`);
+  }
+
+  private async fetchRequests(url: string): Promise<ManagementDeleteRequest[]> {
+    const payload = await this.http.get<{ requests?: DeleteRequestRow[] }>(url, { headers: this.headers });
     return (payload.requests || []).map((row) => this.mapRow(row));
   }
 
