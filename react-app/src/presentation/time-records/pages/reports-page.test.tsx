@@ -138,15 +138,18 @@ describe('ReportsPage', () => {
     expect(await day('Vie 18 Sep 2026')).toBeInTheDocument();
   });
 
-  it('el preset Personalizado muestra las fechas y pasa a la URL', async () => {
+  it('Desde/Hasta siempre visibles; editar una fecha pasa a Personalizado y "Últimos 6 meses" ajusta el rango', async () => {
     const { router, user } = await setup();
     await day('Vie 18 Sep 2026');
+    expect(screen.getByLabelText('Desde')).toBeInTheDocument();
+    expect(screen.getByLabelText('Hasta')).toBeInTheDocument();
     await user.click(screen.getByRole('radio', { name: 'Hoy' }));
     expect(router.state.location.search).toBe('?preset=today');
-    expect(screen.queryByRole('region', { name: 'Mié 16 Sep 2026' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('radio', { name: 'Personalizado' }));
-    expect(new URLSearchParams(router.state.location.search).get('from')).toBe('2026-09-18');
     expect(screen.getByLabelText('Desde')).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Últimos 6 meses' }));
+    expect(router.state.location.search).toBe('?preset=6m');
+    await user.click(screen.getByRole('radio', { name: 'Personalizado' }));
+    expect(new URLSearchParams(router.state.location.search).get('from')).toBe('2026-03-19');
   });
 
   it('en móvil usa tarjetas en lugar de tabla', async () => {

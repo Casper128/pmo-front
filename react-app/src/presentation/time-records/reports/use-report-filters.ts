@@ -13,7 +13,7 @@ const isPreset = (value: string | null): value is ReportPreset => REPORT_PRESETS
 const validDate = (value: string | null) => (parseDateValue(value) ? (value as string) : null);
 
 /**
- * Filtros de Reportes en la URL (vista compartible): `preset`, `from`/`to` (solo en Personalizado), `q`, `cliente` y el
+ * Filtros de Reportes en la URL (vista compartible): `preset`, `from`/`to` (solo en Personalizado; editarlos pasa el preset a Personalizado), `q`, `cliente` y el
  * reporte abierto (`report` + `mode`). Sin parámetros, el rango es el mes actual. La búsqueda se escribe con
  * debounce; el resto de cambios usa `replace` para no llenar el historial.
  */

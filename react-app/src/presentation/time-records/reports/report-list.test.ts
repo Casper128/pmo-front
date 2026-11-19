@@ -28,6 +28,7 @@ describe('reportPresetRange', () => {
     expect(reportPresetRange('week', '2026-09-18')).toEqual({ from: '2026-09-14', to: '2026-09-20' });
     expect(reportPresetRange('month', '2026-09-18')).toEqual({ from: '2026-09-01', to: '2026-09-30' });
     expect(reportPresetRange('3m', '2026-09-18')).toEqual({ from: '2026-06-19', to: '2026-09-18' });
+    expect(reportPresetRange('6m', '2026-09-18')).toEqual({ from: '2026-03-19', to: '2026-09-18' });
   });
 });
 

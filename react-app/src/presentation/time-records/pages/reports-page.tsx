@@ -42,7 +42,7 @@ function ReportsSkeleton() {
   return (
     <div className="flex flex-col gap-3" role="status" aria-label="Consultando reportes...">
       {Array.from({ length: 3 }, (_, index) => (
-        <Skeleton key={index} className="h-32" />
+        <Skeleton key={index} className="h-28" />
       ))}
     </div>
   );
@@ -118,18 +118,14 @@ export function ReportsPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {filters.preset === 'custom' ? (
-              <>
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <Label htmlFor="reports-from">Desde</Label>
-                  <DatePicker id="reports-from" value={from} onChange={filters.setFrom} />
-                </div>
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <Label htmlFor="reports-to">Hasta</Label>
-                  <DatePicker id="reports-to" value={to} onChange={filters.setTo} />
-                </div>
-              </>
-            ) : null}
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <Label htmlFor="reports-from">Desde</Label>
+              <DatePicker id="reports-from" value={from} onChange={filters.setFrom} />
+            </div>
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <Label htmlFor="reports-to">Hasta</Label>
+              <DatePicker id="reports-to" value={to} onChange={filters.setTo} />
+            </div>
             <div className="flex min-w-0 flex-col gap-1.5 lg:col-span-2">
               <Label htmlFor="reports-search">Buscar</Label>
               <SearchInput

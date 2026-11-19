@@ -3,7 +3,7 @@ import type { ManagementReport } from '@domain/time-records/models/management-re
 import { normalizeText, parseDateValue, toDateValue } from '@presentation/shared/format';
 import { NO_DAY_KEY, reportTime, toReportView, type IsCountable, type ReportView } from './report-view';
 
-export type ReportPreset = 'today' | 'week' | 'month' | '3m' | 'custom';
+export type ReportPreset = 'today' | 'week' | 'month' | '3m' | '6m' | 'custom';
 
 export const DEFAULT_REPORT_PRESET: ReportPreset = 'month';
 
@@ -12,6 +12,7 @@ export const REPORT_PRESETS: readonly { value: ReportPreset; label: string }[] =
   { value: 'week', label: 'Semana' },
   { value: 'month', label: 'Mes' },
   { value: '3m', label: '3 meses' },
+  { value: '6m', label: 'Últimos 6 meses' },
   { value: 'custom', label: 'Personalizado' },
 ];
 
@@ -20,7 +21,7 @@ export interface DateRange {
   readonly to: string;
 }
 
-/** Rango de un preset respecto a `today` (`YYYY-MM-DD`): semana de lunes a domingo, mes calendario, 3 meses hasta hoy. */
+/** Rango de un preset respecto a `today` (`YYYY-MM-DD`): semana de lunes a domingo, mes calendario, 3 o 6 meses hasta hoy. */
 export function reportPresetRange(preset: Exclude<ReportPreset, 'custom'>, today: string): DateRange {
   const day = parseDateValue(today) ?? new Date();
   const range = (from: Date, to: Date) => ({ from: toDateValue(from), to: toDateValue(to) });
@@ -33,6 +34,8 @@ export function reportPresetRange(preset: Exclude<ReportPreset, 'custom'>, today
       return range(startOfMonth(day), endOfMonth(day));
     case '3m':
       return range(addDays(subMonths(day, 3), 1), day);
+    case '6m':
+      return range(addDays(subMonths(day, 6), 1), day);
   }
 }
 
