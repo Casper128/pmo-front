@@ -1,5 +1,5 @@
 import { Copy, Pencil, Trash2 } from 'lucide-react';
-import { Fragment, useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { TimeRecord } from '@domain/time-records/models/time-record.model';
 import { Button } from '@/shared/ui/button';
 import { FieldLabel } from '@/shared/ui/field';
@@ -136,30 +136,28 @@ export function RecordActions({ index, compact = false }: { readonly index: numb
     { name: 'Eliminar', icon: Trash2, variant: 'destructive' as const, run: onDelete },
   ];
   return (
-    <div className={compact ? 'flex flex-nowrap items-center gap-1' : 'flex flex-wrap items-center gap-2'}>
+    <div className={compact ? 'flex flex-nowrap items-center gap-1' : 'flex flex-nowrap items-center gap-2'}>
       {actions.map(({ name, icon: Icon, variant, run }) => {
         const button = (
           <Button
             type="button"
             variant={variant}
-            size={compact ? 'icon-sm' : 'sm'}
+            size={compact ? 'icon-sm' : 'icon'}
             disabled={locked}
+            className={compact ? undefined : 'size-10'}
             aria-label={label(name)}
             onClick={() => run(index)}
           >
             <Icon aria-hidden="true" />
-            {compact ? null : name}
           </Button>
         );
-        return compact ? (
+        return (
           <Tooltip key={name}>
             <TooltipTrigger asChild>
               <span>{button}</span>
             </TooltipTrigger>
             <TooltipContent>{name}</TooltipContent>
           </Tooltip>
-        ) : (
-          <Fragment key={name}>{button}</Fragment>
         );
       })}
     </div>

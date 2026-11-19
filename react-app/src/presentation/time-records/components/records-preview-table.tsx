@@ -210,12 +210,12 @@ function CardList({ groups }: { readonly groups: readonly DayGroup[] }) {
               const errors = recordErrors(domain, record);
               return (
                 <li key={index} className={`flex flex-col gap-3 p-4 ${errors.length ? 'bg-destructive/5' : ''}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-mono text-xs font-semibold text-muted-foreground">
+                      <p className="font-mono text-sm font-semibold whitespace-nowrap">
                         {record.horaIni} - {record.horaFin}
+                        <span className="ml-2 font-sans text-primary">{record.horas}h</span>
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-primary">{record.horas}h</p>
                     </div>
                     <RecordActions index={index} />
                   </div>
@@ -342,7 +342,7 @@ export function RecordsPreviewTable({
 
   return (
     <PreviewContext.Provider value={context}>
-      <Card className="gap-0 overflow-hidden py-0">
+      <Card className="gap-0 overflow-clip py-0">
         <CardHeader className="border-b py-4">
           <CardTitle>Vista previa de registros</CardTitle>
           <CardDescription>
@@ -367,10 +367,10 @@ export function RecordsPreviewTable({
             </div>
           ) : null}
         </CardContent>
-        <CardFooter className="flex-col gap-2 border-t py-4 sm:flex-row">
+        <CardFooter className="sticky bottom-16 z-10 flex-row-reverse gap-2 border-t bg-card py-3 md:bottom-0">
           <Button
             type="button"
-            className="w-full sm:flex-1"
+            className="flex-1 sm:flex-none"
             disabled={sendLocked || recordsToReview > 0}
             title={recordsToReview > 0 ? 'Completa los registros por revisar antes de registrar' : 'Registrar todos los tiempos'}
             onClick={onSendAll}
@@ -386,7 +386,7 @@ export function RecordsPreviewTable({
               `Registrar todos (${recordCount})`
             )}
           </Button>
-          <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={sendLocked} onClick={onCancelImport}>
+          <Button type="button" variant="outline" disabled={sendLocked} onClick={onCancelImport}>
             Cancelar
           </Button>
         </CardFooter>

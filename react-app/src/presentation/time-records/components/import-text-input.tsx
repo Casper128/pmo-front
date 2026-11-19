@@ -61,17 +61,19 @@ export function ImportTextInput() {
 
   return (
     <Card>
-      <CardHeader className="border-b sm:grid-cols-[1fr_auto]">
-        <CardTitle>Pegar tiempos</CardTitle>
+      <CardHeader className="border-b">
+        <CardTitle className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          Pegar tiempos
+          <Badge variant="outline" className="font-normal">
+            Borrador guardado
+          </Badge>
+        </CardTitle>
         <CardDescription>Inserta el texto y completa los selects en la vista previa antes de enviar.</CardDescription>
-        <div className="sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end">
-          <Badge variant="outline">Borrador guardado</Badge>
-        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Collapsible className="rounded-lg border bg-muted/40">
-          <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-3 py-2.5 text-xs font-semibold tracking-wide uppercase outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-            Ver ejemplo
+          <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+            Ver ejemplo de formato
             <ChevronDown aria-hidden="true" className="size-4 transition-transform group-data-[state=open]:rotate-180" />
           </CollapsibleTrigger>
           <CollapsibleContent className="px-3 pb-3">
@@ -89,7 +91,7 @@ export function ImportTextInput() {
           <FieldLabel htmlFor="import-raw-text">Pega aquí tus registros de tiempo</FieldLabel>
           <Textarea
             id="import-raw-text"
-            rows={8}
+            rows={6}
             className="font-mono text-xs"
             placeholder={PLACEHOLDER}
             aria-describedby="import-raw-text-hint"
@@ -99,12 +101,12 @@ export function ImportTextInput() {
           <FieldDescription id="import-raw-text-hint">{HINT}</FieldDescription>
         </Field>
 
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" disabled={!rawText} onClick={() => change('')}>
+            Limpiar
+          </Button>
           <Button type="button" disabled={sendLocked} onClick={processText}>
             Procesar tiempos
-          </Button>
-          <Button type="button" variant="outline" onClick={() => change('')}>
-            Limpiar
           </Button>
         </div>
         {sendLocked ? (

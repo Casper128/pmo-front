@@ -16,12 +16,9 @@ export const appRoutes: RouteObject[] = [
       { index: true, element: <Navigate to={DASHBOARD_PATH} replace /> },
       {
         path: 'registros/dashboard',
-        element: (
-          <PlaceholderPage
-            title="Dashboard de tiempos"
-            description="Resumen de tus horas reportadas: carga diaria, clientes, facturación y solicitudes recientes."
-          />
-        ),
+        lazy: async () => ({
+          Component: (await import('@presentation/time-records/pages/time-dashboard-page')).TimeDashboardPage,
+        }),
       },
       {
         path: 'registros/importar',

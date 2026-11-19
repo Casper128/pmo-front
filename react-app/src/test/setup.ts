@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom/vitest'
+import { configure } from '@testing-library/react'
+
+// Las rutas son lazy: la primera carga de una página con Recharts tarda más que el 1 s por defecto.
+configure({ asyncUtilTimeout: 4000 })
 
 // jsdom no implementa matchMedia ni ResizeObserver; los usan Radix, Recharts y el tema.
 // Las pruebas de scripts usan `@vitest-environment node`, donde no existe window.
