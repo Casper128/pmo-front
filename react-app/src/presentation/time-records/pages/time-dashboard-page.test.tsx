@@ -89,6 +89,16 @@ describe('TimeDashboardPage', () => {
     expect(screen.queryByText('Horas extra')).not.toBeInTheDocument();
   });
 
+  it('muestra el cumplimiento de jornada con días completos, incompletos y sin reporte', async () => {
+    await setup(vi.fn(async () => ROWS), `${PATH}?desde=2026-09-14&hasta=2026-09-18`);
+    const card = await screen.findByRole('region', { name: 'Cumplimiento de jornada' });
+    // Lun 14 cumple (8,5), mar 15 incompleto (4), mié 16 excede, jue 17 y vie 18 sin reporte.
+    expect(within(card).getByText('Días completos').nextElementSibling).toHaveTextContent('2');
+    expect(within(card).getByText('Días incompletos').nextElementSibling).toHaveTextContent('1');
+    expect(within(card).getByText('Días sin reporte').nextElementSibling).toHaveTextContent('2');
+    expect(within(card).getByText(/25,5 h/)).toBeInTheDocument();
+  });
+
   it('ya no muestra "Alertas por día"; "Horas por cliente" ocupa su lugar y "Horas por solicitud" va primero', async () => {
     await setup();
     const requestTitle = await screen.findByText('Horas por solicitud');

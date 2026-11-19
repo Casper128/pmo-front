@@ -7,7 +7,7 @@ export interface StatisticsGroup extends DashboardBreakdownItem {
   readonly share: number;
 }
 
-export type StatisticsDimension = 'module' | 'activity' | 'management' | 'category';
+export type StatisticsDimension = 'module' | 'activity' | 'management' | 'category' | 'hourType';
 
 const DATE_PATTERN = /\d{4}-\d{2}-\d{2}/;
 const text = (value: unknown) => (value === undefined || value === null ? '' : String(value).trim());
@@ -59,6 +59,7 @@ const LABELS: Record<StatisticsDimension, (report: ManagementReport) => string> 
   management: (report) =>
     cleanDimension(report.solicitud_tiemposConsultores?.nombreGestion || report.gestionDemanda || report.solicitud, 'Sin gestión'),
   category: (report) => cleanDimension(report.categoria, 'Sin categoría'),
+  hourType: (report) => cleanDimension(report.tipoHora, 'Sin tipo de hora'),
 };
 
 /** Mismos criterios de fecha, cliente y tipo de hora que `TimeDashboardCalculator`, para que Datos y Dashboard cuadren. */

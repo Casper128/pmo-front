@@ -16,9 +16,9 @@ import { breakdownStatistics, filterStatisticsReports } from '../statistics/stat
 
 const BREAKDOWNS = [
   { dimension: 'module', title: 'Horas por módulo', dimensionLabel: 'Módulo', description: 'Módulos con mayor dedicación.' },
-  { dimension: 'activity', title: 'Horas por actividad', dimensionLabel: 'Actividad', description: 'Tipos de actividad más recurrentes.' },
+  { dimension: 'activity', title: 'Horas por actividad', dimensionLabel: 'Actividad', description: 'Tipos de actividad más recurrentes.', chart: 'donut' },
   { dimension: 'management', title: 'Horas por gestión', dimensionLabel: 'Gestión', description: 'Gestiones con más horas en el periodo.' },
-  { dimension: 'category', title: 'Horas por categoría', dimensionLabel: 'Categoría', description: 'Distribución por categoría registrada.' },
+  { dimension: 'category', title: 'Horas por categoría', dimensionLabel: 'Categoría', description: 'Distribución por categoría registrada.', chart: 'donut' },
 ] as const;
 
 /** Datos del consultor (F11): horas, registros y % por módulo, actividad, gestión y categoría del periodo filtrado. */

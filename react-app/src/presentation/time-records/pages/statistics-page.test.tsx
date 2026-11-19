@@ -55,6 +55,20 @@ describe('StatisticsPage', () => {
     expect(screen.getByText('8 h')).toBeInTheDocument();
   });
 
+  it('pagina la tabla con más de 10 grupos y la dona agrupa el resto', async () => {
+    const many = Array.from({ length: 12 }, (_, i) => report('1', { modulo: `Módulo ${String.fromCharCode(65 + i)}` }));
+    const user = setup(vi.fn(async () => many));
+    const table = await screen.findByRole('table', { name: 'Horas por módulo: detalle' });
+    expect(within(table).getAllByRole('row')).toHaveLength(11);
+    const pager = screen.getByRole('navigation', { name: 'Horas por módulo: paginación' });
+    expect(within(pager).getByText('Página 1 de 2')).toBeInTheDocument();
+    await user.click(within(pager).getByRole('button', { name: 'Siguiente' }));
+    expect(within(pager).getByText('Página 2 de 2')).toBeInTheDocument();
+    expect(within(table).getAllByRole('row')).toHaveLength(3);
+    // Sin paginador cuando hay 10 filas o menos (categoría: un solo grupo).
+    expect(screen.queryByRole('navigation', { name: 'Horas por categoría: paginación' })).not.toBeInTheDocument();
+  });
+
   it('sin registros muestra el estado vacío', async () => {
     setup(vi.fn(async () => []));
     expect(await screen.findByText('Sin registros en el periodo')).toBeInTheDocument();
