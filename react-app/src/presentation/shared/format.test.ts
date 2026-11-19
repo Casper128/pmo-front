@@ -64,6 +64,12 @@ describe.each(TEST_TIMEZONES)('utilidades de fecha en TZ=%s', (timezone) => {
       expect(formatDateYmd('2026-1-5')).toBe('2026-01-05');
     });
 
+    it('un ISO parcial se construye en hora local como DatePipe (YYYY y YYYY-MM)', () => {
+      expect(formatDateYmd('2026-11')).toBe('2026-11-01');
+      expect(formatDateYmd('2026-1')).toBe('2026-01-01');
+      expect(formatDateYmd('2026')).toBe('2026-01-01');
+    });
+
     it('vacío o inválido → cadena vacía', () => {
       expect(formatDateYmd('')).toBe('');
       expect(formatDateYmd(null)).toBe('');
@@ -98,5 +104,9 @@ describe('normalizeTime (port de UiTimeInputComponent.normalize)', () => {
 describe('normalizeSearch (búsqueda de ui-select)', () => {
   it('ignora tildes, mayúsculas y espacios de los extremos', () => {
     expect(normalizeSearch('  Medellín ÁRea ')).toBe('medellin area');
+  });
+
+  it('descompone y elimina marcas diacríticas combinadas (ñ, ü)', () => {
+    expect(normalizeSearch('Peñón Güéjar')).toBe('penon guejar');
   });
 });

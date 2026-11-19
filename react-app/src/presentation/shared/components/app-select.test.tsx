@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
+import { TooltipProvider } from '@/shared/ui/tooltip';
 import { AppSelect, type AppSelectOption, type AppSelectProps } from './app-select';
 
 const few: AppSelectOption[] = [
@@ -16,7 +17,7 @@ function Controlled(props: Partial<AppSelectProps> & { initial?: string }) {
   const { initial = '', onValueChange, options = few, ...rest } = props;
   const [value, setValue] = useState(initial);
   return (
-    <>
+    <TooltipProvider>
       <label htmlFor="campo">Campo</label>
       <AppSelect
         id="campo"
@@ -28,7 +29,7 @@ function Controlled(props: Partial<AppSelectProps> & { initial?: string }) {
         }}
         {...rest}
       />
-    </>
+    </TooltipProvider>
   );
 }
 
@@ -144,5 +145,64 @@ describe('AppSelect · disabled y loading', () => {
   it('loading conserva la etiqueta seleccionada', () => {
     render(<Controlled options={many} initial="cali" loading />);
     expect(trigger()).toHaveTextContent('Cali');
+  });
+});
+
+const withEmpty: AppSelectOption[] = [
+  { value: '', label: 'Todos los días' },
+  { value: 'lun', label: 'Lunes' },
+  { value: 'mar', label: 'Martes' },
+];
+const manyWithEmpty: AppSelectOption[] = [{ value: '', label: 'Todos los días' }, ...many];
+
+describe.each([
+  ['Select', withEmpty],
+  ['combobox', manyWithEmpty],
+])('AppSelect · opción con valor vacío (%s)', (_name, options) => {
+  it('la opción "" se muestra al iniciar con value="" y no el placeholder', () => {
+    render(<Controlled options={options} initial="" placeholder="Elija" />);
+    expect(trigger()).toHaveTextContent('Todos los días');
+    expect(trigger()).not.toHaveTextContent('Elija');
+  });
+
+  it('elegirla emite "" y la muestra; otra opción la sustituye', async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    const other = options[1].label;
+    render(<Controlled options={options} initial={options[1].value} onValueChange={onValueChange} />);
+    expect(trigger()).toHaveTextContent(other);
+
+    await user.click(trigger());
+    await user.click(await screen.findByRole('option', { name: 'Todos los días' }));
+
+    expect(onValueChange).toHaveBeenLastCalledWith('');
+    expect(trigger()).toHaveTextContent('Todos los días');
+
+    await user.click(trigger());
+    await user.click(await screen.findByRole('option', { name: other }));
+    expect(onValueChange).toHaveBeenLastCalledWith(options[1].value);
+    expect(trigger()).toHaveTextContent(other);
+  });
+
+  it('un valor obsoleto (fuera de las opciones) muestra el placeholder', () => {
+    render(<Controlled options={options} initial="ya-no-existe" placeholder="Elija" />);
+    expect(trigger()).toHaveTextContent('Elija');
+    expect(trigger()).not.toHaveTextContent('Todos los días');
+  });
+});
+
+describe('AppSelect · valor obsoleto sin opción vacía', () => {
+  it.each([[few], [many]])('muestra el placeholder (%#)', (options) => {
+    render(<Controlled options={options} initial="ya-no-existe" />);
+    expect(trigger()).toHaveTextContent('Seleccione una opción');
+  });
+});
+
+describe('AppSelect · nombre accesible del popover', () => {
+  it('el combobox nombra su contenido', async () => {
+    const user = userEvent.setup();
+    render(<Controlled options={many} placeholder="Ciudad" />);
+    await user.click(trigger());
+    expect(await screen.findByRole('dialog', { name: 'Opciones de Ciudad' })).toBeInTheDocument();
   });
 });

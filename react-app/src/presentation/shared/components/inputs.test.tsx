@@ -76,7 +76,7 @@ describe('MetricCard', () => {
 
 describe('PageHeader', () => {
   it('título h1, descripción y acciones', () => {
-    render(<PageHeader title="Reportes" description="Consulta tus reportes" actions={<button type="button">Nuevo</button>} />);
+    render(<PageHeader title="Reportes" description="Consulta tus reportes" aside={<button type="button">Nuevo</button>} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Reportes' })).toBeInTheDocument();
     expect(screen.getByText('Consulta tus reportes')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Nuevo' })).toBeInTheDocument();

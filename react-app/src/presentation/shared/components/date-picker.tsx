@@ -67,7 +67,7 @@ export function DatePicker({
           <CalendarIcon aria-hidden="true" className="text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
+      <PopoverContent align="start" aria-label="Calendario" className="w-auto p-0">
         <Calendar
           mode="single"
           required

@@ -26,13 +26,17 @@ const aliases = [
 
 const toPosix = (path) => path.split(sep).join('/');
 
+/** Código analizable: TypeScript y JavaScript (incluidos los módulos `.mts/.cts/.mjs/.cjs`). */
+const sourceExtension = /\.[cm]?[jt]sx?$/;
+const declarationFile = /\.d\.[cm]?ts$/;
+
 const listFiles = (directory) =>
   readdirSync(directory)
     .flatMap((name) => {
       const path = resolve(directory, name);
       return statSync(path).isDirectory() ? listFiles(path) : [path];
     })
-    .filter((path) => /\.tsx?$/.test(path) && !path.endsWith('.d.ts'));
+    .filter((path) => sourceExtension.test(path) && !declarationFile.test(path));
 
 const packageName = (specifier) => {
   const parts = specifier.split('/');
@@ -162,6 +166,13 @@ const primitiveRules = {
 const dateInputTypes = new Set(['date', 'datetime-local', 'month', 'week']);
 const dateInputRule = (type) => `use Shadcn Calendar + Popover, no type="${type}"`;
 
+const scriptKindOf = (fileName) => {
+  if (fileName.endsWith('.tsx')) return ts.ScriptKind.TSX;
+  if (fileName.endsWith('.jsx')) return ts.ScriptKind.JSX;
+  if (/\.[cm]?js$/.test(fileName)) return ts.ScriptKind.JS;
+  return ts.ScriptKind.TS;
+};
+
 /** Texto de un literal string o plantilla sin expresiones (`'x'`, `"x"`, `` `x` ``), o null. */
 const literalText = (node) =>
   node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) ? node.text : null;
@@ -174,6 +185,9 @@ const jsxAttributeValue = (attribute) => {
   if (ts.isJsxExpression(initializer)) return literalText(initializer.expression);
   return null;
 };
+
+/** HTML no distingue mayúsculas: `role="Dialog"` o `type=" DATE "` equivalen a `dialog` y `date`. */
+const normalizedAttributeValue = (attribute) => jsxAttributeValue(attribute)?.trim().toLowerCase() ?? null;
 
 /** Receptor global de un acceso `globalThis.x`, `window?.x` o `self['x']`. */
 const isGlobalReceiver = (node) => ts.isIdentifier(node) && globalReceivers.has(node.text);
@@ -212,7 +226,7 @@ const isReference = (node) => {
  * - `literals`: texto de strings, plantillas y JSX (para la regla de la URL de PMO).
  */
 export const analyzeSource = (source, fileName = 'file.ts') => {
-  const kind = fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const kind = scriptKindOf(fileName);
   const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, kind);
   const specifiers = [];
   const facts = new Set();
@@ -225,12 +239,15 @@ export const analyzeSource = (source, fileName = 'file.ts') => {
   };
 
   const checkJsxTag = (tagName, attributes) => {
-    if (ts.isIdentifier(tagName) && Object.hasOwn(forbiddenElements, tagName.text)) {
-      primitives.add(forbiddenElements[tagName.text]);
+    // Solo los nombres que empiezan en minúscula son elementos DOM (HTML no distingue mayúsculas:
+    // `<sElect>` es un `select`); `<Select>` es un componente (Shadcn) y está permitido.
+    if (ts.isIdentifier(tagName) && /^[a-z]/.test(tagName.text)) {
+      const element = tagName.text.toLowerCase();
+      if (Object.hasOwn(forbiddenElements, element)) primitives.add(forbiddenElements[element]);
     }
     for (const attribute of attributes.properties) {
       if (!ts.isJsxAttribute(attribute) || !ts.isIdentifier(attribute.name)) continue;
-      const value = jsxAttributeValue(attribute);
+      const value = normalizedAttributeValue(attribute);
       if (attribute.name.text === 'role' && value === 'dialog') primitives.add(primitiveRules.roleDialog);
       if (attribute.name.text === 'role' && value === 'alertdialog') {
         primitives.add(primitiveRules.roleAlertDialog);
@@ -304,7 +321,7 @@ export const analyzeSource = (source, fileName = 'file.ts') => {
   return { specifiers, facts, primitives, literals };
 };
 
-const isTestFile = (path) => /\.(test|spec)\.tsx?$/.test(path);
+const isTestFile = (path) => /\.(test|spec)\.[cm]?[jt]sx?$/.test(path);
 
 /** Devuelve la lista de violaciones (vacía si la arquitectura es válida). */
 export function checkArchitecture(workspace) {
@@ -356,7 +373,7 @@ export function checkArchitecture(workspace) {
     if (!permittedAreas.has(area)) once(placementMessage);
 
     const rules = areaRules[area];
-    if (rules?.noTsx && sourcePath.endsWith('.tsx')) once(`${area} no puede contener archivos .tsx`);
+    if (rules?.noTsx && /\.[jt]sx$/.test(sourcePath)) once(`${area} no puede contener archivos .tsx`);
 
     for (const specifier of specifiers) {
       const target = internalTarget(specifier, path);

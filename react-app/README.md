@@ -30,6 +30,10 @@ Para desarrollo local:
    | `VITE_SUPABASE_PUBLISHABLE_KEY` | `supabasePublishableKey` |
    | `VITE_CONFIGURATION_ADMIN_EMAILS` | `configurationAdminEmails` (separados por comas) |
    | `VITE_LOCATION_ADMIN_EMAILS` | `locationAdminEmails` (separados por comas, copiar tal cual) |
+   | `VITE_DEFAULT_AUDITOR_EMAIL` | Opcional. Auditor de eliminaciones por defecto: el correo que hoy usa `DEFAULT_DELETION_SETTINGS.auditorEmail` en `../src/` (Angular). Un correo o vacío; si falta, queda vacío |
+
+   En Netlify y en `.env.local` configure `VITE_DEFAULT_AUDITOR_EMAIL` con el valor que tiene hoy la app Angular en
+   `src/`; el correo no se escribe en ningún archivo de `react-app/`.
 
 `src/config/environment.ts` valida estas variables con zod y lanza un error claro si falta alguna obligatoria.
 
@@ -62,8 +66,8 @@ analiza como presentation y, como `presentation/providers/container.ts`, puede i
 lados; `check:domain-sync` falla si divergen. La única excepción es `time-record.repository.ts` (Observable → Promise).
 
 `cn()`: shadcn 4.23 genera `import { cn } from "cn"` (paquete oficial de shadcn-ui) aunque `components.json`
-declare `aliases.utils`; no hay opción para redirigirlo. Por eso no existe `src/shared/lib/utils.ts`: el código
-propio importa `cn` también desde `"cn"`. Alias: `@/*`, `@domain/*`, `@application/*`,
+declare `aliases.utils`; no hay opción para redirigirlo. `src/shared/lib/utils.ts` se conserva solo porque
+`aliases.utils` de `components.json` apunta a él; el código propio importa `cn` desde `"cn"`. Alias: `@/*`, `@domain/*`, `@application/*`,
 `@infrastructure/*`, `@presentation/*`, `@env/*` (→ `src/config/*`).
 
 ### Límites conocidos de `check:architecture`
@@ -151,9 +155,8 @@ se componen fuera con `Field`/`FieldLabel htmlFor={id}`):
 |---|---|---|
 | `AppSelect` | `ui-select` | `Select` si hay `searchThreshold` (8) opciones o menos; combobox `Popover` + `Command` si hay más (Angular: `options.length > searchThreshold`). `searchable` lo fuerza. Búsqueda "contiene" sin tildes ni mayúsculas, `loading` ("Cargando..."), `disabled`, `emptyMessage` |
 | `DatePicker` | `ui-date-input` | `Calendar` + `Popover`, locale es (semana desde el lunes), `min`/`max` (2000-01-01 … 2100-12-31), "Hoy" y "Limpiar". Valor `YYYY-MM-DD` |
-| `DateRangePicker` | rango de reportes | `Calendar mode="range"`; emite `{ from, to }` en cada clic; "Limpiar" |
 | `TimeInput` | `ui-time-input` | `Input type="time"` con `step=60` (P5); normaliza `H:mm` → `HH:mm` |
-| `PageHeader` | `ui-page-header` | `h1`, descripción y acciones |
+| `PageHeader` | `ui-page-header` | `eyebrow` (texto pequeño atenuado sobre el título), `h1`, descripción, `meta` (debajo de la descripción) y `aside` (acciones a la derecha) |
 | `MetricCard` | `ui-metric-card` | `Card` con etiqueta, valor, descripción, `tone` y `delta` opcional (`Badge`) |
 | `StateMessage` | `ui-state-message` | `Empty` + `Button` de acción (reintentar) |
 | `OverflowText` | `overflow-tooltip.directive` | `truncate`/`line-clamp-2|3` + `Tooltip` solo si el texto desborda |

@@ -497,3 +497,5 @@ Recomendación: F7 y F8 son las de mayor riesgo; QA debe revisarlas con el check
 | P6 | Angular congelado salvo bugs durante la migración. |
 | P7 | Gráficas: solo Shadcn Chart (Recharts), sin Tremor. |
 | P8 | Apariencia: estilo Shadcn con la paleta actual de la app Angular (tokens de `src/styles.css` mapeados a variables Shadcn en `react-app/src/index.css`). |
+| P9 | El correo del auditor de eliminaciones por defecto sale del código de `react-app`. Variable opcional `VITE_DEFAULT_AUDITOR_EMAIL` (correo o vacío, validada en `config/environment.ts`, inyectada vía `Environment.defaultAuditorEmail`); si falta, `''`. En Netlify y `.env.local` se configura con el valor que hoy tiene Angular en `src/`. |
+| P10 | `DateRangePicker` eliminado (KISS): Angular usa Desde/Hasta + presets; se usan dos `DatePicker`. |

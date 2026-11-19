@@ -176,11 +176,6 @@ export const DEFAULT_WORK_SETTINGS: WorkSettings = {
   maxHoursPerRecord: 16,
 };
 
-export const DEFAULT_DELETION_SETTINGS: DeletionSettings = {
-  auditorEmail: 'darwin.osorio@netwconsulting.com',
-  technicalDeleteEmails: [],
-};
-
 /** Clave de localStorage (la misma que la app Angular). */
 export const APP_PARAMETERS_STORAGE_KEY = 'pmo_app_parameters_global_v1';
 
@@ -207,16 +202,7 @@ export class AppParametersService extends AppParametersFacade {
   private readonly fetchFn: FetchFn;
   private readonly listeners = new Set<() => void>();
   private activeLoads = 0;
-  private state: AppParametersState = {
-    fields: cloneFields(DEFAULT_ADVANCED_FIELDS),
-    workSettings: { ...DEFAULT_WORK_SETTINGS },
-    deletionSettings: { ...DEFAULT_DELETION_SETTINGS },
-    loading: false,
-    saving: false,
-    error: '',
-    source: 'local',
-    serverAdminAccess: false,
-  };
+  private state: AppParametersState;
 
   readonly fields = (): AdvancedFieldConfiguration[] => this.state.fields;
   readonly workSettings = (): WorkSettings => this.state.workSettings;
@@ -243,6 +229,16 @@ export class AppParametersService extends AppParametersFacade {
     this.auth = auth;
     this.env = env;
     this.fetchFn = fetchFn;
+    this.state = {
+      fields: cloneFields(DEFAULT_ADVANCED_FIELDS),
+      workSettings: { ...DEFAULT_WORK_SETTINGS },
+      deletionSettings: this.defaultDeletionSettings(),
+      loading: false,
+      saving: false,
+      error: '',
+      source: 'local',
+      serverAdminAccess: false,
+    };
     this.loadLocal();
     void this.load();
   }
@@ -262,7 +258,7 @@ export class AppParametersService extends AppParametersFacade {
       serverAdminAccess: false,
       fields: cloneFields(DEFAULT_ADVANCED_FIELDS),
       workSettings: { ...DEFAULT_WORK_SETTINGS },
-      deletionSettings: { ...DEFAULT_DELETION_SETTINGS },
+      deletionSettings: this.defaultDeletionSettings(),
     });
     this.loadLocal();
     if (!this.configured() || !this.auth.token) return;
@@ -389,9 +385,14 @@ export class AppParametersService extends AppParametersFacade {
     this.setState({
       fields: cloneFields(DEFAULT_ADVANCED_FIELDS),
       workSettings: { ...DEFAULT_WORK_SETTINGS },
-      deletionSettings: { ...DEFAULT_DELETION_SETTINGS },
+      deletionSettings: this.defaultDeletionSettings(),
     });
     this.persistLocal();
+  }
+
+  /** Ajustes de eliminación por defecto: el auditor sale de `VITE_DEFAULT_AUDITOR_EMAIL` (vacío si falta). */
+  private defaultDeletionSettings(): DeletionSettings {
+    return { auditorEmail: this.env.defaultAuditorEmail, technicalDeleteEmails: [] };
   }
 
   private setState(patch: Partial<AppParametersState>): void {
@@ -489,7 +490,7 @@ export class AppParametersService extends AppParametersFacade {
       ),
     );
     return {
-      auditorEmail: String(value?.auditorEmail || DEFAULT_DELETION_SETTINGS.auditorEmail)
+      auditorEmail: String(value?.auditorEmail || this.env.defaultAuditorEmail)
         .trim()
         .toLowerCase(),
       technicalDeleteEmails,

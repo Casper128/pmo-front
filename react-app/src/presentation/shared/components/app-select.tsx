@@ -13,6 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { normalizeSearch } from '@presentation/shared/format';
+import { OverflowText } from './overflow-text';
 
 export interface AppSelectOption {
   readonly value: string;
@@ -44,6 +45,14 @@ export interface AppSelectProps {
 }
 
 export const DEFAULT_SEARCH_THRESHOLD = 8;
+
+/**
+ * Radix `Select` trata `value=''` como "sin selección" y no admite `SelectItem value=''`. La opción cuyo
+ * valor es `''` (p. ej. "Todos los días") viaja a Radix con este centinela y se mapea de ida y vuelta.
+ */
+const EMPTY_OPTION_SENTINEL = '__app-select-empty__';
+const toRadixValue = (value: string) => (value === '' ? EMPTY_OPTION_SENTINEL : value);
+const fromRadixValue = (value: string) => (value === EMPTY_OPTION_SENTINEL ? '' : value);
 
 /** Filtro de cmdk con la normalización de `ui-select` (sin tildes ni mayúsculas, "contiene"). */
 const filterByLabel = (_value: string, search: string, keywords: string[] = []) =>
@@ -82,14 +91,20 @@ export function AppSelect({
 
   if (!withSearch) {
     return (
-      <Select value={value} onValueChange={onValueChange} disabled={isDisabled}>
+      <Select
+        value={selected ? toRadixValue(selected.value) : ''}
+        onValueChange={(next) => onValueChange(fromRadixValue(next))}
+        disabled={isDisabled}
+      >
         <SelectTrigger id={id} className={cn('w-full min-w-0', className)} aria-busy={loading || undefined} {...aria}>
-          <SelectValue placeholder={loading ? 'Cargando...' : placeholder} />
+          <SelectValue placeholder={triggerText}>
+            <OverflowText className="pointer-events-auto">{triggerText}</OverflowText>
+          </SelectValue>
         </SelectTrigger>
         <SelectContent position="popper">
           {options.length ? (
             options.map((option) => (
-              <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
+              <SelectItem key={option.value} value={toRadixValue(option.value)} disabled={option.disabled}>
                 {option.label}
               </SelectItem>
             ))
@@ -115,11 +130,15 @@ export function AppSelect({
           className={cn('w-full min-w-0 justify-between font-normal', className)}
           {...aria}
         >
-          <span className={cn('truncate', !selected && 'text-muted-foreground')}>{triggerText}</span>
+          <OverflowText className={cn(!selected && 'text-muted-foreground')}>{triggerText}</OverflowText>
           {indicator}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-(--radix-popover-trigger-width) min-w-72 p-0">
+      <PopoverContent
+        align="start"
+        aria-label={`Opciones de ${aria['aria-label'] ?? placeholder}`}
+        className="w-(--radix-popover-trigger-width) min-w-72 p-0"
+      >
         {/* `label` de cmdk da el nombre accesible al input (cmdk lo enlaza con aria-labelledby). */}
         <Command filter={filterByLabel} label="Buscar opción">
           <CommandInput placeholder={searchPlaceholder} />

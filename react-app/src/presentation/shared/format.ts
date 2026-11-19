@@ -48,15 +48,18 @@ export function formatDateDisplay(value: string): string {
 
 /**
  * Port del pipe de Angular `date: 'yyyy-MM-dd'` (auditoría de solicitudes). Como `DatePipe`: una fecha
- * `YYYY-MM-DD` se conserva tal cual (Angular la construye en hora local) y una fecha-hora ISO se muestra con
+ * `YYYY-MM-DD` (o parcial `YYYY-MM`) se conserva tal cual (Angular la construye en hora local) y una fecha-hora ISO se muestra con
  * el día local. Vacío o inválido → `''` (Angular devuelve `null` para vacío y lanza error si es inválido).
  */
 export function formatDateYmd(value: string | number | Date | null | undefined): string {
   if (value === null || value === undefined || value === '') return '';
   if (typeof value === 'string') {
-    const dateOnly = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value.trim());
+    // Como `DatePipe`: `YYYY`, `YYYY-M` y `YYYY-M-D` (ISO parcial) se construyen en hora local.
+    const dateOnly = /^(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?$/.exec(value.trim());
     if (dateOnly) {
-      const [, year, month, day] = dateOnly.map(Number);
+      const year = Number(dateOnly[1]);
+      const month = Number(dateOnly[2] ?? 1);
+      const day = Number(dateOnly[3] ?? 1);
       const date = new Date(year, month - 1, day);
       return isValid(date) ? toDateValue(date) : '';
     }
@@ -85,7 +88,7 @@ export function normalizeTime(value: string | null | undefined): string {
 export function normalizeSearch(value: string): string {
   return value
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
 }

@@ -7,6 +7,7 @@ const validSource = {
   VITE_SUPABASE_PUBLISHABLE_KEY: 'publishable-key',
   VITE_CONFIGURATION_ADMIN_EMAILS: ' Admin@Example.test ,otra@example.test,',
   VITE_LOCATION_ADMIN_EMAILS: '1admin@example.test',
+  VITE_DEFAULT_AUDITOR_EMAIL: ' Auditor@Example.test ',
 }
 
 describe('parseEnvironment', () => {
@@ -18,6 +19,7 @@ describe('parseEnvironment', () => {
       supabasePublishableKey: 'publishable-key',
       configurationAdminEmails: ['admin@example.test', 'otra@example.test'],
       locationAdminEmails: ['1admin@example.test'],
+      defaultAuditorEmail: 'auditor@example.test',
     })
   })
 
@@ -29,6 +31,18 @@ describe('parseEnvironment', () => {
     })
     expect(parsed.configurationAdminEmails).toEqual([])
     expect(parsed.locationAdminEmails).toEqual([])
+  })
+
+  it('el auditor por defecto es opcional: ausente o vacío → cadena vacía', () => {
+    expect(parseEnvironment({ ...validSource, VITE_DEFAULT_AUDITOR_EMAIL: undefined }).defaultAuditorEmail).toBe('')
+    expect(parseEnvironment({ ...validSource, VITE_DEFAULT_AUDITOR_EMAIL: '' }).defaultAuditorEmail).toBe('')
+    expect(parseEnvironment({ ...validSource, VITE_DEFAULT_AUDITOR_EMAIL: '  ' }).defaultAuditorEmail).toBe('')
+  })
+
+  it('rechaza un auditor por defecto que no es un correo', () => {
+    expect(() => parseEnvironment({ ...validSource, VITE_DEFAULT_AUDITOR_EMAIL: 'no-es-correo' })).toThrow(
+      /VITE_DEFAULT_AUDITOR_EMAIL/,
+    )
   })
 
   it('falla indicando la variable obligatoria que falta', () => {

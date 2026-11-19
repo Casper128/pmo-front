@@ -9,6 +9,7 @@ export const testEnvironment: Environment = {
   supabasePublishableKey: 'test-publishable-key',
   configurationAdminEmails: ['admin@example.test'],
   locationAdminEmails: ['admin@example.test'],
+  defaultAuditorEmail: 'auditor.defecto@example.test',
 };
 
 /** Respuesta JSON simulada. */

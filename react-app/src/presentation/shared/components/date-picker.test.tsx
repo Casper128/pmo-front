@@ -120,6 +120,13 @@ describe('DatePicker', () => {
     expect(screen.getByRole('button', { name: /, 10 de noviembre de 2026/ })).toBeEnabled();
   });
 
+  it('el popover tiene nombre accesible "Calendario"', async () => {
+    const user = userEvent.setup();
+    render(<ControlledDatePicker initial="2026-11-18" />);
+    await user.click(trigger());
+    expect(await screen.findByRole('dialog', { name: 'Calendario' })).toBeInTheDocument();
+  });
+
   it('respeta disabled y aria-invalid', () => {
     render(<ControlledDatePicker initial="" disabled aria-invalid />);
     expect(trigger()).toBeDisabled();

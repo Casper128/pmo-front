@@ -41,6 +41,21 @@ describe('AppParametersService', () => {
     expect(parameters.canManage()).toBe(false);
   });
 
+  it('el auditor por defecto sale del entorno; sin él queda vacío', async () => {
+    const withDefault = setup(jsonResponse({}));
+    await settle();
+    expect(withDefault.parameters.deletionSettings()).toEqual({
+      auditorEmail: testEnvironment.defaultAuditorEmail,
+      technicalDeleteEmails: [],
+    });
+
+    const emptyEnv = { ...testEnvironment, defaultAuditorEmail: '' };
+    const auth = new AuthService(new HttpClient(fakeFetch(jsonResponse({}))), emptyEnv);
+    const parameters = new AppParametersService(auth, emptyEnv, fakeFetch(jsonResponse({})));
+    await settle();
+    expect(parameters.deletionSettings().auditorEmail).toBe('');
+  });
+
   it('carga desde Supabase con las cabeceras de Angular, aplica el payload y lo persiste', async () => {
     signIn('persona@example.test');
     const { parameters, fetchMock } = setup(

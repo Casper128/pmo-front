@@ -6,6 +6,8 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: 'jsdom',
+      // La TZ en tiempo de ejecución (`useTimezone`) no se aplica en worker_threads; con forks sí.
+      pool: 'forks',
       globals: true,
       setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.test.mjs'],
@@ -17,6 +19,7 @@ export default mergeConfig(
         VITE_SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
         VITE_CONFIGURATION_ADMIN_EMAILS: 'admin@example.test',
         VITE_LOCATION_ADMIN_EMAILS: 'admin@example.test',
+        VITE_DEFAULT_AUDITOR_EMAIL: 'auditor.defecto@example.test',
       },
     },
   }),

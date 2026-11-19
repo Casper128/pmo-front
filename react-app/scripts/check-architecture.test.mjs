@@ -544,4 +544,54 @@ describe('check-architecture · correcciones QA F4', () => {
       }),
     ).toEqual([]);
   });
+
+  it('role/type sin distinguir mayúsculas ni espacios, y elementos DOM con mayúsculas mezcladas', () => {
+    const violations = violationsOf({
+      'presentation/raw.tsx': [
+        'export const A = () => <div role="Dialog" />;',
+        "export const B = () => <div role={' AlertDialog '} />;",
+        'export const C = () => <Input type="DATE" />;',
+        'export const D = () => <sElect />;',
+        'export const E = () => <TaBle />;',
+      ].join('\n'),
+      // Los componentes (Shadcn) empiezan en mayúscula y siguen permitidos.
+      'presentation/ok.tsx': 'export const F = () => <><Select /><Table /><Dialog /><Input type="TIME" /></>;\n',
+    });
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        'src/presentation/raw.tsx: use Shadcn Dialog/Sheet, no role="dialog"',
+        'src/presentation/raw.tsx: use Shadcn AlertDialog, no role="alertdialog"',
+        'src/presentation/raw.tsx: use Shadcn Calendar + Popover, no type="date"',
+        'src/presentation/raw.tsx: use Shadcn Select/Combobox, no <select>',
+      ]),
+    );
+    // `<TaBle />` es un componente (empieza en mayúscula), no el elemento DOM.
+    expect(violations.some((violation) => violation.includes('<table>'))).toBe(false);
+    expect(violations.some((violation) => violation.startsWith('src/presentation/ok.tsx'))).toBe(false);
+  });
+
+  it('recorre .mts, .cts, .js, .jsx, .mjs y .cjs dentro de src/', () => {
+    const violations = violationsOf({
+      'domain/a.mts': "import { x } from '@infrastructure/adapter';\nexport const a = x;\n",
+      'domain/b.cts': "const f = require('react');\nmodule.exports = f;\n",
+      'domain/c.js': "export const c = () => fetch('/x');\n",
+      'application/d.mjs': "import { y } from '@presentation/page';\nexport const d = y;\n",
+      'application/e.cjs': "module.exports = require('rxjs');\n",
+      'presentation/f.jsx': 'export const F = () => <select />;\n',
+      'presentation/g.d.mts': 'export declare const g: number;\n',
+      'otra/h.js': 'export const h = 1;\n',
+    });
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        'src/domain/a.mts: domain solo puede depender de sí mismo',
+        'src/domain/b.cts: domain solo puede importar paquetes permitidos (vitest), ni módulos de Node',
+        'src/domain/c.js: domain no puede usar fetch',
+        'src/application/d.mjs: application solo puede depender de domain y de sí misma',
+        'src/application/e.cjs: application no puede importar rxjs',
+        'src/presentation/f.jsx: use Shadcn Select/Combobox, no <select>',
+        'src/otra/h.js: ubicación no permitida: el código va en src/{domain,application,infrastructure,presentation,shared/ui,shared/hooks,shared/lib,config,test} (o src/main.tsx)',
+      ]),
+    );
+    expect(violations.some((violation) => violation.includes('g.d.mts'))).toBe(false);
+  });
 });
