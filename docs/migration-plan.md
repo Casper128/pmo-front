@@ -86,7 +86,8 @@ beneficio (KISS).
   forma que `HttpErrorResponse`**: `status` (0 en fallo de red), `statusText`, `message`, `error` (cuerpo parseado).
   Así se preservan sin cambios `isSessionExpiredError`, los `error?.error?.error` y el caso `status === 0`.
 - Cada adaptador recibe `http` y `auth` por constructor (antes `inject`). Se conserva el `Bearer` por adaptador
-  (sin interceptor) para no alterar comportamiento; el `HttpClient` acepta un `getToken` opcional para quien lo use.
+  (sin interceptor) para no alterar comportamiento; el `HttpClient` no gestiona tokens (solo `headers`, `params`,
+  cuerpo, `timeoutMs` y `signal`).
 - `AuthService`: estado privado + `listeners`; mismas claves de `localStorage`; misma lógica de
   `login → loadUser (fallback al usuario de la respuesta)`, `refreshSession`, `restoreSession`, `isSessionExpiredError` (401/403).
 - `AppParametersService`: reemplaza `signal/computed` por un store simple (estado inmutable + `subscribe` + `notify`);
@@ -112,7 +113,7 @@ presentation/providers/app-providers.tsx    QueryClientProvider + ContainerProvi
 - Es el **único** archivo de presentación autorizado a importar `@infrastructure/*` (lo verifica el script de capas).
 - Se crea una vez en `main.tsx` (fuera del árbol React, para no duplicarse con StrictMode).
 - Tests: `createContainer(testEnv, { timeManagement: fake, ... })` o un contenedor de dobles; nunca singletons importados.
-- Estado reactivo de `auth` y `parameters`: hooks `useAuthUser()`, `useAppParameters()` con `useSyncExternalStore`
+- Estado reactivo de `auth` y `parameters`: hooks `useAuth()`, `useAppParameters(selector)` con `useSyncExternalStore`
   sobre el `subscribe` del puerto. Sin librerías de estado adicionales.
 
 ### 1.5 Integración con TanStack Query
@@ -147,6 +148,22 @@ el bloqueo y se podría reenviar. Con el provider el bloqueo sobrevive a la nave
 | `localStorage pmo_pending_time_records` | Hook `usePendingRecordsStorage`: restaura una vez al montar (idempotente frente a StrictMode), persiste en cada cambio, borra la clave si queda vacío, y en cada progreso `ok` persiste `records.filter(r => !sent.has(r))` inmediatamente. |
 | Fases `idle → sending → saving-logs → completed | log-error | failed` y `retrySendLogs` | `useReducer` con las mismas fases y transiciones; `resetSendTracking` nunca libera con fase `sending`/`saving-logs`. |
 | Validaciones previas (plantilla bloqueada, campos faltantes/invalidos, horas por registro, horas por día) | Se mueven a una función pura `validateBeforeSend(records, domain, templates)` en presentación que reutiliza los métodos del dominio y devuelve el mismo mensaje y título. |
+
+**Condiciones obligatorias del hook `useSendAllRecords` (F8)** (revisión QA de F2):
+
+1. El bloqueo se activa con `useRef` (`inFlightRef.current = true`) **antes** de llamar a
+   `sendAllRecords.execute`, en el mismo tick síncrono del clic; nunca se deriva solo del estado de React.
+2. Si se usa `AbortSignal`, su `AbortController` no se ata a la limpieza de un `useEffect`: en StrictMode React
+   monta, desmonta y vuelve a montar, y esa limpieza abortaría un envío real. El aborto solo lo dispara una acción
+   explícita (o el desmontaje del `DraftsProvider` del shell, nunca el de una página).
+3. Un rechazo por aborto se trata distinto de la fase `failed`: no muestra el error de envío como fallo; se poda
+   con el `Set` de referencias construido en `onProgress` (los registros confirmados antes del aborto salen de
+   borradores y de `pmo_pending_time_records`). Se considera aborto un error con `name === 'AbortError'` **o** un
+   `HttpError` (`status` 0) cuyo `error` tenga `name === 'AbortError'`. Hoy `SendAllRecordsUseCase` no pasa el
+   `signal` al HTTP (rechaza con `signal.reason` antes de cada registro o durante la espera), así que el segundo caso
+   solo aparecería si un adaptador futuro propaga el `signal`; el hook reconoce ambos para no depender de ello.
+4. `onProgress` y la resolución/rechazo de `execute` se filtran por `runId`: cada callback compara su `runId`
+   capturado con `runIdRef.current` y descarta los de ejecuciones anteriores.
 
 ---
 
@@ -217,7 +234,7 @@ superficie. Lazy loading con `lazy: () => import(...)` por ruta.
 | `/auditoria/eliminaciones` | `AuditDeleteRequestsPageComponent` | `AuditDeleteRequestsPage` | sesión + `canReviewDeleteRequests` |
 | `/configuracion` | `ConfigurationPageComponent` | `ConfigurationPage` | sesión + `canManage` |
 | `/administracion/ubicaciones` | `ConsultantLocationsPageComponent` + `locationAdminGuard` | `ConsultantLocationsPage` | sesión + `locationAdminEmails` |
-| `*` | (no existe) | redirect a dashboard | — |
+| `*` | (no existe) | `NotFoundPage` (404 con enlace al dashboard) | sesión |
 
 El god component se divide en **3 páginas** que comparten hooks (`useManagementReports`, `useDrafts`,
 `useSelectOptions`, `useTemplates`) y funciones puras extraídas (filtros, mapeos Excel, `managementReportToDraftRecord`,
@@ -326,7 +343,8 @@ definen en Netlify es la decisión P4. Los valores se copian tal cual, incluido 
 
 ### 4.3 Port de `scripts/check-architecture.mjs`
 
-Mismo enfoque (Node sin dependencias), adaptado:
+Mismo enfoque (script Node), adaptado; analiza el AST con la API del compilador de TypeScript (devDependency
+`typescript`) en lugar de expresiones regulares:
 
 - Recorre `.ts` y `.tsx`; excluye `src/shared/ui/**` (código generado) de la regla `any`.
 - Capas obligatorias: `domain`, `application`, `infrastructure`, `presentation`.
@@ -466,3 +484,16 @@ Recomendación: F7 y F8 son las de mayor riesgo; QA debe revisarlas con el check
 - **P6. Congelación:** ¿se congelan cambios funcionales en Angular durante la migración?
 - **P7. Gráficas:** ¿se acepta usar solo Shadcn Chart (Recharts) y no Tremor?
 - **P8. Estilo visual:** ¿replicar la apariencia actual o aceptar el estilo Shadcn con la paleta actual?
+
+### Decisiones tomadas (aprobadas por el usuario, 2026-11-18)
+
+| # | Decisión |
+|---|---|
+| P1 | Reemplazo completo en Netlify cuando haya paridad. Si se elimina `src/` se decide después. |
+| P2 | Auditoría y Configuración usan un guard de ruta que redirige a `/registros/dashboard`, esperando a que carguen los permisos (no expulsar mientras `canManage` está cargando). |
+| P3 | `locationAdminEmails` se copia tal cual desde `src/environments` (el usuario lo confirmará después). |
+| P4 | Variables de entorno configuradas en Netlify. En el repo solo `.env.example` (sin valores reales) y `.env*.local` en `.gitignore`; no se versionan `.env.development`/`.env.production`. En local se crea `.env.local` a partir de `src/environments/environment.ts` (ver `react-app/README.md`). |
+| P5 | Selector de hora: `Input type="time"` nativo. |
+| P6 | Angular congelado salvo bugs durante la migración. |
+| P7 | Gráficas: solo Shadcn Chart (Recharts), sin Tremor. |
+| P8 | Apariencia: estilo Shadcn con la paleta actual de la app Angular (tokens de `src/styles.css` mapeados a variables Shadcn en `react-app/src/index.css`). |
