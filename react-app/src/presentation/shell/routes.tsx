@@ -47,12 +47,9 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'registros/plantillas',
-        element: (
-          <PlaceholderPage
-            title="Mis plantillas por gestión"
-            description="Configura los campos avanzados que se aplican automáticamente al registrar o editar tiempos."
-          />
-        ),
+        lazy: async () => ({
+          Component: (await import('@presentation/time-records/pages/templates-page')).TemplatesPage,
+        }),
       },
       {
         element: <RequireAudit />,
@@ -70,12 +67,9 @@ export const appRoutes: RouteObject[] = [
         children: [
           {
             path: 'configuracion',
-            element: (
-              <PlaceholderPage
-                title="Configuración global de tiempos"
-                description="Administra listas, valores predeterminados y reglas operativas usadas por todos los consultores."
-              />
-            ),
+            lazy: async () => ({
+              Component: (await import('@presentation/time-records/pages/configuration-page')).ConfigurationPage,
+            }),
           },
         ],
       },

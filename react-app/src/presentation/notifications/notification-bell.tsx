@@ -70,7 +70,7 @@ export function NotificationBell() {
         >
           <Bell aria-hidden="true" />
           {unreadCount ? (
-            <Badge aria-hidden="true" className="absolute -top-1 -right-1 h-4 min-w-4 bg-destructive px-1 text-[10px] text-white tabular-nums">
+            <Badge aria-hidden="true" className="absolute -top-1 -right-1 h-4 min-w-4 bg-destructive px-1 text-[10px] text-destructive-foreground tabular-nums">
               {unreadCount > MAX_BADGE ? `${MAX_BADGE}+` : unreadCount}
             </Badge>
           ) : null}

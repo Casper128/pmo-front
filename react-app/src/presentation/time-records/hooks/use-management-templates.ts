@@ -36,8 +36,8 @@ export function useManagementTemplates({ defaultProyecto, onError }: UseManageme
   // Referencia síncrona: dos selecciones seguidas no deben abrir dos diálogos.
   const dialogOpenRef = useRef(false);
 
-  // Carga la lista al montar (`loadManagementTemplates`); `ensureForOption` la lee de la caché.
-  useQuery({ queryKey: queryKeys.templates.all, queryFn: () => templates.list() });
+  // Carga la lista al montar (`loadManagementTemplates`); `ensureForOption` la lee de la caché y Plantillas la muestra.
+  const list = useQuery({ queryKey: queryKeys.templates.all, queryFn: () => templates.list() });
 
   const storeTemplate = useCallback(
     (template: ManagementAdvancedTemplate) => {
@@ -126,5 +126,5 @@ export function useManagementTemplates({ defaultProyecto, onError }: UseManageme
     openDialog(null);
   }, [saving, openDialog]);
 
-  return { dialog, dialogMode, saving, ensureForOption, openEdit, save, closeDialog };
+  return { list, dialog, dialogMode, saving, ensureForOption, openEdit, save, closeDialog };
 }

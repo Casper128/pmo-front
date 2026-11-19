@@ -98,7 +98,7 @@ describe('NotificationBell', () => {
     await user.click(await screen.findByRole('button', { name: /Aviso 7/ }));
     await waitFor(() => expect(gateway.markRead).toHaveBeenCalledWith(['7']));
     await waitFor(() => expect(router.state.location.pathname).toBe('/registros/reportes'));
-    expect(router.state.location.search).toBe('?q=RH%207%2F%C3%B1');
+    expect(router.state.location.search).toBe('?preset=3m&q=RH%207%2F%C3%B1');
   });
 
   it('avisa con un toast solo de las notificaciones nuevas, no de las de la primera carga', async () => {
@@ -145,7 +145,7 @@ describe('NotificationBell', () => {
 describe('notificationPath', () => {
   it('auditoría para solicitudes nuevas; Reportes con el identificador para resoluciones', () => {
     expect(notificationPath(notification('1', 'delete_request_created'))).toBe('/auditoria/eliminaciones');
-    expect(notificationPath(notification('1', 'delete_request_approved'))).toBe('/registros/reportes?q=RH-1');
+    expect(notificationPath(notification('1', 'delete_request_approved'))).toBe('/registros/reportes?preset=3m&q=RH-1');
     expect(notificationPath(notification('1', 'delete_request_approved', { data: {} }))).toBe('/registros/reportes');
   });
 });

@@ -25,8 +25,8 @@ export interface ReviewTarget {
 export interface ReviewDialogsProps {
   readonly target: ReviewTarget | null;
   readonly busy: boolean;
-  readonly onApprove: (request: ManagementDeleteRequest) => Promise<unknown>;
-  readonly onReject: (request: ManagementDeleteRequest, note: string) => Promise<unknown>;
+  readonly onApprove: (request: ManagementDeleteRequest) => Promise<boolean>;
+  readonly onReject: (request: ManagementDeleteRequest, note: string) => Promise<boolean>;
   readonly onClose: () => void;
 }
 
@@ -37,7 +37,7 @@ function RejectForm({ request, busy, onReject, onClose }: { readonly request: Ma
       className="flex flex-col gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        void onReject(request, note).then(onClose);
+        void onReject(request, note).then((applied) => applied && onClose());
       }}
     >
       <DialogHeader>
@@ -80,7 +80,7 @@ export function ReviewDialogs({ target, busy, onApprove, onReject, onClose }: Re
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-            <Button type="button" variant="destructive" disabled={busy} onClick={() => request && void onApprove(request).then(onClose)}>
+            <Button type="button" variant="destructive" disabled={busy} onClick={() => request && void onApprove(request).then((applied) => applied && onClose())}>
               {busy ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
               Eliminar y aprobar
             </Button>

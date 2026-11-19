@@ -106,6 +106,20 @@ describe('AuditDeleteRequestsPage', () => {
     await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(1));
   });
 
+  it('si el rechazo falla el diálogo sigue abierto y conserva la nota', async () => {
+    const failing = vi.fn(async () => {
+      throw { status: 500, error: { error: 'Servicio no disponible' } };
+    });
+    const { user } = await setup({ reject: failing as unknown as ManagementDeleteRequestGateway['reject'] });
+    await user.click(within(await card('1')).getByRole('button', { name: 'Rechazar' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rechazar solicitud' });
+    await user.type(within(dialog).getByRole('textbox', { name: /Motivo/ }), 'Falta el soporte');
+    await user.click(within(dialog).getByRole('button', { name: 'Rechazar solicitud' }));
+    expect(await screen.findByText('Servicio no disponible')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Rechazar solicitud' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /Motivo/ })).toHaveValue('Falta el soporte');
+  });
+
   it('rechazar sin nota también funciona', async () => {
     const { reject, user } = await setup();
     await user.click(within(await card('2')).getByRole('button', { name: 'Rechazar' }));
